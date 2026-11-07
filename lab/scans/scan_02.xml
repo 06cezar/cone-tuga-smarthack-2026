@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<nmaprun scanner="nmap" args="nmap -sS -sU -sV --script http-title --max-rate 100 -p T:21-23,80,139,445,554,1883,2323,3306,3389,5900,6379,6380,8080,8443,9100,U:53,123,161,1900,5353 --exclude 172.20.10.13 -oX results/scan_02.xml 172.20.10.0/28" start="1794063144" startstr="Sat Nov  7 16:52:24 2026" version="7.94SVN" xmloutputversion="1.05">
+<scaninfo type="syn" protocol="tcp" numservices="17" services="21-23,80,139,445,554,1883,2323,3306,3389,5900,6379-6380,8080,8443,9100" />
+<scaninfo type="udp" protocol="udp" numservices="5" services="53,123,161,1900,5353" />
+<verbose level="0" />
+<debugging level="0" />
+<host starttime="1794063146" endtime="1794063316"><status state="up" reason="arp-response" reason_ttl="0" />
+<address addr="172.20.10.1" addrtype="ipv4" />
+<address addr="B6:55:75:00:00:01" addrtype="mac" />
+<hostnames>
+<hostname name="lab-host-1" type="PTR" />
+</hostnames>
+<ports><port protocol="tcp" portid="21"><state state="open" reason="syn-ack" reason_ttl="64" /><service name="ftp" method="table" conf="3" /></port>
+<port protocol="tcp" portid="22"><state state="closed" reason="reset" reason_ttl="64" /><service name="ssh" method="table" conf="3" /></port>
+<port protocol="tcp" portid="23"><state state="closed" reason="reset" reason_ttl="64" /><service name="telnet" method="table" conf="3" /></port>
+<port protocol="tcp" portid="80"><state state="closed" reason="reset" reason_ttl="64" /><service name="http" method="table" conf="3" /></port>
+<port protocol="tcp" portid="139"><state state="closed" reason="reset" reason_ttl="64" /><service name="netbios-ssn" method="table" conf="3" /></port>
+<port protocol="tcp" portid="445"><state state="closed" reason="reset" reason_ttl="64" /><service name="microsoft-ds" method="table" conf="3" /></port>
+<port protocol="tcp" portid="554"><state state="closed" reason="reset" reason_ttl="64" /><service name="rtsp" method="table" conf="3" /></port>
+<port protocol="tcp" portid="1883"><state state="closed" reason="reset" reason_ttl="64" /><service name="mqtt" method="table" conf="3" /></port>
+<port protocol="tcp" portid="2323"><state state="closed" reason="reset" reason_ttl="64" /><service name="3d-nfsd" method="table" conf="3" /></port>
+<port protocol="tcp" portid="3306"><state state="closed" reason="reset" reason_ttl="64" /><service name="mysql" method="table" conf="3" /></port>
+<port protocol="tcp" portid="3389"><state state="closed" reason="reset" reason_ttl="64" /><service name="ms-wbt-server" method="table" conf="3" /></port>
+<port protocol="tcp" portid="5900"><state state="closed" reason="reset" reason_ttl="64" /><service name="vnc" method="table" conf="3" /></port>
+<port protocol="tcp" portid="6379"><state state="closed" reason="reset" reason_ttl="64" /><service name="redis" method="table" conf="3" /></port>
+<port protocol="tcp" portid="6380"><state state="closed" reason="reset" reason_ttl="64" /></port>
+<port protocol="tcp" portid="8080"><state state="closed" reason="reset" reason_ttl="64" /><service name="http-proxy" method="table" conf="3" /></port>
+<port protocol="tcp" portid="8443"><state state="closed" reason="reset" reason_ttl="64" /><service name="https-alt" method="table" conf="3" /></port>
+<port protocol="tcp" portid="9100"><state state="closed" reason="reset" reason_ttl="64" /><service name="jetdirect" method="table" conf="3" /></port>
+<port protocol="udp" portid="53"><state state="open" reason="udp-response" reason_ttl="64" /><service name="domain" method="probed" conf="10" /></port>
+<port protocol="udp" portid="123"><state state="closed" reason="port-unreach" reason_ttl="64" /><service name="ntp" method="table" conf="3" /></port>
+<port protocol="udp" portid="161"><state state="closed" reason="port-unreach" reason_ttl="64" /><service name="snmp" method="table" conf="3" /></port>
+<port protocol="udp" portid="1900"><state state="closed" reason="port-unreach" reason_ttl="64" /><service name="upnp" method="table" conf="3" /></port>
+<port protocol="udp" portid="5353"><state state="open|filtered" reason="no-response" reason_ttl="0" /><service name="zeroconf" method="table" conf="3" /></port>
+</ports>
+<times srtt="4572" rttvar="3269" to="100000" />
+</host>
+<host starttime="1794063146" endtime="1794063316"><status state="up" reason="arp-response" reason_ttl="0" />
+<address addr="172.20.10.2" addrtype="ipv4" />
+<address addr="6C:2F:80:00:00:02" addrtype="mac" />
+<hostnames>
+</hostnames>
+<ports><port protocol="tcp" portid="21"><state state="filtered" reason="no-response" reason_ttl="0" /><service name="ftp" method="table" conf="3" /></port>
+<port protocol="tcp" portid="22"><state state="filtered" reason="no-response" reason_ttl="0" /><service name="ssh" method="table" conf="3" /></port>
+<port protocol="tcp" portid="23"><state state="filtered" reason="no-response" reason_ttl="0" /><service name="telnet" method="table" conf="3" /></port>
+<port protocol="tcp" portid="80"><state state="filtered" reason="no-response" reason_ttl="0" /><service name="http" method="table" conf="3" /></port>
+<port protocol="tcp" portid="139"><state state="filtered" reason="no-response" reason_ttl="0" /><service name="netbios-ssn" method="table" conf="3" /></port>
+<port protocol="tcp" portid="445"><state state="filtered" reason="no-response" reason_ttl="0" /><service name="microsoft-ds" method="table" conf="3" /></port>
+<port protocol="tcp" portid="554"><state state="filtered" reason="no-response" reason_ttl="0" /><service name="rtsp" method="table" conf="3" /></port>
+<port protocol="tcp" portid="1883"><state state="open" reason="syn-ack" reason_ttl="128" /><service name="mosquitto version 1.6.15" method="probed" conf="10" /></port>
+<port protocol="tcp" portid="2323"><state state="filtered" reason="no-response" reason_ttl="0" /><service name="3d-nfsd" method="table" conf="3" /></port>
+<port protocol="tcp" portid="3306"><state state="filtered" reason="no-response" reason_ttl="0" /><service name="mysql" method="table" conf="3" /></port>
+<port protocol="tcp" portid="3389"><state state="filtered" reason="no-response" reason_ttl="0" /><service name="ms-wbt-server" method="table" conf="3" /></port>
+<port protocol="tcp" portid="5900"><state state="filtered" reason="no-response" reason_ttl="0" /><service name="vnc" method="table" conf="3" /></port>
+<port protocol="tcp" portid="6379"><state state="filtered" reason="no-response" reason_ttl="0" /><service name="redis" method="table" conf="3" /></port>
+<port protocol="tcp" portid="6380"><state state="open" reason="syn-ack" reason_ttl="128" /><service name="redis" product="Redis key-value store" method="probed" conf="10" /></port>
+<port protocol="tcp" portid="8080"><state state="open" reason="syn-ack" reason_ttl="128" /><service name="http" product="nginx" version="1.27.5" method="probed" conf="10"><cpe>cpe:/a:igor_sysoev:nginx:1.27.5</cpe></service><script id="http-title" output="Admin Login"><elem key="title">Admin Login</elem>
+</script></port>
+<port protocol="tcp" portid="8443"><state state="filtered" reason="no-response" reason_ttl="0" /><service name="https-alt" method="table" conf="3" /></port>
+<port protocol="tcp" portid="9100"><state state="open" reason="syn-ack" reason_ttl="128" /><service name="jetdirect" method="table" conf="3" /></port>
+<port protocol="udp" portid="53"><state state="open|filtered" reason="no-response" reason_ttl="0" /><service name="domain" method="table" conf="3" /></port>
+<port protocol="udp" portid="123"><state state="open|filtered" reason="no-response" reason_ttl="0" /><service name="ntp" method="table" conf="3" /></port>
+<port protocol="udp" portid="161"><state state="open|filtered" reason="no-response" reason_ttl="0" /><service name="snmp" method="table" conf="3" /></port>
+<port protocol="udp" portid="1900"><state state="open|filtered" reason="no-response" reason_ttl="0" /><service name="upnp" method="table" conf="3" /></port>
+<port protocol="udp" portid="5353"><state state="open|filtered" reason="no-response" reason_ttl="0" /><service name="zeroconf" method="table" conf="3" /></port>
+</ports>
+<times srtt="25551" rttvar="19525" to="103651" />
+</host>
+<runstats><finished time="1794063316" timestr="Sat Nov  7 16:55:16 2026" summary="Nmap done at Sat Nov  7 16:55:16 2026; 15 IP addresses (2 hosts up) scanned in 171.84 seconds" elapsed="171.84" exit="success" /><hosts up="2" down="13" total="15" />
+</runstats>
+</nmaprun>
