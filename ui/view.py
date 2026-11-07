@@ -6,6 +6,7 @@ import ipaddress
 from dataclasses import dataclass
 
 from conetuga.analysis import FileResult, Finding, Host
+from conetuga.analysis.catalog import load_catalog
 from conetuga.explain import Explanation, device_label, explain
 from conetuga.history import diff
 
@@ -35,6 +36,8 @@ TEXT = {
         "severity_medium": "Risc mediu",
         "severity_low": "Risc mic",
         "severity_info": "Doar informativ",
+        "status_none": "✅ Fără probleme",
+        "status_unchecked": "❔ Neverificat (nmap a renunțat la el)",
     },
     "en": {
         "most_dangerous": "Most dangerous",
@@ -50,8 +53,20 @@ TEXT = {
         "severity_medium": "Medium risk",
         "severity_low": "Low risk",
         "severity_info": "For your information",
+        "status_none": "✅ No problems",
+        "status_unchecked": "❔ Not checked (nmap gave up on it)",
     },
 }
+
+# The Dispozitive page's filters (FE-A4). A device's status is its worst severity, most severe first in the catalog's
+# own order (by points), or one of these two when it has no finding: nmap gave up on it (Host.timed_out, so "no
+# findings" means "not checked"), or it was checked and has none.
+_SEVERITY_POINTS = load_catalog().severity_points
+SEVERITY_ORDER = tuple(sorted(_SEVERITY_POINTS, key=_SEVERITY_POINTS.get, reverse=True))
+STATUS_UNCHECKED = "unchecked"
+STATUS_NONE = "none"
+STATUSES = (*SEVERITY_ORDER, STATUS_UNCHECKED, STATUS_NONE)
+SORT_KEYS = ("risk", "ip", "name", "type")  # risk first is the page's default, as on the first screen
 
 # Characters that Streamlit's Markdown would read as formatting, links, HTML, maths ($) or colour directives (:red[...]).
 MARKDOWN_SPECIAL = set("\\`*_{}[]()#+-.!|<>~=$:")
@@ -147,3 +162,54 @@ def device_name(host: Host, lang: str) -> str:
 def _ip_order(ip: str) -> tuple[int, int]:
     address = ipaddress.ip_address(ip)
     return address.version, int(address)
+
+
+def device_status(device: DeviceView) -> str:
+    """The device's worst severity ("high", "medium", ...), STATUS_UNCHECKED when it has no finding because nmap gave
+    up on it, or STATUS_NONE when it was checked and has none. A timed-out device with findings nmap did write shows
+    the worst of them: at least that bad."""
+    severities = {view.finding.severity for view in device.findings}
+    worst = next((severity for severity in SEVERITY_ORDER if severity in severities), None)
+    if worst:
+        return worst
+    return STATUS_UNCHECKED if device.host.timed_out else STATUS_NONE
+
+
+def filter_devices(devices: list[DeviceView], statuses: set[str] | None = None,
+                   types: set[str] | None = None) -> list[DeviceView]:
+    """The devices whose status is in `statuses` and whose device type is in `types`; None means no filter on that
+    one. Keeps the order it was given. Raises ValueError for a status that isn't in STATUSES."""
+    unknown = (statuses or set()) - set(STATUSES)
+    if unknown:
+        raise ValueError(f"unknown device status: {sorted(unknown)}")
+    return [d for d in devices
+            if (statuses is None or device_status(d) in statuses)
+            and (types is None or d.host.device_type in types)]
+
+
+def sort_devices(devices: list[DeviceView], by: str, lang: str) -> list[DeviceView]:
+    """The devices in the order the person picked: "risk" (riskiest first, as on the first screen), "ip" (as a
+    number), "name" or "type" (alphabetically, as the person reads them in `lang`; riskiest first within a type).
+    Ties always fall back to the IP, so the order is the same on every run."""
+    if by not in SORT_KEYS:
+        raise ValueError(f"unknown sort {by!r}; choose from {SORT_KEYS}")
+    keys = {
+        "risk": lambda d: (-d.risk, _ip_order(d.host.ip)),
+        "ip": lambda d: _ip_order(d.host.ip),
+        "name": lambda d: (d.name.casefold(), _ip_order(d.host.ip)),
+        "type": lambda d: (device_label(d.host.device_type, lang).casefold(), -d.risk, _ip_order(d.host.ip)),
+    }
+    return sorted(devices, key=keys[by])
+
+
+def status_options(lang: str) -> list[tuple[str, str]]:
+    """(value, label) for the status filter, most severe first, always with an icon and words (NFR-08)."""
+    text = TEXT[lang]
+    return ([(severity, severity_label(severity, lang)) for severity in SEVERITY_ORDER]
+            + [(STATUS_UNCHECKED, text["status_unchecked"]), (STATUS_NONE, text["status_none"])])
+
+
+def type_options(devices: list[DeviceView], lang: str) -> list[tuple[str, str]]:
+    """(value, label) for the device-type filter: only the types this scan has, sorted as the person reads them."""
+    present = {d.host.device_type for d in devices}
+    return sorted(((t, device_label(t, lang)) for t in present), key=lambda option: option[1].casefold())
