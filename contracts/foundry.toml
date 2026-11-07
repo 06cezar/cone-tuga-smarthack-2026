@@ -1,0 +1,8 @@
+# Foundry project for the findings ledger contract (conetuga/ledger). `forge` builds it when the CLI deploys it:
+# python -m conetuga ledger deploy. The compiler version is pinned, so every machine builds the same bytecode.
+[profile.default]
+src = "src"
+out = "out"
+cache_path = "cache"
+solc_version = "0.8.24"
+evm_version = "cancun"  # supported by Anvil and by Sepolia

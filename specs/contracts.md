@@ -33,10 +33,18 @@ with its test.
       `computer`, `phone`, `server`, `unknown` (the `DEVICE_*` constants in `conetuga/analysis/devices.py`); B and D
       translate them. A label only: it never changes a finding or the score.
   - `Port(port: int, proto: str, service: str, product: str, version: str, ssl: bool, title: str)`, open ports only
+  - Every text read from the scan file (`service`, `product`, `version`, `title`, `hostname`, `vendor`, and the
+    `error` reason) has each MAC written inside it masked like `mac_masked` (`AA:BB:CC:xx:xx:xx`): with `:`, `-`,
+    mixed, or Cisco's `aabb.ccdd.eeff`. So a hostile banner can't carry a full MAC into a finding's evidence, an
+    explanation or the UI. Findings don't change ("vsftpd AA:BB:CC:11:22:33" is still vsftpd). Not masked: 12 hex
+    digits with no separator (a Docker container ID or a hash looks the same), and the file name, which is the
+    `file` column of the CSVs.
 - Input (real example): `V1_home_basic.xml` from the Validation Set.
 - Output: `findings == [Finding(file="V1_home_basic.xml", ip="192.168.1.1", port=80, proto="tcp",
   code="HTTP_ADMIN_CLEARTEXT", severity="medium", points=10, evidence=...)]`, `score == 90`, `error == ""`.
 - Errors: an unreadable or truncated file (V7) returns `hosts=[]`, `findings=[]`, `score=None` and a clear `error`,
+  and so does a file with an open port whose `protocol` isn't one nmap writes (`ip`, `tcp`, `udp`, `sctp`, as
+  nmap.dtd says), so `Port.proto` and `Finding.proto` are only ever those four (or `""` for UNKNOWN_DEVICE);
   and never raises. Findings are sorted by IP (as a number), port (`None` as -1) and code, so two runs give the same
   result. No two findings share `(file, ip, port, code)`, the columns of `findings.csv`, so the export never
   writes a duplicate row; if both protocols of one port would give the same code, only the TCP one is kept.
@@ -109,6 +117,48 @@ with its test.
   `python -m conetuga scan` calls `save_scan` after every live scan it analyses (FR-10: every scan), with the raw XML's
   bytes as `content`; the stored result holds masked MACs only, and devices nmap gave up on keep `timed_out=True`.
 - Test: `tests/test_history.py::test_contract_diff`
+
+### insights · owner: A · used by: D (UI: the opt-in switch), A and B (the "Cele mai comune probleme" panel, FE-A3)
+- Calls, from `conetuga.insights`:
+  - `set_enabled(on: bool) -> bool` and `is_enabled() -> bool`: the opt-in, off until the person turns it on
+    (NFR-02); the UI shows the switch. `set_enabled` returns True when the choice was saved.
+  - `status() -> str`: exactly one of `"off"` (no store yet, or statistics turned off), `"on"`, or `"unavailable"`
+    (a store file exists but can't be read). It never creates the folder or the file. The UI calls it to tell
+    "statistics off" from "statistics unavailable", which `is_enabled()` and `top_codes()` alone can't.
+  - `record(result: FileResult, scan_id: str, seen: set[str]) -> bool`: when enabled, adds this scan's findings to the
+    counts, once per `scan_id` within `seen`. `scan_id` is the history's `digest_of(content)`; `seen` is a set the
+    **caller keeps in its session memory** (the UI: `st.session_state`), and `record` adds `scan_id` to it. So a page
+    that reruns, or the same scan opened again in the same session, counts once, and no scan identifier is ever
+    stored. Returns True when it counted; False, with nothing stored, when disabled, when the result has an `error`,
+    or when `scan_id` is already in `seen`.
+  - `top_codes(n: int) -> list[tuple[str, int]]`: the `n` catalog codes found most often across the counted scans, as
+    `(code, number of findings)`, most first, ties by code; only codes found at least once, so fewer than `n` when
+    fewer exist.
+- What is stored, and only this: a count per catalog code and the opt-in flag. Never a scan identifier or digest, an
+  IP, MAC, hostname, vendor, port, page title or file name.
+- Across sessions: `seen` lives only as long as the session, so in a new session (another browser tab, or the app
+  started again) the same scan opened again is counted again. The counts therefore mean "findings in the scans opened
+  while statistics were on", not "findings in different scans"; the panel says "most common problems in the scans
+  you looked at".
+- Deleting: "Șterge istoricul meu" calls `delete_history()` and, in the same click, `seen.clear()` on the session's
+  set, so after the person opts in again a scan they reopen is counted again (otherwise the session would still
+  remember it). `status()` is then `"off"`.
+- Where: one SQLite file in the history folder (`conetuga.history.store.history_dir()`, so `CONETUGA_HISTORY_DIR` in
+  tests). `delete_history()` removes that folder, so "Șterge istoricul meu" deletes the counts and the opt-in with it,
+  with no extra call. A shared, anonymous store later would sit behind the same calls, after a team decision on NFR-02.
+- Example: `seen = set()`, `set_enabled(True)` → True, then `record(V2_smart_home.xml, its digest, seen)` → True,
+  `record(V4_legacy.xml, its digest, seen)` → True, `record(V2_smart_home.xml, its digest, seen)` again → False;
+  `top_codes(2) == [("HTTP_ADMIN_CLEARTEXT", 3), ("CAMERA_STREAM_EXPOSED", 1)]` (V2 has HTTP_ADMIN_CLEARTEXT twice,
+  V4 once; the 1s are tied and sorted by code). `status() == "on"`. Then "Șterge istoricul meu" (`delete_history()` and
+  `seen.clear()`): `status() == "off"`, `top_codes(2) == []`; after `set_enabled(True)`, `record(V2, its digest,
+  seen)` → True again.
+- Errors and edge cases: `n < 1` raises `ValueError`. No store yet (nothing saved, or after "Șterge istoricul meu")
+  gives `is_enabled() == False` and `top_codes(n) == []`, and reading never creates the folder. A store file that
+  can't be read or written (corrupt, locked, no permission, disk full) is never overwritten and nothing raises:
+  `status()` gives `"unavailable"`, `is_enabled()` gives False (statistics off, the safe side), `set_enabled` and
+  `record` give False (nothing saved), `top_codes` gives `[]`; the page shows "statistics unavailable" instead of
+  crashing. `status()` never raises either.
+- Test: `tests/test_insights.py::test_contract_insights`
 
 ### answer_question · owner: B · used by: D (UI)
 - Call: `answer_question(question: str, result: FileResult, lang: str) -> Answer(text: str, citations: list[str],

@@ -79,7 +79,7 @@ Team rules for every Claude session on this project. Details live in the files n
 |---|---|---|
 | A parser, rules, score | <name> | `conetuga/analysis/`, `data/catalog.toml` |
 | B explanations, fixes, LLM | <name> | `conetuga/explain/`, `data/explanations.toml` |
-| C guardrail, security, CSV export | <name> | `conetuga/guard/`, `conetuga/__main__.py` (the CLI) |
+| C guardrail, security, CSV export | <name> | `conetuga/guard/`, `conetuga/__main__.py` (the CLI), `conetuga/ledger/`, `contracts/` |
 | D UI, history, pitch | Cezar | `ui/`, `conetuga/history/`, `PITCH.md`, `docs/` |
 | E lab, captures, QA | <name> | `lab/`, `tests/fixtures/`, `submission/` |
 - Branch from an up-to-date `main`, named `<stream>-<topic>` (e.g. `A-smb-rule`); merge through a Pull Request with

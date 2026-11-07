@@ -17,11 +17,20 @@ from conetuga.analysis.models import Host, Port
 MAX_SCAN_BYTES = 20 * 1024 * 1024
 
 NMAP_ROOT_TAG = "nmaprun"
+# The only protocols nmap writes on a <port> (nmap.dtd: <!ENTITY % port_protocols "(ip|tcp|udp|sctp)">). Anything else
+# is not nmap output, and it would reach the UI as page text (a hostile "[click](https://...)" became a link).
+PORT_PROTOCOLS = ("ip", "tcp", "udp", "sctp")
 OPEN_STATE = "open"  # "open|filtered", "filtered" and "closed" are not open (brief: "only for ports in state open")
 UP_STATE = "up"
 NMAP_TRUE = "true"  # how nmap writes a true boolean attribute (nmap.dtd, %attr_bool: "true" or "false")
 IP_ADDRESS_TYPES = ("ipv4", "ipv6")  # in order of preference when a host has both
 MAC_PATTERN = re.compile(r"^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$")
+# A MAC written inside other text (a banner, a page title, a hostname, an error): six hex pairs joined by ":" or "-"
+# (mixed too: a hostile banner may mix them to slip past), or Cisco's three dotted groups of four. Twelve hex digits
+# with no separator are left alone: they can't be told from a Docker container ID or a hash, and masking them would
+# invent MACs.
+MAC_IN_TEXT = re.compile(r"(?<![0-9A-Fa-f])(?:[0-9A-Fa-f]{2}(?:[:-][0-9A-Fa-f]{2}){5}"
+                         r"|[0-9A-Fa-f]{4}\.[0-9A-Fa-f]{4}\.[0-9A-Fa-f]{4})(?![0-9A-Fa-f])")
 MAC_VISIBLE_BYTES = 3  # the vendor part (OUI) stays visible; the device part is hidden (NFR-02)
 MAC_HIDDEN = "xx"
 
@@ -39,6 +48,19 @@ def parse_scan(path: Path) -> list[Host]:
         raise
     except Exception as exc:  # hostile input can break any assumption; it must become an error row, never a crash
         raise ScanReadError(f"the scan file has an unexpected structure ({exc})") from exc
+
+
+def mask_macs_in(text: str) -> str:
+    """Every MAC inside a piece of scan text masked like mask_mac: "vsftpd AA:BB:CC:11:22:33" -> "vsftpd
+    AA:BB:CC:xx:xx:xx". Every string read from the file goes through it, so no banner, title, hostname, vendor or
+    error message carries a full MAC into a finding's evidence, an explanation or the UI (NFR-02)."""
+    return MAC_IN_TEXT.sub(lambda match: mask_mac(_colon_form(match.group(0))), text)
+
+
+def _colon_form(mac: str) -> str:
+    """"aa-bb-cc-11-22-33" or "aabb.cc11.2233" -> "aa:bb:cc:11:22:33"."""
+    digits = re.sub(r"[^0-9A-Fa-f]", "", mac)
+    return ":".join(digits[i:i + 2] for i in range(0, len(digits), 2))
 
 
 def mask_mac(mac: str) -> str:
@@ -107,12 +129,12 @@ def _ip_address(element: Element) -> str:
 def _mac_and_vendor(element: Element) -> tuple[str, str]:
     for address in element.iterfind("address"):
         if address.get("addrtype") == "mac":
-            return address.get("addr", ""), address.get("vendor", "").strip()
+            return address.get("addr", ""), mask_macs_in(address.get("vendor", "").strip())
     return "", ""
 
 
 def _first_hostname(element: Element) -> str:
-    names = (h.get("name", "").strip() for h in element.iterfind("hostnames/hostname"))
+    names = (mask_macs_in(h.get("name", "").strip()) for h in element.iterfind("hostnames/hostname"))
     return next((name for name in names if name), "")
 
 
@@ -125,10 +147,14 @@ def _parse_port(element: Element) -> Port | None:
         number = int(element.get("portid", ""))
     except ValueError as exc:
         raise ScanReadError(f"a port number is not a number ({element.get('portid')!r})") from exc
+    proto = element.get("protocol", "").lower()
+    if proto not in PORT_PROTOCOLS:
+        # The value isn't quoted back: it is hostile text, and the error reason is shown on the page.
+        raise ScanReadError(f"a port has a protocol nmap never writes (only {', '.join(PORT_PROTOCOLS)})")
     service = element.find("service")
     return Port(
         port=number,
-        proto=element.get("protocol", "").lower(),
+        proto=proto,
         service=_attribute(service, "name"),
         product=_attribute(service, "product"),
         version=_attribute(service, "version"),
@@ -138,8 +164,9 @@ def _parse_port(element: Element) -> Port | None:
 
 
 def _attribute(element: Element | None, name: str) -> str:
-    """An attribute of an element that may be missing (a port with no <service>), "" when absent."""
-    return element.get(name, "") if element is not None else ""
+    """An attribute of an element that may be missing (a port with no <service>), "" when absent; MACs inside it
+    masked (a hostile banner can carry one)."""
+    return mask_macs_in(element.get(name, "")) if element is not None else ""
 
 
 def _http_title(port_element: Element) -> str:
@@ -148,5 +175,5 @@ def _http_title(port_element: Element) -> str:
     for script in port_element.iterfind("script"):
         if script.get("id") == "http-title":
             title = script.find("elem[@key='title']")
-            return (title.text or "").strip() if title is not None else ""
+            return mask_macs_in((title.text or "").strip()) if title is not None else ""
     return ""

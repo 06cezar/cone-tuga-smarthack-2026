@@ -245,7 +245,6 @@ def test_hostname_inside_a_longer_word_is_kept_in_the_evidence(tmp_path):
     assert f"{LABELS['ro']['product']}: vsftpd Synology NASdrive 2.3.4" in evidence
 
 
-@pytest.mark.xfail(strict=True, reason="masked by A's parser, PR #56")
 @pytest.mark.parametrize("mode", MODES)
 @pytest.mark.parametrize("lang", LANGUAGES)
 def test_mac_inside_product_never_reaches_the_narration(tmp_path, lang, mode):

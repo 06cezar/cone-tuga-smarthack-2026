@@ -3,12 +3,16 @@
 - `python -m conetuga analyse <folder> --out <dir>` writes the standard findings.csv and scores.csv for a whole folder
   (FR-15) and says, file by file, what happened. No network, no administrator rights.
 - `python -m conetuga scan [target] --confirm` runs a live scan of our hotspot (FR-04), only when the guardrail allows
-  it (FR-02), then shows the same analysis. Only nmap gets administrator rights."""
+  it (FR-02), then shows the same analysis. Only nmap gets administrator rights.
+- Both log every finding they detect in the findings log (conetuga/ledger); `python -m conetuga ledger deploy | anchor
+  | verify` puts its hashes on a blockchain and checks the log against them."""
 import argparse
 import io
+import sqlite3
 import sys
 from pathlib import Path
 
+from conetuga import ledger
 from conetuga.analysis import analyse_file
 from conetuga.guard.export import FINDINGS_FILE, SCORES_FILE, ExportError, export_results, scan_files
 from conetuga.guard.network import NetworkNotFound
@@ -19,6 +23,9 @@ EXIT_OK = 0
 EXIT_ERROR = 2  # the command couldn't run; argparse uses the same code for a wrong command
 EXIT_REFUSED = 3  # the guardrail refused the scan: nmap never started
 EXIT_PARTIAL = 4  # the scan finished, but nmap gave up on some devices: their findings are missing
+EXIT_TAMPERED = 5  # ledger verify: the log no longer matches the hashes on the chain
+LEDGER_ACTIONS = ("deploy", "anchor", "verify")
+MISSING_IDS_SHOWN = 10  # deleted row numbers listed by ledger verify; the count says how many there are in all
 RETRY_FACTOR = 2  # a device that ran out of time gets this many times as long on the next try
 FOLDERS_SHOWN = 3  # subfolders named when the scans sit deeper than the folder given; one is the usual case
 
@@ -54,9 +61,19 @@ def main(argv: list[str] | None = None) -> int:
                       help=f"cât timp poate lucra nmap pe un dispozitiv, minimum {MIN_MINUTES} (implicit "
                            f"{DEFAULT_MINUTES}) / how long nmap may spend on one device, at least {MIN_MINUTES} "
                            f"(default {DEFAULT_MINUTES})")
+    log = commands.add_parser(
+        "ledger",
+        help="jurnalul de constatări pe blockchain: deploy, anchor, verify / the findings log on a blockchain",
+    )
+    log.add_argument("action", choices=LEDGER_ACTIONS,
+                     help="deploy: un contract nou; anchor: trimite loturile pline; verify: compară jurnalul cu "
+                          "blockchain-ul / deploy: a new contract; anchor: send the full batches; verify: compare the "
+                          "log with the chain")
     args = parser.parse_args(argv)
     if args.command == "scan":
         return _scan(args.target, args.confirm, args.out, args.minutes)
+    if args.command == "ledger":
+        return _ledger(args.action)
     return _analyse(args.folder, args.out)
 
 
@@ -83,6 +100,7 @@ def _analyse(folder: Path, out: Path) -> int:
     print(f"Scris / written: {_printable(str(out / FINDINGS_FILE))} "
           f"({_ro_count(rows, 'rând', 'rânduri')} / {_en_count(rows, 'row')}), "
           f"{_printable(str(out / SCORES_FILE))} ({_ro_count(files, 'rând', 'rânduri')} / {_en_count(files, 'row')})")
+    _log_findings(results, "analyse")
     return EXIT_OK
 
 
@@ -130,9 +148,20 @@ def _scan(target: str | None, confirmed: bool, out: Path, minutes: int = DEFAULT
     for finding in result.findings:
         where = finding.ip if finding.port is None else f"{finding.ip}:{finding.port}"
         print(f"  {_printable(where)} {finding.code} ({finding.severity})")
-    # FR-10, every scan in the history: the stored result has masked MACs only, and it stays on this computer.
-    if save_scan(result, scan.xml.read_bytes()):
+    # FR-10, every scan in the history: the stored result has masked MACs only, and it stays on this computer. A
+    # history that can't be written (a full disk, no permission) is only a warning: the scan's result and the
+    # warnings about devices nmap gave up on still follow.
+    try:
+        saved = save_scan(result, scan.xml.read_bytes())
+    except OSError as exc:
+        saved = False
+        _print_message(f"Scanarea nu a putut fi salvată în istoric ({exc.strerror or exc}); rezultatul de mai sus "
+                       "rămâne valabil.\n"
+                       f"The scan couldn't be saved to the history ({exc.strerror or exc}); the result above still "
+                       "stands.")
+    if saved:
         print("Salvat în istoric (deschide UI-ul să vezi înainte/după) / saved to the history (open the UI for before/after)")
+    _log_findings([result], "scan")
     if not scan.timed_out:
         return EXIT_OK
     for device in scan.timed_out:
@@ -142,6 +171,98 @@ def _scan(target: str | None, confirmed: bool, out: Path, minutes: int = DEFAULT
             f"WARNING: {device} didn't finish within {scan.minutes} minutes, so its results are missing: \"no "
             f"findings\" isn't true for it. Run again with --minutes {scan.minutes * RETRY_FACTOR}.")
     return EXIT_PARTIAL
+
+
+def _log_findings(results: list, command: str) -> None:
+    """Every finding just detected goes into the findings log; when a chain is set up, the full batches go on it.
+    The log never changes the command's results or its exit code: a failure here is only a warning."""
+    try:
+        ids = ledger.record_findings(results, command)
+    except (OSError, sqlite3.Error) as exc:
+        _print_message(f"Jurnalul de constatări nu a putut fi scris ({exc}).\n"
+                       f"The findings log couldn't be written ({exc}).")
+        return
+    if not ids:
+        return
+    print(f"Jurnal: {_ro_count(len(ids), 'constatare salvată', 'constatări salvate')} (nr. {ids[0]}–{ids[-1]}) / "
+          f"log: {_en_count(len(ids), 'finding')} saved (#{ids[0]}–{ids[-1]})")
+    settings = ledger.settings_from_env()
+    if settings is not None:
+        _anchor(settings)
+
+
+def _anchor(settings) -> bool:
+    """Sends the full batches the chain doesn't hold yet; True unless the chain refused or couldn't be reached."""
+    try:
+        sent = ledger.anchor_pending(settings)
+    except ledger.LedgerError as exc:
+        _print_message(str(exc))
+        return False
+    if sent:
+        first, last = sent[0][0], sent[-1][0]
+        span = f"{first}" if first == last else f"{first}–{last}"
+        print(f"Blockchain: am ancorat lotul/loturile {span}, ultima tranzacție {sent[-1][1]} / "
+              f"anchored batch(es) {span}, last transaction {sent[-1][1]}")
+    else:
+        print("Blockchain: niciun lot plin nou de ancorat / no new full batch to anchor")
+    return True
+
+
+def _ledger(action: str) -> int:
+    """ledger deploy: a new contract for this log; anchor: send the full batches; verify: compare the log with the
+    chain (exit 5 when it no longer matches)."""
+    settings = ledger.settings_from_env()
+    if settings is None:
+        _print_message(f"Setează {ledger.ENV_RPC_URL} (de ex. http://127.0.0.1:8545 pentru Anvil), "
+                       f"{ledger.ENV_PRIVATE_KEY} și, după deploy, {ledger.ENV_CONTRACT}.\n"
+                       f"Set {ledger.ENV_RPC_URL} (e.g. http://127.0.0.1:8545 for Anvil), "
+                       f"{ledger.ENV_PRIVATE_KEY} and, after deploy, {ledger.ENV_CONTRACT}.")
+        return EXIT_ERROR
+    if action == "anchor":
+        return EXIT_OK if _anchor(settings) else EXIT_ERROR
+    try:
+        if action == "deploy":
+            address = ledger.deploy(settings)
+            print(f"Contract: {address}")
+            print(f"Setează / set: export {ledger.ENV_CONTRACT}={address}")
+            return EXIT_OK
+        report = ledger.check(settings)
+    except ledger.LedgerError as exc:
+        _print_message(str(exc))
+        return EXIT_ERROR
+    _print_check(report)
+    return EXIT_TAMPERED if report.tampered else EXIT_OK
+
+
+def _print_check(report) -> None:
+    size = ledger.BATCH_SIZE
+    print(f"Jurnal: {_ro_count(report.entries, 'rând', 'rânduri')}; pe blockchain: "
+          f"{_ro_count(report.on_chain, 'lot', 'loturi')} / log: {_en_count(report.entries, 'row')}; on chain: "
+          f"{_en_count(report.on_chain, 'batch', 'batches')}")
+    if report.intact:
+        print(f"✅ Loturile 0–{report.intact - 1} (rândurile 1–{report.intact * size}) sunt neschimbate / "
+              f"batches 0–{report.intact - 1} (rows 1–{report.intact * size}) are unchanged")
+    if report.first_changed is not None:
+        batch = report.first_changed
+        print(f"⛔ Lotul {batch} (rândurile {batch * size + 1}–{(batch + 1) * size}) a fost modificat; loturile de "
+              f"după depind de el / batch {batch} (rows {batch * size + 1}–{(batch + 1) * size}) was changed; the "
+              "batches after it depend on it")
+    if report.chain_ahead:
+        print(f"⛔ Blockchain-ul are {_ro_count(report.chain_ahead, 'lot', 'loturi')} pentru care jurnalul nu mai are "
+              f"rândurile: rânduri șterse sau jurnal golit / the chain holds "
+              f"{_en_count(report.chain_ahead, 'batch', 'batches')} the log no longer has the rows for: rows deleted "
+              "or the log cleared")
+    if report.missing_ids:
+        shown = ", ".join(str(number) for number in report.missing_ids[:MISSING_IDS_SHOWN])
+        more = "…" if len(report.missing_ids) > MISSING_IDS_SHOWN else ""
+        print(f"⛔ Lipsesc rândurile {shown}{more} / rows {shown}{more} are missing")
+    if report.unanchored:
+        print(f"⏳ {_ro_count(report.unanchored, 'lot plin', 'loturi pline')} încă nu sunt pe blockchain: ledger "
+              f"anchor / {_en_count(report.unanchored, 'full batch', 'full batches')} not on the chain yet: "
+              "ledger anchor")
+    if report.unprotected:
+        print(f"⏳ Ultimele {report.unprotected} rânduri vor fi protejate când lotul lor ajunge la {size} / the last "
+              f"{report.unprotected} rows are protected once their batch reaches {size}")
 
 
 def _no_scan_files_message(folder: Path) -> str:
@@ -176,8 +297,9 @@ def _ro_count(count: int, one: str, many: str) -> str:
     return f"{count} {many}"
 
 
-def _en_count(count: int, one: str) -> str:
-    return f"{count} {one}" if count == 1 else f"{count} {one}s"
+def _en_count(count: int, one: str, many: str = "") -> str:
+    """A number with its noun, in English: "1 row", "8 rows"; `many` for a plural that isn't one + "s" ("batches")."""
+    return f"{count} {one}" if count == 1 else f"{count} {many or one + 's'}"
 
 
 def _print_message(message: str) -> None:

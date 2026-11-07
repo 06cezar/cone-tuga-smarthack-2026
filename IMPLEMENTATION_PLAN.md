@@ -45,10 +45,12 @@ Order: the contracts first (FE-A1, FE-B1, FE-B3), D's shell (FE-D1) next, then t
 **D**
 - [ ] FE-D1 `ui/state.py` (scan, language, mode, theme in one place) and `st.navigation` with the pages below; the
   sidebar holds the language, the "Avansat / Advanced" toggle and the light/dark toggle
-- [ ] FE-D2 Acasă: pick or upload a scan; the headline said by the current guide; the traffic-light score
-- [ ] FE-D3 Dispozitive: devices by risk, each finding through `narrate`; "neverificat" for `Host.timed_out`
-- [ ] FE-D4 Istoric (today's history, report button) and Despre (how it works, safety, privacy, the rules we keep)
-- [ ] FE-D5 Light and dark theme: one set of colour tokens per theme, both WCAG AA (NFR-08)
+- [x] FE-D2 Acasă: pick or upload a scan; the headline said by the current guide; the traffic-light score
+- [x] FE-D3 Dispozitive: devices by risk, each finding through `narrate`; "neverificat" for `Host.timed_out`
+- [x] FE-D4 Istoric (today's history, report button) and Despre (how it works, safety, privacy, the rules we keep):
+  Despre is on main; the history and the report button stay on Acasă (Stefan, 22:48: tested there, live check 6)
+- [x] FE-D5 Light and dark theme: one set of colour tokens per theme, both WCAG AA (NFR-08): Streamlit's built-in
+  light and dark themes (⋮ → Settings), axe-core AA clean on every page in both, plus the focus outline (#61)
 - [ ] FE-D6 Review every front-end PR; the page AppTests (both languages, both modes) stay green
 
 **B**
@@ -62,22 +64,24 @@ Order: the contracts first (FE-A1, FE-B1, FE-B3), D's shell (FE-D1) next, then t
 - [ ] FE-B6 The Q&A names devices as the UI does (`ui.view.device_name`)
 
 **A**
-- [ ] FE-A1 Contract `conetuga/insights`: `record(result)`, `top_codes(n) -> list[(code, count)]`
-- [ ] FE-A2 Local store in `.history/`: code counts only (no IP, MAC, hostname, file name), opt-in, cleared by
+- [x] FE-A1 Contract `conetuga/insights`: `set_enabled`, `is_enabled`, `status`, `record(result, scan_id, seen)`,
+  `top_codes(n) -> list[(code, count)]` (D's OK, Nov 7 21:40)
+- [x] FE-A2 Local store in `.history/`: code counts only (no IP, MAC, hostname, file name), opt-in, cleared by
   "Șterge istoricul meu" (NFR-02)
 - [ ] FE-A3 "Cele mai comune probleme" panel on the Wiki page, with B
-- [ ] FE-A4 Data for the Dispozitive page in `ui/view.py`: filter by risk and type, sort
+- [x] FE-A4 Data for the Dispozitive page in `ui/view.py`: filter by risk and type, sort
 
 **C**
-- [ ] FE-C1 Scan page `ui/pages/scan.py`: the detected network (FR-01) and the exact `scan --confirm` command; it runs
+- [x] FE-C1 Scan page `ui/pages/scan.py`: the detected network (FR-01) and the exact `scan --confirm` command; it runs
   nothing (NFR-04)
 - [ ] FE-C2 NFR-07: a /24 live scan under 5 minutes, or the limitation written down
 - [ ] FE-C3 `tests/test_privacy.py` over every page, both modes, both themes
 - [ ] FE-C4 Security review of every front-end PR (escaping, uploads, no secret)
 
 **E**
-- [ ] FE-E1 Original SVG drawings of Tuga 🐢 and Cone 🐇 in `ui/assets/`, small, with alt text, never shown alone
-- [ ] FE-E2 Accessibility pass on every page in both themes: 16 px, AA contrast, keyboard, icon + label
+- [x] FE-E1 Original SVG drawings of Tuga 🐢 and Cone 🐇 in `ui/assets/`, small, with alt text, never shown alone
+- [ ] FE-E2 Accessibility pass on every page in both themes: 16 px, AA contrast, keyboard, icon + label (done for
+  Acasă, Dispozitive, Scanare, Despre: 0 axe-core violations, no text under 16 px; Wiki and Întreabă when they land)
 - [ ] FE-E3 Tuga's Romanian texts tested with a non-technical person; findings to B, the result to PITCH.md (D)
 - [ ] FE-E4 Rehearse the demo on the new UI; update `docs/jury-demo.md` with the new steps
 

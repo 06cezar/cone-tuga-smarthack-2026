@@ -14,3 +14,7 @@ rsystems-docs/
 # each person's Claude Code settings and personal notes
 .claude/
 CLAUDE.local.md
+
+# Foundry builds of contracts/ (forge create writes them)
+contracts/out/
+contracts/cache/

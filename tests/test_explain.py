@@ -217,7 +217,6 @@ def test_hide_hostname_replaces_only_the_whole_name(hostname, value, expected):
     assert hide_hostname(value, SimpleNamespace(hostname=hostname), "en") == expected
 
 
-@pytest.mark.xfail(strict=True, reason="masked by A's parser, PR #56")
 @pytest.mark.parametrize("lang", LANGUAGES)
 def test_mac_inside_product_never_reaches_the_explanation(tmp_path, lang):
     finding, host = outdated_on(tmp_path, f"vsftpd device {HOSTILE_MAC}", "2.3.4", hostname="")

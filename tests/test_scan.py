@@ -342,3 +342,17 @@ def test_cli_names_each_device_that_ran_out_of_time_and_exits_partial(monkeypatc
 def test_cli_scan_without_timeouts_exits_ok(monkeypatch, tmp_path):
     fake_nmap(monkeypatch)
     assert cli.main(["scan", "--confirm", "--minutes", "8", "--out", str(tmp_path)]) == cli.EXIT_OK
+
+
+def test_a_history_that_cant_be_written_still_shows_the_result_and_the_timeouts(monkeypatch, tmp_path, capsys):
+    """A full disk or a read-only history must not hide the warning that some devices weren't checked."""
+    def full_disk(result, content):
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(cli, "save_scan", full_disk)
+    fake_nmap(monkeypatch, writes=timed_out_copy_of_v1(tmp_path))
+    assert cli.main(["scan", "--confirm", "--out", str(tmp_path / "out")]) == cli.EXIT_PARTIAL
+    captured = capsys.readouterr()
+    assert "score " in captured.out
+    assert "couldn't be saved to the history (No space left on device)" in captured.err
+    assert "192.168.1.1 didn't finish within 5 minutes" in captured.err
