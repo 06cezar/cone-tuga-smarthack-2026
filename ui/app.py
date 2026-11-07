@@ -14,7 +14,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))  # `streamlit run ui/app.py` puts only ui/ on the path
 
 from conetuga.analysis import analyse_file  # noqa: E402
-from conetuga.explain import explain  # noqa: E402
+from conetuga.explain import answer_question, explain  # noqa: E402
+from conetuga.explain.qa import MAX_QUESTION_CHARS  # noqa: E402
 from conetuga.history import delete_history, diff, digest_of, load_history, save_scan  # noqa: E402
 from ui.report import html_report  # noqa: E402
 from ui.view import device_name, devices_by_risk, headline, md, same_network, score_line, severity_label  # noqa: E402
@@ -75,6 +76,10 @@ TEXT = {
         "delete": "🗑️ Șterge istoricul meu",
         "deleted": "Istoricul a fost șters de pe acest calculator.",
         "report": "📄 Descarcă raportul (o pagină, pentru furnizorul IT sau asigurator)",
+        "ask": "Întreabă despre rețeaua ta",
+        "ask_label": "De exemplu: „Ce repar întâi?” sau „E periculos portul 9100 al imprimantei?”",
+        "ask_source": "Răspunsul vine doar din această scanare, cu problemele pe care se sprijină.",
+        "ask_invalid": "Scrie o întrebare de cel mult {limit} de caractere.",
     },
     "en": {
         "title": "ConeTuga: how safe is your network?",
@@ -116,6 +121,10 @@ TEXT = {
         "delete": "🗑️ Delete my history",
         "deleted": "Your history was deleted from this computer.",
         "report": "📄 Download the report (one page, for your IT supplier or insurer)",
+        "ask": "Ask about your network",
+        "ask_label": "For example: \"What do I fix first?\" or \"Is my printer's port 9100 dangerous?\"",
+        "ask_source": "The answer comes only from this scan, with the findings it relies on.",
+        "ask_invalid": "Write a question of at most {limit} characters.",
     },
 }
 
@@ -133,6 +142,23 @@ def analyse_upload(upload):
         path = Path(folder) / (Path(upload.name).name or "upload.xml")
         path.write_bytes(upload.getvalue())
         return analyse_file(path)
+
+
+def show_questions(result, lang: str) -> None:
+    """FR-12: a question box answered by B's answer_question, from this scan only. The answer quotes findings as
+    [ip:port CODE], and is escaped like every other text that carries scan data."""
+    text = TEXT[lang]
+    st.subheader(text["ask"])
+    question = st.text_input(text["ask_label"], max_chars=MAX_QUESTION_CHARS)
+    if not question.strip():
+        return
+    try:
+        answer = answer_question(question, result, lang)
+    except ValueError:
+        st.warning(text["ask_invalid"].format(limit=MAX_QUESTION_CHARS))
+        return
+    st.info(md(answer.text))
+    st.markdown(f"*{text['ask_source']}*")
 
 
 def show_history(result, content: bytes, lang: str):
@@ -270,6 +296,7 @@ def main() -> None:
     for i, device in enumerate(devices):
         show_device(device, lang, expanded=i == 0)
 
+    show_questions(result, lang)
     compared = show_history(result, content, lang)
     st.download_button(text["report"], html_report(result, lang, before=compared, date=date.today().isoformat()),
                        file_name=f"conetuga-{Path(result.file).stem}.html", mime="text/html")
