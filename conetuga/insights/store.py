@@ -58,14 +58,35 @@ def is_enabled() -> bool:
 
 
 def set_enabled(on: bool) -> bool:
-    """Save the person's choice. True when it was saved; False when the store can't be written (nothing changes)."""
+    """Save the person's choice. True when it was saved; False when the store can't be written (nothing changes).
+
+    Only turning statistics on creates the store. Turning them off writes "off" into a store that exists and never
+    creates one (C's review of #50): with no store, statistics are already off, so there is nothing to write."""
+    if not on:
+        return _turn_off()
     try:
         with closing(_open_for_writing()) as connection, connection:
-            connection.execute("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET "
-                               "value = excluded.value", (ENABLED_KEY, ENABLED_YES if on else ENABLED_NO))
+            _save_choice(connection, ENABLED_YES)
     except STORE_ERRORS:
         return False
     return True
+
+
+def _turn_off() -> bool:
+    """Write "off" into the store if there is one. With no store (never created, or deleted meanwhile from another
+    session) opening it fails without creating it (mode=rw), and no store already means off: True either way."""
+    path = store_path()
+    try:
+        with closing(_open_existing_for_writing(path)) as connection:
+            _save_choice(connection, ENABLED_NO)
+    except STORE_ERRORS:
+        return not path.exists()
+    return True
+
+
+def _save_choice(connection: sqlite3.Connection, value: str) -> None:
+    connection.execute("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET "
+                       "value = excluded.value", (ENABLED_KEY, value))
 
 
 def record(result: FileResult, scan_id: str, seen: set[str]) -> bool:

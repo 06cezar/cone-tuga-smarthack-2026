@@ -248,6 +248,8 @@ def test_turning_statistics_off_from_another_session_before_the_write_counts_not
     real_open = store._open_existing_for_writing
 
     def another_session_turns_it_off_first(path):
+        # The other session opens the store normally, through the real opener (its own set_enabled(False) uses it too).
+        monkeypatch.setattr(store, "_open_existing_for_writing", real_open)
         assert set_enabled(False) is True
         return real_open(path)
 
@@ -286,3 +288,41 @@ def test_record_creates_no_store_in_a_history_folder_that_has_none():
     store.store_path().parent.mkdir(parents=True)
     assert record(*scan(SCANS / "V2_smart_home.xml"), set()) is False
     assert not store.store_path().exists()
+
+
+# --- Turning statistics off never creates a store (C's review of #50) ---
+
+def test_turning_off_with_no_store_writes_nothing():
+    assert set_enabled(False) is True
+    assert not store.store_path().parent.exists() and status() == STATUS_OFF
+
+
+def test_turning_off_in_a_history_folder_without_a_store_creates_none():
+    store.store_path().parent.mkdir(parents=True)
+    assert set_enabled(False) is True
+    assert not store.store_path().exists()
+
+
+def test_turning_off_while_another_session_deletes_the_store_creates_none(monkeypatch):
+    """The store exists at the check and is deleted ("Șterge istoricul meu" elsewhere) just before the write: statistics
+    are off either way, so the choice counts as saved and nothing comes back."""
+    set_enabled(True)
+    real_open = store._open_existing_for_writing
+
+    def deleted_first(path):
+        delete_history()
+        return real_open(path)
+
+    monkeypatch.setattr(store, "_open_existing_for_writing", deleted_first)
+    assert set_enabled(False) is True
+    assert not store.store_path().parent.exists() and status() == STATUS_OFF
+
+
+def test_turning_off_a_store_that_cant_be_written_says_so():
+    """The store is there but read-only: "off" can't be saved, so the answer is False and statistics stay on."""
+    set_enabled(True)
+    os.chmod(store.store_path(), stat.S_IREAD)
+    try:
+        assert set_enabled(False) is False and status() == STATUS_ON
+    finally:
+        os.chmod(store.store_path(), stat.S_IREAD | stat.S_IWRITE)
