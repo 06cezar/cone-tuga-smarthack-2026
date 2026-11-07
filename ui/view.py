@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from conetuga.analysis import FileResult, Finding, Host
 from conetuga.analysis.catalog import load_catalog
-from conetuga.explain import Explanation, device_label, explain
+from conetuga.explain import Explanation, device_label, device_name, explain
 from conetuga.history import diff
 
 LANGUAGES = ("ro", "en")
@@ -151,12 +151,6 @@ def _device_view(host: Host, findings: list[Finding], lang: str) -> DeviceView:
     ordered = sorted(own, key=lambda f: -f.points)  # stable: equal points keep analyse_file's order
     views = [FindingView(f, explain(f, host, lang)) for f in ordered]
     return DeviceView(host=host, name=device_name(host, lang), risk=sum(f.points for f in own), findings=views)
-
-
-def device_name(host: Host, lang: str) -> str:
-    """"ipcam — Cameră video", or only the device-type label when the scan shows no hostname (not escaped)."""
-    label = device_label(host.device_type, lang)
-    return f"{host.hostname} — {label}" if host.hostname else label
 
 
 def _ip_order(ip: str) -> tuple[int, int]:
