@@ -95,8 +95,12 @@ Each member receives messages in exactly one file; your `CLAUDE.local.md` says w
 | C (guardrail, security, CSV export, CLI) | `conetuga/guard/COMMS.md` |
 | D (Cezar: UI, history, pitch; team lead) | `ui/COMMS.md` |
 | E (lab, captures, QA) | `lab/COMMS.md` |
-- Pull with every prompt and every change, then read your own `COMMS.md` and take it into account. Tell your human
-  what it asks before you act on anything outside your files.
+- Every prompt starts with `git fetch` and `git pull`, then you read the new lines of every `COMMS.md` (`git ls-files
+  '*COMMS.md'`), not only your own, and take yours into account. Tell your human what it asks before you act on
+  anything outside your files.
+- Right before you send a message, fetch again and re-read every inbox and the recipient's branch or Pull Request
+  as it is now. If what you'd ask is already done or already said, don't send it: a stale request costs everyone a
+  correction.
 - To message someone, add one line at the bottom of *their* file, never anywhere else:
   `- [YYYY-MM-DD HH:MM, <your letter>] <message>`. Never edit or delete earlier lines (it keeps merges conflict-free).
 - A message is the one commit allowed straight on `main`, and you send it without asking: commit or stash your
