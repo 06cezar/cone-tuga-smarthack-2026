@@ -1,6 +1,7 @@
 """answer_question(): the Q&A assistant (FR-12) answers only from the scan, cites what it relies on, says when the scan
 can't answer, never copies the question into the answer, and agrees with the UI on "most dangerous"."""
 import tomllib
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -134,6 +135,129 @@ def test_a_service_not_on_the_named_device_still_shows_the_devices_real_finding(
     answer = answer_question("Is SSH on 192.168.1.10 a problem?", scan("V3_small_office.xml"), "en")
     assert answer.citations == [PRINTER]
     assert "no problem" not in answer.text
+
+
+@pytest.mark.parametrize(("question", "lang"), [
+    ("Is port 9100/udp open on my printer?", "en"),
+    ("Portul 9100/udp e deschis pe imprimantă?", "ro"),
+])
+def test_a_udp_port_is_not_answered_with_the_tcp_finding(question, lang):
+    answer = answer_question(question, scan("V3_small_office.xml"), lang)
+    assert answer.text == CANNOT[lang] and answer.citations == []
+
+
+@pytest.mark.parametrize("question", ["Is 9100/tcp open on my printer?", "Is port 9100 open?"])
+def test_tcp_or_no_protocol_still_finds_the_port(question):
+    assert answer_question(question, scan("V3_small_office.xml"), "en").citations == [PRINTER]
+
+
+@pytest.mark.parametrize(("name", "question", "lang"), [
+    ("V3_small_office.xml", "Is WPS enabled on my printer?", "en"),
+    ("V3_small_office.xml", "E activat WPS pe imprimantă?", "ro"),
+    ("V3_small_office.xml", "Is the printer firmware up to date?", "en"),
+    ("V1_home_basic.xml", "What is the password of the router?", "en"),
+    ("V1_home_basic.xml", "Care e parola routerului?", "ro"),
+    ("V1_home_basic.xml", "Ce SSID are routerul?", "ro"),
+    ("V1_home_basic.xml", "Is the router WPA2?", "en"),
+    ("V1_home_basic.xml", "Ce viteză are routerul?", "ro"),
+    ("V1_home_basic.xml", "Is there a guest network on 192.168.1.1?", "en"),
+    ("V1_home_basic.xml", "Am rețea pentru oaspeți pe router?", "ro"),
+])
+def test_what_no_scan_shows_gets_the_fixed_sentence_even_when_a_device_is_named(name, question, lang):
+    answer = answer_question(question, scan(name), lang)
+    assert answer.text == CANNOT[lang] and answer.citations == []
+
+
+@pytest.mark.parametrize(("name", "question", "lang", "citations"), [
+    ("V1_home_basic.xml", "Is the admin page password sent in clear?", "en", ["[192.168.1.1:80 HTTP_ADMIN_CLEARTEXT]"]),
+    ("V4_legacy.xml", "Parola de telnet trece în clar?", "ro", ["[192.168.1.1:23 TELNET_OPEN]"]),
+    ("V1_home_basic.xml", "Is my Wi-Fi router safe?", "en", ["[192.168.1.1:80 HTTP_ADMIN_CLEARTEXT]"]),
+])
+def test_an_unknowable_word_next_to_a_service_or_wifi_still_gets_the_finding(name, question, lang, citations):
+    assert answer_question(question, scan(name), lang).citations == citations
+
+
+def test_unknowable_words_overlap_no_service_device_or_top_word():
+    words = tomllib.loads(QA_FILE.read_text(encoding="utf-8"))
+    no_scan = SimpleNamespace(hosts=[])
+    for word in words["unknowable"]["words"]:
+        asked = read_question(word.replace(STEM_MARK, ""), no_scan)
+        assert not (asked.codes or asked.device_types or asked.most_dangerous), word
+    others = [*words["top"]["words"], *(w for ws in words["devices"].values() for w in ws),
+              *(w for ws in words["services"].values() for w in ws)]
+    for word in others:
+        assert not read_question(word.replace(STEM_MARK, ""), no_scan).unknowable, word
+
+
+@pytest.mark.parametrize(("question", "lang"), [
+    ("What should the admin of this network fix first?", "en"),
+    ("Ce ar trebui să repare primul administratorul rețelei?", "ro"),
+])
+def test_admin_as_a_person_gets_the_uis_most_dangerous_device(question, lang):
+    result = scan("V2_smart_home.xml")
+    top = devices_by_risk(result, lang)[0]
+    assert answer_question(question, result, lang).citations == [citation(top.findings[0].finding)]
+
+
+@pytest.mark.parametrize(("question", "lang"), [
+    ("Is the admin page of the router encrypted?", "en"),
+    ("Pagina de administrare a routerului e criptată?", "ro"),
+    ("Is the admin panel safe?", "en"),
+])
+def test_admin_page_words_still_find_the_admin_page(question, lang):
+    answer = answer_question(question, scan("V1_home_basic.xml"), lang)
+    assert answer.citations == ["[192.168.1.1:80 HTTP_ADMIN_CLEARTEXT]"]
+
+
+def timed_out(result, ip: str):
+    """The result with nmap having given up on one device: no ports, and only findings that need no port."""
+    hosts = [replace(host, ports=[], timed_out=True) if host.ip == ip else host for host in result.hosts]
+    findings = [f for f in result.findings if f.ip != ip or f.port is None]
+    return replace(result, hosts=hosts, findings=findings)
+
+
+@pytest.mark.parametrize(("question", "lang"), [
+    ("Is my laptop safe?", "en"),
+    ("Ce e cu calculatorul?", "ro"),
+    ("What about 192.168.1.20?", "en"),
+    ("Is telnet open?", "en"),  # only a service, while a device wasn't checked
+    ("Am telnet?", "ro"),
+])
+def test_a_device_nmap_gave_up_on_is_never_called_problem_free(question, lang):
+    answer = answer_question(question, timed_out(scan("V1_home_basic.xml"), "192.168.1.20"), lang)
+    assert answer.text == CANNOT[lang] and answer.citations == []
+
+
+def test_a_timed_out_device_still_shows_the_findings_it_has():
+    result = timed_out(analyse_file(LAB_SCANS / "scan_01.xml"), "172.20.10.2")
+    answer = answer_question("What about 172.20.10.2?", result, "en")
+    assert answer.citations == ["[172.20.10.2 UNKNOWN_DEVICE]"]
+
+
+def two_printers_one_timed_out():
+    result = scan("V3_small_office.xml")
+    printer = next(host for host in result.hosts if host.ip == "192.168.1.10")
+    unchecked = replace(printer, ip="192.168.1.11", hostname="", ports=[], timed_out=True)
+    return replace(result, hosts=[*result.hosts, unchecked])
+
+
+def test_two_printers_one_timed_out_still_shows_the_real_finding():
+    answer = answer_question("Is my printer safe?", two_printers_one_timed_out(), "en")
+    assert answer.citations == [PRINTER]
+
+
+def test_two_printers_one_timed_out_never_says_no_problem():
+    answer = answer_question("Portul 631 al imprimantei e periculos?", two_printers_one_timed_out(), "ro")
+    assert answer.text == CANNOT["ro"] and answer.citations == []
+
+
+@pytest.mark.parametrize(("question", "citations"), [
+    ("Is the router OK?", ["[192.168.1.1:80 HTTP_ADMIN_CLEARTEXT]"]),
+    ("What should I fix first?", ["[192.168.1.1:80 HTTP_ADMIN_CLEARTEXT]"]),
+])
+def test_devices_that_were_checked_answer_as_before_when_another_timed_out(question, citations):
+    answer = answer_question(question, timed_out(scan("V1_home_basic.xml"), "192.168.1.20"), "en")
+    assert answer.citations == citations
 
 
 def test_a_service_with_no_finding_in_the_scan():

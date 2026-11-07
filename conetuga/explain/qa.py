@@ -25,11 +25,13 @@ MAX_QUESTION_CHARS = 300
 MAX_FINDINGS_SHOWN = 3
 STEM_MARK = "*"  # a word in qa.toml ending in "*" matches every word that starts with it
 PORT_WORD = "port"  # a number right after a word starting with this is a port: "port 9100", "portul 9100"
-PROTOCOLS = ("tcp", "udp")  # a number right before one of these is a port: "9100/tcp"
+PROTOCOLS = ("tcp", "udp")  # a number right before one of these is a port: "9100/tcp", matched on that protocol only
+ANY_PROTOCOL = ""  # a port named without a protocol ("port 9100", "ip:9100") matches TCP and UDP
 LOWEST_PORT, HIGHEST_PORT = 1, 65535
 
-# An IPv4 address, maybe with ":port"; not glued to other digits or dots, but a sentence's final "." is fine.
-IP_AND_PORT = re.compile(r"(?<![\d.])((?:\d{1,3}\.){3}\d{1,3})(?::(\d{1,5}))?(?!\d)(?!\.\d)")
+# An IPv4 address, maybe with ":port" and "/tcp" or "/udp"; not glued to other digits or dots, but a sentence's final
+# "." is fine.
+IP_AND_PORT = re.compile(r"(?<![\d.])((?:\d{1,3}\.){3}\d{1,3})(?::(\d{1,5})(?:/(tcp|udp))?)?(?!\d)(?!\.\d)")
 WORD = re.compile(r"[a-z0-9_]+")  # after normalise(): letters without diacritics, digits and "_" (codes keep theirs)
 
 
@@ -53,6 +55,7 @@ def _phrase(words: str) -> tuple[tuple[str, bool], ...]:
 _FILE = tomllib.loads(QA_FILE.read_text(encoding="utf-8"))
 PHRASES = _FILE["phrases"]
 TOP_WORDS = [_phrase(words) for words in _FILE["top"]["words"]]
+UNKNOWABLE_WORDS = [_phrase(words) for words in _FILE["unknowable"]["words"]]
 DEVICE_WORDS = {device_type: [_phrase(words) for words in all_words]
                 for device_type, all_words in _FILE["devices"].items()}
 # Every code is also named by itself, e.g. "ssh_open".
@@ -72,10 +75,11 @@ class Asked:
     """What a question points at, read from its words; it holds only values found in our lists or in the scan."""
 
     ips: set[str]
-    ports: set[int]
+    ports: set[tuple[int, str]]  # (number, "tcp" / "udp", or ANY_PROTOCOL when the question names none)
     device_types: set[str]
     codes: set[str]
     most_dangerous: bool
+    unknowable: bool  # it asks about something no scan shows, such as WPS or a password
 
     def names_something(self) -> bool:
         return bool(self.ips or self.ports or self.device_types or self.codes)
@@ -96,6 +100,11 @@ def answer_question(question: str, result, lang: str) -> Answer:
         raise ValueError("the scan file could not be read, so there is nothing to answer from")
 
     asked = read_question(question, result)
+    if asked.unknowable and not asked.codes:
+        # WPS, a password, the SSID: no scan shows them, so a device's findings would answer another question. With a
+        # service named too ("Parola de telnet trece în clar?"), the question is about that service, which we can
+        # answer.
+        return _cannot_answer(lang)
     if asked.names_something():
         return _answer_about(asked, result, lang)
     if asked.most_dangerous:
@@ -110,7 +119,7 @@ def read_question(question: str, result) -> Asked:
     for match in IP_AND_PORT.finditer(text):
         ips.add(match[1])
         if match[2] and LOWEST_PORT <= int(match[2]) <= HIGHEST_PORT:
-            ports.add(int(match[2]))
+            ports.add((int(match[2]), match[3] or ANY_PROTOCOL))
     words = WORD.findall(IP_AND_PORT.sub(" ", text))
     open_ports = {port.port for host in result.hosts for port in host.ports}
     for i, word in enumerate(words):
@@ -118,13 +127,14 @@ def read_question(question: str, result) -> Asked:
             after_port_word = i > 0 and words[i - 1].startswith(PORT_WORD)
             before_protocol = i + 1 < len(words) and words[i + 1] in PROTOCOLS
             if after_port_word or before_protocol or int(word) in open_ports:
-                ports.add(int(word))
+                ports.add((int(word), words[i + 1] if before_protocol else ANY_PROTOCOL))
     return Asked(
         ips=ips,
         ports=ports,
         device_types={kind for kind, phrases in DEVICE_WORDS.items() if _any_in(phrases, words)},
         codes={code for code, phrases in CODE_WORDS.items() if _any_in(phrases, words)},
         most_dangerous=_any_in(TOP_WORDS, words),
+        unknowable=_any_in(UNKNOWABLE_WORDS, words),
     )
 
 
@@ -149,15 +159,19 @@ def _answer_about(asked: Asked, result, lang: str) -> Answer:
     scanned_ips = {host.ip for host in result.hosts}
     if asked.ips - scanned_ips or not hosts:
         return _cannot_answer(lang)  # an address or a device the scan doesn't have: nothing to say about it
-    places = [(host, number) for host in hosts for number in sorted(asked.ports)
-              if number in {port.port for port in host.ports}]
+    places = [(host, number, proto) for host in hosts for number, proto in sorted(asked.ports)
+              if any(_same_port(port.port, port.proto, number, proto) for port in host.ports)]
     if asked.ports and not places:
-        return _cannot_answer(lang)  # the scan lists open ports only, so a closed one is not something it shows
+        # The scan lists open ports only, so a closed one is not something it shows; nor does an open 9100/tcp say
+        # anything about 9100/udp.
+        return _cannot_answer(lang)
 
     chosen_ips = {host.ip for host in hosts}
-    chosen_places = {(host.ip, number) for host, number in places}
     at_place = [finding for finding in result.findings
-                if finding.ip in chosen_ips and (not asked.ports or (finding.ip, finding.port) in chosen_places)]
+                if finding.ip in chosen_ips
+                and (not asked.ports or any(host.ip == finding.ip and _same_port(finding.port, finding.proto, number,
+                                                                                  proto)
+                                            for host, number, proto in places))]
     of_asked_kind = [finding for finding in at_place if not asked.codes or finding.code in asked.codes]
     if of_asked_kind:
         return _found(of_asked_kind, result, lang)
@@ -166,15 +180,25 @@ def _answer_about(asked: Asked, result, lang: str) -> Answer:
         # The place has findings, just not of the kind asked about: show them, never "no problem" where there is one.
         # When only a service is named there is no place, so "no problem from the catalog about this" is never false.
         return _found(at_place, result, lang)
+    if any(host.timed_out for host in hosts):
+        # nmap gave up on a device it asks about (or, for a service-only question, on any device): it wasn't checked,
+        # so "no problem from the catalog" could be false. Findings it does have were shown above.
+        return _cannot_answer(lang)
 
     phrases = PHRASES[lang]
     if asked.ports:
-        where = [f"{host.ip}:{number} ({device_label(host.device_type, lang)})" for host, number in places]
+        where = [f"{host.ip}:{number}{'/' + proto if proto else ''} ({device_label(host.device_type, lang)})"
+                 for host, number, proto in places]
     elif asked.ips or asked.device_types:
         where = [f"{host.ip} ({device_label(host.device_type, lang)})" for host in hosts]
     else:
         return Answer(phrases["no_problem_topic"], [], SOURCE_RETRIEVAL)
     return Answer(fill(phrases["no_problem_at"], {"where": ", ".join(where)}), [], SOURCE_RETRIEVAL)
+
+
+def _same_port(port: int | None, port_proto: str, number: int, proto: str) -> bool:
+    """A port in the scan is the one asked about: same number, and the same protocol when the question names one."""
+    return port == number and (proto == ANY_PROTOCOL or port_proto == proto)
 
 
 def _found(findings, result, lang: str) -> Answer:

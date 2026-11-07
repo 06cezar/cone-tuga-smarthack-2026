@@ -4,9 +4,10 @@
 # The answer is built only from these phrases, explain()'s text and values from the scan: the question itself is never
 # copied into it (NFR-03, NFR-06).
 #
-# Words are matched after normalisation: lower case, no diacritics (ș becomes s, also when written with a cedilla), split on anything that
-# isn't a letter, digit or "_". So write them here without diacritics. A word ending in "*" matches any word that
-# starts with it ("imprimant*" matches imprimanta, imprimantei); a phrase matches its words in a row.
+# Words are matched after normalisation: lower case, no diacritics (ș becomes s, also when written with a cedilla),
+# split on anything that isn't a letter, digit or "_". So write them here without diacritics. A word ending in "*"
+# matches any word that starts with it ("imprimant*" matches imprimanta, imprimantei); a phrase matches its words in
+# a row.
 
 # Placeholders, filled in by code: {where} = ip:port or ip, {device} = device_label(), {ip}, {title}, {step}.
 [phrases.ro]
@@ -36,9 +37,19 @@ nothing_dangerous = "The scan found nothing dangerous."
 words = [
   "cel mai periculos", "cea mai periculoasa", "cel mai grav", "cea mai grava", "cel mai mare risc",
   "ce fac primul", "ce fac prima", "ce fac intai", "ce repar primul", "ce repar prima", "ce repar intai",
+  "repar* primul", "repar* intai",
   "mai intai", "prioritate*",
   "most dangerous", "most risky", "riskiest", "worst", "biggest risk", "fix first", "do first", "start with",
   "priority", "priorities",
+]
+
+# Things no network scan shows. A question with one of these gets cannot_answer, even when it names a device, unless it
+# also names a service or code ("Parola de telnet trece în clar?" is about Telnet). No word here may also be in
+# [top], [devices] or [services] (a test checks), and "wifi" is not here: "my Wi-Fi router" names a device.
+[unknowable]
+words = [
+  "wps", "parol*", "password*", "firmware", "ssid", "wpa*", "viteza", "vitezei", "speed",
+  "guest network*", "guest wifi", "retea pentru oaspeti", "reteaua pentru oaspeti", "retele pentru oaspeti",
 ]
 
 # Host.device_type -> words that name it. Every type in [device_types] of explanations.toml has at least one.
@@ -63,7 +74,11 @@ DB_EXPOSED = ["mysql", "postgres*", "redis", "mongo*", "database*", "baza de dat
 CAMERA_STREAM_EXPOSED = ["rtsp", "stream*", "flux video", "fluxul video"]
 OUTDATED_SERVICE = ["outdated", "old version*", "versiune veche", "versiuni vechi", "invechit*", "neactualizat*"]
 FTP_CLEARTEXT = ["ftp"]
-HTTP_ADMIN_CLEARTEXT = ["http", "admin*", "web", "pagina web"]
+# Not "admin*": "the admin of this network" is a person, not an admin page.
+HTTP_ADMIN_CLEARTEXT = [
+  "http", "web", "pagina web", "admin page*", "admin panel*", "pagina de admin*", "paginii de admin*", "administrare",
+  "login page*", "pagina de login",
+]
 SMB_EXPOSED = ["smb", "samba", "netbios", "partajare*", "share", "shares", "sharing", "file sharing"]
 MQTT_EXPOSED = ["mqtt"]
 UPNP_EXPOSED = ["upnp"]
