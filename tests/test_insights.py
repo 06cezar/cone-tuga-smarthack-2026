@@ -224,15 +224,65 @@ def test_a_full_disk_makes_writes_fail_and_the_scan_can_be_counted_later(monkeyp
     scan in the same session still counts."""
     seen: set[str] = set()
     set_enabled(True)
-    real_open = store._open_for_writing
 
-    def disk_full():
+    def disk_full(*_args):
         raise sqlite3.OperationalError("database or disk is full")
 
-    monkeypatch.setattr(store, "_open_for_writing", disk_full)
-    result, scan_id = scan(SCANS / "V2_smart_home.xml")
-    assert status() == STATUS_ON
-    assert record(result, scan_id, seen) is False and seen == set()
-    assert set_enabled(False) is False
-    monkeypatch.setattr(store, "_open_for_writing", real_open)
+    with monkeypatch.context() as patched:
+        for opener in ("_open_for_writing", "_open_existing_for_writing"):  # every way the store is opened to write
+            patched.setattr(store, opener, disk_full)
+        result, scan_id = scan(SCANS / "V2_smart_home.xml")
+        assert status() == STATUS_ON
+        assert record(result, scan_id, seen) is False and seen == set()
+        assert set_enabled(False) is False
     assert record(result, scan_id, seen) is True and top_codes(1) == [("HTTP_ADMIN_CLEARTEXT", 2)]
+
+
+# --- Consent can't be bypassed by another session (D's review of #50) ---
+
+def test_turning_statistics_off_from_another_session_before_the_write_counts_nothing(monkeypatch):
+    """The race D reproduced: a record that started while statistics were on, and another session turns them off
+    right before the write. The opt-in is checked inside the write transaction, so nothing is counted."""
+    seen: set[str] = set()
+    set_enabled(True)
+    real_open = store._open_existing_for_writing
+
+    def another_session_turns_it_off_first(path):
+        assert set_enabled(False) is True
+        return real_open(path)
+
+    monkeypatch.setattr(store, "_open_existing_for_writing", another_session_turns_it_off_first)
+    assert record(*scan(SCANS / "V2_smart_home.xml"), seen) is False
+    assert seen == set() and status() == STATUS_OFF and top_codes(5) == []
+
+
+def test_deleting_the_history_right_before_the_write_brings_nothing_back(monkeypatch):
+    """"Șterge istoricul meu" lands between a record's checks and its write: the record fails and neither the folder
+    nor any count comes back (consent was removed with the history)."""
+    seen: set[str] = set()
+    set_enabled(True)
+    real_open = store._open_existing_for_writing
+
+    def another_session_deletes_the_history_first(path):
+        delete_history()
+        return real_open(path)
+
+    monkeypatch.setattr(store, "_open_existing_for_writing", another_session_deletes_the_history_first)
+    assert record(*scan(SCANS / "V2_smart_home.xml"), seen) is False
+    assert seen == set() and not store.store_path().parent.exists()
+    assert (status(), top_codes(5)) == (STATUS_OFF, [])
+
+
+def test_record_never_creates_a_store_on_its_own():
+    """Only set_enabled(True), the person's opt-in, creates the store; record without it creates nothing, even if a
+    caller forgot to check."""
+    assert record(*scan(SCANS / "V2_smart_home.xml"), set()) is False
+    assert not store.store_path().parent.exists()
+
+
+def test_record_creates_no_store_in_a_history_folder_that_has_none():
+    """The history folder exists (it holds saved scans) but the person never opted in, or the store was removed: record
+    must not create one there (SQLite's mode=rw)."""
+    store.store_path().parent.mkdir(parents=True)
+    assert record(*scan(SCANS / "V2_smart_home.xml"), set()) is False
+    assert not store.store_path().exists()

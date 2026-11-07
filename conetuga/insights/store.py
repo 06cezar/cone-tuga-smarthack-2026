@@ -72,15 +72,27 @@ def record(result: FileResult, scan_id: str, seen: set[str]) -> bool:
     """Add this scan's findings to the counts, once per `scan_id` within the caller's session set `seen`. True when it
     counted (and `scan_id` is then added to `seen`); False, with nothing stored, when statistics are off, the result
     has an error, `scan_id` is already in `seen`, or the store can't be written. After a failed write `scan_id` stays
-    out of `seen`, so the same scan can be counted when the store works again."""
-    if scan_id in seen or result.error or result.score is None or not is_enabled():
+    out of `seen`, so the same scan can be counted when the store works again.
+
+    The opt-in is checked inside the write transaction itself, so turning statistics off from another session between
+    a check and the write can't slip counts in (D's review): once the transaction has read the opt-in, no other
+    session can commit a change to it until this one ends. BEGIN IMMEDIATE takes SQLite's write lock up front instead
+    of upgrading a read lock later, which avoids two sessions blocking each other halfway. And it only opens a store
+    that exists (mode=rw): after "Șterge istoricul meu" it fails instead of creating a new one."""
+    if scan_id in seen or result.error or result.score is None:
         return False
     catalog_codes = {rule.code for rule in load_catalog().rules}
     counts = Counter(finding.code for finding in result.findings if finding.code in catalog_codes)
     try:
-        with closing(_open_for_writing()) as connection, connection:
+        with closing(_open_existing_for_writing(store_path())) as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute("SELECT value FROM settings WHERE key = ?", (ENABLED_KEY,)).fetchone()
+            if not (row and row[0] == ENABLED_YES):
+                connection.execute("ROLLBACK")
+                return False
             connection.executemany("INSERT INTO counts (code, count) VALUES (?, ?) ON CONFLICT(code) DO UPDATE SET "
                                    "count = count + excluded.count", sorted(counts.items()))
+            connection.execute("COMMIT")
     except STORE_ERRORS:
         return False
     seen.add(scan_id)
@@ -107,6 +119,12 @@ def top_codes(n: int) -> list[tuple[str, int]]:
 def _open_for_reading(path: Path) -> sqlite3.Connection:
     """The store, read-only: SQLite's `mode=ro` never creates or changes the file."""
     return sqlite3.connect(f"{path.resolve().as_uri()}?mode=ro", uri=True)
+
+
+def _open_existing_for_writing(path: Path) -> sqlite3.Connection:
+    """An existing store, for writing in transactions we open and close ourselves (isolation_level=None). SQLite's
+    `mode=rw` never creates the file: `record` must not bring back a store that "Șterge istoricul meu" deleted."""
+    return sqlite3.connect(f"{path.resolve().as_uri()}?mode=rw", uri=True, isolation_level=None)
 
 
 def _open_for_writing() -> sqlite3.Connection:
