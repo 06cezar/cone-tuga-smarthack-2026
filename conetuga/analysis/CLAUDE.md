@@ -38,8 +38,12 @@ test and this list together.
 - TCP and UDP on the same port giving the same code: one finding, the TCP one (`findings.csv` has no proto column,
   so two would be a duplicate row).
 - `http-proxy`, `http-alt`: not `http` (the catalog says "Service http").
-- OUTDATED_SERVICE: reported on every open port whose product and version are on the list, whether or not that
-  service has a finding of its own.
-- Old Samba open on both 139 and 445: OUTDATED_SERVICE on each of them (riskiest reading; the other is "445 only").
+- OUTDATED_SERVICE: reported for every open port whose product and version are on the list, whether or not that
+  service has a finding of its own, on the port that carries the service's own finding. For a one-per-device service
+  that is the port its finding chose: old Samba on 139 and 445 gives one OUTDATED_SERVICE, on 445 (B's reading of "in
+  addition to the service's own finding"). Why this side: an extra row costs a correct one, a missing row costs
+  nothing more, so one row is never worse than two.
+- nmap's uncertain versions ("3.X", "3.X - 4.X"): outdated only when every version they could stand for is
+  outdated ("3.X" is old Samba, "3.X - 4.X" is not reported, "7.X" is not "OpenSSH below 7.4").
 - A host with no MAC address at all counts as "no MAC vendor".
 - A valid nmap XML with no hosts: score 100, not ERROR.
