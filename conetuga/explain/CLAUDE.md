@@ -6,7 +6,8 @@
   Words like "port" or "Telnet" get a few plain words of explanation the first time.
 - Fixes are 1–5 ordered, concrete steps a non-expert can follow, most important first.
 - The LLM only explains a finding that code already produced; it never adds, removes or re-rates findings.
-- A prompt gets only the evidence for that finding (code, port, service, product, version), wrapped as untrusted data.
+- A prompt gets only the evidence for that finding (code, IP, port, service, product, version), wrapped as untrusted
+  data.
   MAC addresses and hostnames never reach the model.
 - Code checks every AI answer against the evidence: an IP, port, version, CVE or phone number that isn't in it fails
   the check. After two failed checks, the built-in text answers.

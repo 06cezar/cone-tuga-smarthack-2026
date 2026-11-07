@@ -27,19 +27,46 @@ Status lives here, not in CLAUDE.md. Milestones are the brief's; hours count fro
 - [ ] Hotspot `RSH-<team number>`, 3+ targets, 5+ catalog codes, three scans saved (hour 3)
 - [ ] Before/after pair: fix 2+ findings and rescan
 - [ ] Validation Set XML copied into `tests/fixtures/validation/`; rehearse the 7 live checks
+- [ ] Lab scans used as fixtures: a test checks that our before/after pair shows the score improving
 
-## Ideas, only after every Must works (in this order: most points for the least effort first)
-1. A single "Fă asta primul" card on the first screen: the worst finding, its device, 1–3 steps (ease of use, 20%).
-2. Map every catalog code to CIS Controls and OWASP IoT Top 10: a small dictionary, an explicit bonus in the brief.
-3. "Am rezolvat, verifică din nou": rescan, then a before/after timeline with resolved findings ticked.
-4. Friendly device names from vendor + hostname + services ("Camera Hikvision"), which is also FR-03's type guess.
-5. A letter grade (A–F) and a traffic light next to the official score, always with an icon and a label.
-6. Q&A assistant with citations and "Scanul nu arată asta" (FR-12), plus the visible hallucination check.
-7. Change alert for a new device or a newly opened port (FR-13).
-8. One-page HTML report for the IT supplier or the insurer, with before/after (FR-14).
-9. Fix steps tailored to the detected vendor ("TP-Link: Advanced → NAT Forwarding → UPnP → Off"), generic otherwise.
-10. Test the Romanian text with a real parent or grandparent and film 20 seconds (bonus signal in the brief).
-- Only with time to spare: a QR code per fix, a "what if I fix this" score preview, passive mDNS/SSDP names.
+## Deliverables (the brief's checklist)
+- [ ] Rules-of-engagement form signed by every team member (hour 0)
+- [ ] Test Set results uploaded by hour 21: `findings.csv`, `scores.csv` and a UI screenshot. Commit a copy of exactly
+  what we uploaded in `submission/`, with the `final` tag, so the live re-run can be compared with it
+- [ ] Git release tagged `final` at upload time (hour 22 at the latest); nothing after that tag counts
+- [ ] README explaining setup, live scan and file analysis, with one-command setup (`setup.ps1`, `setup.sh`)
+- [ ] Validation Set reproduced: all 24 rows, no extra rows, correct scores
+- [ ] Our hotspot lab scans (nmap XML) in the repo, including one before/after pair
+- [ ] Simple UI showing score, devices, findings, fixes and history
+- [ ] One-page technical summary (`docs/technical-summary.md`): lab setup, architecture, assumptions, limitations, LLM use
+- [ ] 5–7 minute pitch in English: problem, demo, numbers, trade-offs, next steps; at least two speakers, juniors and
+  seniors both speak
+- [ ] Laptop ready for the 7 live checks, rehearsed in order
+
+## The 7 live checks (in the jury's order; have a command ready for each)
+1. Re-run: the jury picks a Test Set file; our live result must match the upload (`submission/`).
+2. Hands-on: a jury member uses the UI alone to find the most dangerous device and what to do first.
+3. Explanations: the explanation and fix for three findings the jury names.
+4. Guardrail: we try a public IP and the venue network; the tool refuses both.
+5. Broken file: an unreadable file gives a clear error and no crash.
+6. History: a before/after from our own hotspot lab, with the score improving.
+7. No secrets: `gitleaks detect` on the repo finds nothing.
+
+## After every Must works: only what the brief asks for or rewards (most points for the least effort first)
+1. A single "Fă asta primul" card on the first screen: the worst finding, its device, 1–3 steps (live check 2; the
+   brief's "one fix at a time" health check).
+2. Map every catalog code to CIS Controls and OWASP IoT Top 10, as a small dictionary (bonus signal).
+3. "Am rezolvat, verifică din nou": rescan, then before/after with the resolved findings ticked ("Proof"; bonus signal
+   for a measured before/after).
+4. Friendly device names from vendor + hostname + services ("Camera Hikvision"): FR-03's device-type guess.
+5. A traffic light next to the official score, always with an icon and a label (the brief's "traffic-light score",
+   NFR-08).
+6. Q&A assistant from scan evidence only, with citations and "Scanul nu arată asta" (FR-12, Should).
+7. Change alert for a new device or a newly opened port (FR-13, Should).
+8. One-page HTML or PDF report for the IT supplier or the insurer, with before/after (FR-14, Could).
+9. Fix steps tailored to the detected router or device ("TP-Link: Advanced → NAT Forwarding → UPnP → Off"), generic
+   otherwise (the brief's "router-specific remediation guides").
+10. Test the Romanian text with a non-technical person (bonus signal).
 
 ## Questions for humans
 - What clock times are brief hours 16, 20, 21 and 22?

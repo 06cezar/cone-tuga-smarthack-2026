@@ -1,13 +1,11 @@
 # Setup pentru fiecare coleg (10 minute)
 
 1. Acceptă invitația la repo, primită pe email de la GitHub.
-2. Clonează într-o cale scurtă: `git clone <link> C:\Users\<tu>\Desktop\ConeTuga`
+2. Clonează într-o cale scurtă: `git clone <link> C:\Users\<tu>\Desktop\cone-tuga-smarthack-2026`
 3. În folderul repo-ului, pune-ți emailul „noreply” de pe GitHub (GitHub → Settings → Emails):
    `git config user.email <adresa-ta-noreply>`
-4. Instalează și verifică:
-   `py -3.13 -m venv .venv`, apoi `.venv\Scripts\python -m pip install -r requirements.txt`,
-   apoi `.venv\Scripts\python -m pytest -q`. Pe Linux: `python3 -m venv .venv`, apoi
-   `.venv/bin/python -m pip install -r requirements.txt` și `.venv/bin/python -m pytest -q`
+4. Instalează și verifică, dintr-o singură comandă: `powershell -ExecutionPolicy Bypass -File setup.ps1` pe Windows,
+   `sh setup.sh` pe Linux. Comanda face `.venv`, instalează pachetele și rulează testele.
 5. Fă-ți `CLAUDE.local.md` în folderul principal al repo-ului (git îl ignoră), cu rândul stream-ului tău:
    - **A:** „Sunt pe stream-ul A: parser, reguli, scor. Fișierele mele: `conetuga/analysis/`, `data/catalog.toml`.
      Întreabă înainte să atingi altceva.”

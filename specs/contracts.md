@@ -26,7 +26,7 @@ with its test.
 - Output: `findings == [Finding("V1_home_basic.xml", "192.168.1.1", 80, "HTTP_ADMIN_CLEARTEXT", "medium", ...)]`,
   `score == 90`, `error == ""`.
 - Errors: an unreadable or truncated file (V7) returns `score=None` and a clear `error`, and never raises. Findings are
-  sorted by ip, port and code, so two runs give the same result.
+  sorted by IP (as a number), port and code, so two runs give the same result; no finding appears twice.
 - Test: `tests/test_analysis.py::test_contract_analyse_file`
 
 ### export · owner: C · used by: the CLI, the upload at hour 21
@@ -35,11 +35,18 @@ with its test.
 - Errors: a broken file adds an `ERROR` row and the export goes on.
 - Test: `tests/test_export.py::test_contract_export`
 
+### detect_network · owner: C · used by: check_scope (the default allowlist), D (the UI shows the network)
+- Call: `detect_network() -> Network(interface: str, ip: str, subnet: str, gateway: str)`, with no manual input (FR-01)
+- Example, on an iPhone hotspot: `Network("Wi-Fi", "172.20.10.3", "172.20.10.0/28", "172.20.10.1")`.
+- Errors: with no active interface it raises `NetworkNotFound` with a clear message; the subnet is never hard-coded.
+- Test: `tests/test_guard.py::test_contract_detect_network`, with the output of the OS commands saved as fixtures
+
 ### check_scope · owner: C · used by: the live scan
 - Call: `check_scope(target: str, allowlist: list[str], confirmed: bool) -> ScopeDecision(allowed: bool, reason: str)`
-- Examples, with the laptop on `172.20.10.0/28`: `8.8.8.8` is refused (public IP); `192.168.1.0/24` is refused
-  (outside the allowlist); `172.20.10.0/28` with `confirmed=False` is refused (needs `--confirm`); with
-  `confirmed=True` it is allowed.
+- Examples, with the laptop on `172.20.10.0/28`: `8.8.8.8` is refused (public IP); `100.64.0.1` is refused (the mobile
+  carrier's shared range); `192.168.1.0/24` is refused (outside the allowlist, like the venue network);
+  `172.20.0.0/16` is refused (larger than our subnet); `172.20.10.0/28` with `confirmed=False` is refused (needs
+  `--confirm`); with `confirmed=True` it is allowed.
 - Test: `tests/test_guard.py::test_contract_check_scope`
 
 ### explain · owner: B · used by: D (UI)

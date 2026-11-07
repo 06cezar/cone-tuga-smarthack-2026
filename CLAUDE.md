@@ -19,18 +19,22 @@ Team rules for every Claude session on this project. Details live in the files n
   pitch 15% (in English), security 10% (5 live yes/no checks), innovation 10%. A missing Must caps technical execution at 50%.
 - Brief (the contract): `specs/00-brief.md` · Contracts: `specs/contracts.md` · Catalog: `data/catalog.toml` ·
   Tasks: `IMPLEMENTATION_PLAN.md` · Pitch claims: `PITCH.md`
+- Deliverables: the Test Set upload, the `final` tag, a README with one-command setup, our lab scans and the Validation
+  Set as test fixtures, a one-page technical summary, the pitch. The full checklist is in `IMPLEMENTATION_PLAN.md`.
 - Stack: Python 3.13, `defusedxml`, Streamlit for the UI, nmap for live scans; the Anthropic SDK only for optional
   explanations.
 
 ## Commands (Windows; in Git Bash use forward slashes)
-- Setup: `py -3.13 -m venv .venv`, then `.venv\Scripts\python -m pip install -r requirements.txt`
+- Setup (one command, NFR-10): `powershell -ExecutionPolicy Bypass -File setup.ps1` on Windows, `sh setup.sh` on Linux
 - Tests: `.venv\Scripts\python -m pytest -q`. They must pass before every commit. Contracts only: `-k contract`.
 - Secrets: `gitleaks detect` must report no leaks before every push (the jury checks this live).
-- Keep the repo in a short path (e.g. `C:\Users\<you>\Desktop\ConeTuga`): past ~260 characters, pip can't unpack packages.
+- Keep the repo in a short path (e.g. `C:\Users\<you>\Desktop\cone-tuga-smarthack-2026`): past ~260 characters, pip
+  can't unpack packages.
 
 ## Principles (never break; each maps to a brief requirement and becomes a pitch claim with a test)
 - Code decides: findings, severities and scores come only from `data/catalog.toml` and our rules, never from an LLM,
-  and the same file always gives the same result (NFR-05). Why: 30% of the grade is an exact answer key.
+  and the same file always gives the same result (NFR-05). Why: 30% of the grade is an exact answer key, and a live
+  re-run that differs from our upload scores 0 on it.
 - The model only explains, from scan evidence; code checks every AI sentence against that evidence (no invented ports,
   CVEs, versions or phone numbers, NFR-06). After two failed checks, or with no LLM, the built-in text answers.
 - All outside text is hostile: scan files are parsed with `defusedxml` and size limits; banners, page titles and
@@ -86,6 +90,7 @@ Team rules for every Claude session on this project. Details live in the files n
 ## Time (brief hours; the organizers confirm the clock times at the opening)
 - Hour 0–3: lab on the hotspot, first scans, contracts. Hour 3–16: build; compare with the Validation Set often.
 - Hour 16: mentor check (Validation Set reproduced, standard CSVs written). Hour 16–20: explanations, UI, pitch.
-- Hour 20: secret Test Set. Hour 20–21: run and upload; no code changes after the upload. Tag `final` by hour 22.
+- Hour 20: secret Test Set. Hour 20–21: run it, upload `findings.csv`, `scores.csv` and a UI screenshot, and tag the
+  release `final` at upload time (hour 22 at the latest). No code changes after the upload.
 
 ## Learnings (verified, one line each; add one when something bites twice, delete stale ones)

@@ -3,31 +3,46 @@
 **Secure Networks, Simply Explained** (R Systems Hackathon 2026). ConeTuga scans a small network you own, explains each
 risk in plain Romanian and English, tells you exactly how to fix it, and shows whether the fix worked.
 
-> Status: hour 0. This README grows as features land.
+> Status: hour 0. The commands under "Analyse scan files", "Live scan" and "UI" are the planned interface; this README
+> is updated as each one lands.
 
-## Setup (Windows, Python 3.13)
+## Setup (one command, Python 3.13)
 
-```bat
-py -3.13 -m venv .venv
-.venv\Scripts\python -m pip install -r requirements.txt
-.venv\Scripts\python -m pytest -q
-```
+- Windows: `powershell -ExecutionPolicy Bypass -File setup.ps1`
+- Linux: `sh setup.sh`
 
-## Setup (Linux)
-
-```bash
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
-.venv/bin/python -m pytest -q
-```
+Both create `.venv`, install the requirements and run the tests.
 
 Live scans also need nmap (Windows: the nmap.org installer, which includes Npcap; Linux: `sudo apt install nmap`), and
-administrator rights (`sudo` on Linux) for the scan step only. Analysis and the UI run without them.
+administrator rights (`sudo` on Linux) for the scan step only. File analysis and the UI run without them.
+
+## Analyse scan files (no network, no admin rights)
+
+```bash
+python -m conetuga analyse <folder> --out results/
+```
+
+Reads every nmap XML file in the folder and writes `results/findings.csv` and `results/scores.csv`. A file that can't be
+read gets `ERROR` and the others still run.
+
+## Live scan (administrator rights for this step only)
+
+```bash
+python -m conetuga scan --confirm
+```
+
+Finds the network it is connected to, scans only that subnet, refuses public IP ranges and anything outside the
+allowlist, and refuses to start without `--confirm`. The result goes through the same analysis.
+
+## UI
+
+```bash
+streamlit run ui/app.py
+```
 
 ## Safety
 
-ConeTuga only scans the network it is connected to, refuses public IP ranges, and asks for `--confirm` before a live
-scan. We built and scanned only our own phone-hotspot lab.
+We built and scanned only our own phone-hotspot lab, under the rules of engagement we signed.
 
 ## Repository
 

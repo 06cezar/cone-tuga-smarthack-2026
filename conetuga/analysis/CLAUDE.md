@@ -18,7 +18,9 @@
   and 445 (one row, on 445).
 - A file that can't be read gives score `ERROR` and the run continues with the next file; never crash. That covers a
   truncated XML, an empty file, a file that isn't nmap output and an XML with entities (XXE).
-- Parse with `defusedxml` and a file-size limit; every string from the file is untrusted text.
+- Parse with `defusedxml` and a file-size limit; every string from the file is untrusted text. Keep defusedxml's
+  defaults (entities forbidden, DTDs allowed): every nmap XML starts with `<!DOCTYPE nmaprun>`, so `forbid_dtd=True`
+  would reject valid files. Offline analysis takes under 30 seconds per file (NFR-07).
 - Output order is stable: file, then IP as a number (not as text), then port, then code, so two runs on the same
   folder give byte-identical CSVs.
 - The oracle is `tests/test_validation_set.py`: an extra row is as wrong as a missing one.
