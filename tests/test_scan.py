@@ -81,7 +81,8 @@ def test_nmap_command_is_exactly_the_allowed_scan():
     command = nmap_command("/usr/bin/nmap", "172.20.10.0/28", "172.20.10.13", [21, 80, 1883], Path("/r/scan.xml"))
     assert command == ["/usr/bin/nmap", "-sS", "-sU", "-sV", "--script", "http-title", "--max-rate", "100",
                        "-p", "T:21,80,1883,U:53,123,161,1900,5353", "--exclude", "172.20.10.13",
-                       "--stats-every", "30s", "-oX", str(Path("/r/scan.xml")), "172.20.10.0/28"]
+                       "--host-timeout", "5m", "--stats-every", "30s", "-oX", str(Path("/r/scan.xml")),
+                       "172.20.10.0/28"]
 
 
 def test_only_the_safe_http_title_script_is_named():
@@ -281,3 +282,63 @@ def test_cli_shows_a_hostile_wifi_name_escaped(monkeypatch, capsys):
     on_network(monkeypatch, HOTSPOT, "Free\x1b[2J")
     assert cli.main(["scan", "--confirm"]) == cli.EXIT_REFUSED
     assert "\x1b" not in capsys.readouterr().err
+
+
+# --- the time limit: --minutes, at least 5, and the devices nmap gave up on ------------------------------------
+
+def timed_out_copy_of_v1(folder: Path) -> Path:
+    """V1 with its first device marked the way nmap marks one it gave up on (--host-timeout): <host timedout="true">."""
+    text = V1.read_text(encoding="utf-8").replace("<host ", '<host timedout="true" ', 1)
+    path = folder / "V1_timed_out.xml"
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+def test_minutes_become_nmaps_time_limit_per_device(monkeypatch, tmp_path):
+    commands = fake_nmap(monkeypatch)
+    assert live_scan(None, True, tmp_path, minutes=12).minutes == 12
+    assert commands[0][commands[0].index("--host-timeout") + 1] == "12m"
+
+
+def test_the_default_limit_is_5_minutes(monkeypatch, tmp_path):
+    commands = fake_nmap(monkeypatch)
+    live_scan(None, True, tmp_path)
+    assert commands[0][commands[0].index("--host-timeout") + 1] == "5m"
+
+
+def test_fewer_than_5_minutes_stops_before_anything(monkeypatch, tmp_path):
+    """NFR-07 is "a /24 under 5 minutes", and our 2-device lab already took 3.4: less would drop ordinary devices."""
+    def no_network_needed():
+        raise AssertionError("the limit is checked before the network")
+
+    monkeypatch.setattr(scan, "detect_network", no_network_needed)
+    with pytest.raises(ScanError, match="at least 5 minutes"):
+        live_scan(None, True, tmp_path, minutes=4)
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_cli_refuses_fewer_than_5_minutes_or_a_non_number(capsys):
+    for value in ("4", "0", "-10", "abc", "5.5"):
+        with pytest.raises(SystemExit) as stopped:
+            cli.main(["scan", "--confirm", "--minutes", value])
+        assert stopped.value.code == 2 and "at least 5" in capsys.readouterr().err, value
+
+
+def test_devices_nmap_gave_up_on_are_read_from_its_xml(tmp_path):
+    assert scan.timed_out_devices(timed_out_copy_of_v1(tmp_path)) == ("192.168.1.1",)
+    assert scan.timed_out_devices(V1) == ()
+    assert scan.timed_out_devices(ROOT / "tests" / "fixtures" / "validation" / "scans" / "V7_broken.xml") == ()
+
+
+def test_cli_names_each_device_that_ran_out_of_time_and_exits_partial(monkeypatch, tmp_path, capsys):
+    """Its ports and findings are missing, so "no findings" must never read as "safe" for it."""
+    fake_nmap(monkeypatch, writes=timed_out_copy_of_v1(tmp_path))
+    assert cli.main(["scan", "--confirm", "--minutes", "7", "--out", str(tmp_path / "out")]) == cli.EXIT_PARTIAL
+    romanian, english = capsys.readouterr().err.strip().split("\n")
+    assert "192.168.1.1" in english and "7 minutes" in english and "--minutes 14" in english
+    assert "192.168.1.1" in romanian and "--minutes 14" in romanian
+
+
+def test_cli_scan_without_timeouts_exits_ok(monkeypatch, tmp_path):
+    fake_nmap(monkeypatch)
+    assert cli.main(["scan", "--confirm", "--minutes", "8", "--out", str(tmp_path)]) == cli.EXIT_OK

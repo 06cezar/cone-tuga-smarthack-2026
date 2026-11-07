@@ -12,11 +12,13 @@ from pathlib import Path
 from conetuga.analysis import analyse_file
 from conetuga.guard.export import FINDINGS_FILE, SCORES_FILE, ExportError, export_results, scan_files
 from conetuga.guard.network import NetworkNotFound
-from conetuga.guard.scan import DEFAULT_OUT, ScanError, ScanRefused, live_scan
+from conetuga.guard.scan import DEFAULT_MINUTES, DEFAULT_OUT, MIN_MINUTES, ScanError, ScanRefused, live_scan
 
 EXIT_OK = 0
 EXIT_ERROR = 2  # the command couldn't run; argparse uses the same code for a wrong command
 EXIT_REFUSED = 3  # the guardrail refused the scan: nmap never started
+EXIT_PARTIAL = 4  # the scan finished, but nmap gave up on some devices: their findings are missing
+RETRY_FACTOR = 2  # a device that ran out of time gets this many times as long on the next try
 FOLDERS_SHOWN = 3  # subfolders named when the scans sit deeper than the folder given; one is the usual case
 
 
@@ -47,9 +49,13 @@ def main(argv: list[str] | None = None) -> int:
     scan.add_argument("--out", type=Path, default=DEFAULT_OUT,
                       help="folderul pentru fișierul nmap XML (implicit results/) / "
                            "the folder for nmap's XML file (default results/)")
+    scan.add_argument("--minutes", type=_minutes, default=DEFAULT_MINUTES,
+                      help=f"cât timp poate lucra nmap pe un dispozitiv, minimum {MIN_MINUTES} (implicit "
+                           f"{DEFAULT_MINUTES}) / how long nmap may spend on one device, at least {MIN_MINUTES} "
+                           f"(default {DEFAULT_MINUTES})")
     args = parser.parse_args(argv)
     if args.command == "scan":
-        return _scan(args.target, args.confirm, args.out)
+        return _scan(args.target, args.confirm, args.out, args.minutes)
     return _analyse(args.folder, args.out)
 
 
@@ -79,12 +85,26 @@ def _analyse(folder: Path, out: Path) -> int:
     return EXIT_OK
 
 
-def _scan(target: str | None, confirmed: bool, out: Path) -> int:
-    """Runs the live scan (the guardrail first, always), then shows its analysis: score, devices, each finding."""
+def _minutes(text: str) -> int:
+    """--minutes: a whole number of minutes, at least MIN_MINUTES; anything else stops before the scan."""
+    try:
+        minutes = int(text)
+    except ValueError:
+        minutes = 0
+    if minutes < MIN_MINUTES:
+        raise argparse.ArgumentTypeError(
+            f"{text!r}: un număr întreg de minute, cel puțin {MIN_MINUTES} / "
+            f"a whole number of minutes, at least {MIN_MINUTES}")
+    return minutes
+
+
+def _scan(target: str | None, confirmed: bool, out: Path, minutes: int = DEFAULT_MINUTES) -> int:
+    """Runs the live scan (the guardrail first, always), then shows its analysis: score, devices, each finding,
+    and every device nmap gave up on, since "no findings" isn't true for those."""
     # flush: nmap writes to the same terminal or log, and this line must come before its output and our refusals
     print("Verific rețeaua și limitele scanării... / Checking the network and the scan's limits...", flush=True)
     try:
-        scan = live_scan(target, confirmed, out)
+        scan = live_scan(target, confirmed, out, minutes)
     except ScanRefused as exc:
         _print_message(str(exc))
         return EXIT_REFUSED
@@ -109,7 +129,15 @@ def _scan(target: str | None, confirmed: bool, out: Path) -> int:
     for finding in result.findings:
         where = finding.ip if finding.port is None else f"{finding.ip}:{finding.port}"
         print(f"  {_printable(where)} {finding.code} ({finding.severity})")
-    return EXIT_OK
+    if not scan.timed_out:
+        return EXIT_OK
+    for device in scan.timed_out:
+        _print_message(
+            f"ATENȚIE: {device} nu a terminat în {scan.minutes} minute, deci rezultatele lui lipsesc: „nicio problemă” "
+            f"nu e adevărat pentru el. Rulează din nou cu --minutes {scan.minutes * RETRY_FACTOR}.\n"
+            f"WARNING: {device} didn't finish within {scan.minutes} minutes, so its results are missing: \"no "
+            f"findings\" isn't true for it. Run again with --minutes {scan.minutes * RETRY_FACTOR}.")
+    return EXIT_PARTIAL
 
 
 def _no_scan_files_message(folder: Path) -> str:

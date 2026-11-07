@@ -27,6 +27,10 @@
   no MAC, a false UNKNOWN_DEVICE. nmap gets the range `check_scope` parsed, never the raw text. It writes the raw XML
   to `results/` (gitignored: real MACs and names; team decision, Nov 7), and the same analyser reads it; only copies
   made by `lab/mask_scan.py` go to `lab/scans/` (E). Only this step needs administrator rights.
+- Time limit: `scan --minutes M` (whole minutes, at least 5, default 5) becomes nmap's `--host-timeout Mm`, a limit
+  per device (devices run in parallel). nmap skips a device that runs out of time and writes no port of it
+  (`<host timedout="true">`), so the scan names each such device and exits 4: "no findings" is never "safe" for it.
+  Measured on our lab (A, Nov 7): ~30 s for the 1,004 TCP ports of 2 devices, ~170 s in -sV waiting on silent ports.
 - C also owns the CLI (`conetuga/__main__.py`): `analyse <folder> --out <dir>` and `scan --confirm`.
 - Claude never starts a live scan; a team member runs it, on our hotspot only.
 - Allowed: host discovery (ARP, ping), TCP and UDP port scans, version and banner detection, and reading passive
