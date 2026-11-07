@@ -5,10 +5,12 @@ from pathlib import Path
 import pytest
 
 from conetuga.analysis import analyse_file
-from ui.view import (GREEN_FROM, LANGUAGES, YELLOW_FROM, devices_by_risk, headline, light, md, score_line,
-                     severity_label)
+from nmap_xml import host, port, write_scan
+from ui.view import (GREEN_FROM, LANGUAGES, YELLOW_FROM, devices_by_risk, headline, light, md, same_network,
+                     score_line, severity_label)
 
 SCANS = Path(__file__).parent / "fixtures" / "validation" / "scans"
+LAB = Path(__file__).resolve().parents[1] / "lab" / "scans"
 
 
 def view(name: str, lang: str = "ro"):
@@ -75,3 +77,46 @@ def test_scan_text_cannot_become_markdown(hostile):
     assert "\n" not in safe and "\r" not in safe
     for char in "[]()<>*_`$#:":
         assert all(safe[i - 1] == "\\" for i, c in enumerate(safe) if c == char), (hostile, safe)
+
+
+def scan_of(folder: Path, name: str, *devices: tuple[str, str]):
+    """A scan whose devices are (ip, hostname) pairs, each with one open port: what the history matches devices on."""
+    return analyse_file(write_scan(folder, *(host(ip, port(22, "ssh"), hostname=name_) for ip, name_ in devices),
+                                   name=name))
+
+
+def test_same_network_compares_when_devices_were_only_added(tmp_path):
+    """The review of #35: one device, then three with the old one still there. The two new devices must be flagged,
+    so the history compares on its own (a 50% threshold hid them)."""
+    before = scan_of(tmp_path, "a.xml", ("10.0.0.1", "router"))
+    after = scan_of(tmp_path, "b.xml", ("10.0.0.1", "router"), ("10.0.0.2", "tv"), ("10.0.0.3", "cam"))
+    assert same_network(before, after)
+
+
+def test_same_network_compares_when_devices_were_only_removed(tmp_path):
+    before = scan_of(tmp_path, "a.xml", ("10.0.0.1", "router"), ("10.0.0.2", "tv"), ("10.0.0.3", "cam"))
+    after = scan_of(tmp_path, "b.xml", ("10.0.0.1", "router"))
+    assert same_network(before, after)
+
+
+def test_same_network_doesnt_pair_two_small_networks_sharing_one_device(tmp_path):
+    """The review of #35: two networks of two devices with one IP + hostname in common were compared wrongly."""
+    one = scan_of(tmp_path, "a.xml", ("10.0.0.1", "router"), ("10.0.0.2", "tv"))
+    other = scan_of(tmp_path, "b.xml", ("10.0.0.1", "router"), ("10.0.0.7", "nas"))
+    assert not same_network(one, other)
+
+
+def test_same_network_on_the_shipped_scans():
+    pairs = {("V6a_before.xml", "V6b_after.xml"): True, ("V1_home_basic.xml", "V2_smart_home.xml"): False,
+             ("V2_smart_home.xml", "V3_small_office.xml"): False}
+    for (a, b), expected in pairs.items():
+        assert same_network(analyse_file(SCANS / a), analyse_file(SCANS / b)) is expected, (a, b)
+    assert same_network(analyse_file(LAB / "scan_01.xml"), analyse_file(LAB / "scan_03.xml"))
+    assert not same_network(analyse_file(LAB / "scan_03.xml"), analyse_file(SCANS / "V1_home_basic.xml"))
+
+
+def test_same_network_never_pairs_a_broken_or_empty_scan(tmp_path):
+    good = analyse_file(SCANS / "V1_home_basic.xml")
+    assert not same_network(analyse_file(SCANS / "V7_broken.xml"), good)
+    empty = analyse_file(write_scan(tmp_path, name="empty.xml"))
+    assert not same_network(empty, good) and not same_network(good, empty)
