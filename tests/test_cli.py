@@ -50,6 +50,30 @@ def test_missing_folder_exits_with_a_clear_message_in_both_languages(tmp_path, c
     assert not (tmp_path / "out").exists()
 
 
+def test_scans_one_level_down_are_refused_and_their_folder_named(tmp_path, capsys):
+    """A zip unpacked into TestSet/TestSet/: run on the outer folder, the CSVs would be empty, an empty upload."""
+    inner = tmp_path / "TestSet" / "TestSet"
+    inner.mkdir(parents=True)
+    shutil.copyfile(SCANS / "V1_home_basic.xml", inner / "T1.xml")
+    assert cli.main(["analyse", str(tmp_path / "TestSet"), "--out", str(tmp_path / "out")]) == cli.EXIT_ERROR
+    romanian, english = capsys.readouterr().err.strip().split("\n")
+    assert repr(str(inner)) in romanian and "nu am scris nimic" in romanian
+    assert repr(str(inner)) in english and "nothing was written" in english
+    assert not (tmp_path / "out").exists()
+
+
+def test_folder_with_no_scan_file_at_all_is_refused(tmp_path, capsys):
+    """Hidden files and hidden folders don't count, so nothing here is a scan and no subfolder is named."""
+    folder = tmp_path / "scans"
+    (folder / ".git").mkdir(parents=True)
+    (folder / ".git" / "HEAD").write_text("ref: refs/heads/main\n", encoding="utf-8")
+    (folder / ".DS_Store").write_bytes(b"")
+    assert cli.main(["analyse", str(folder), "--out", str(tmp_path / "out")]) == cli.EXIT_ERROR
+    romanian, english = capsys.readouterr().err.strip().split("\n")
+    assert english.endswith("holds no scan file; nothing was written.") and "niciun fișier" in romanian
+    assert not (tmp_path / "out").exists()
+
+
 def test_refuses_to_write_into_the_scan_folder(tmp_path, capsys):
     """On a copy: if this refusal ever broke, the test must not write CSVs among the official fixtures."""
     folder = tmp_path / "scans"
@@ -71,6 +95,7 @@ def test_hostile_file_name_is_printed_escaped(tmp_path, capsys, monkeypatch):
     name = "T1\x1b[2J\nV9_fake.xml: scor 100.xml"
     broken = FileResult(file=name, hosts=[], findings=[], score=None, error=f"{name}: the file is empty")
     monkeypatch.setattr(cli, "export_results", lambda folder, out: [broken])
+    (tmp_path / "T1.xml").write_text("", encoding="utf-8")  # a folder with a file, so the export is reached
     assert cli.main(["analyse", str(tmp_path), "--out", str(tmp_path / "out")]) == 0
     output = capsys.readouterr().out
     assert "\x1b" not in output and "\\x1b" in output
