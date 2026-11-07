@@ -81,12 +81,22 @@ Status lives here, not in CLAUDE.md. Milestones are the brief's; hours count fro
 - Can we use code we wrote before the event, if we declare it?
 - Which files in the Test Set folder count: only `*.xml`, or every file (a broken file may have another extension)?
 - UNKNOWN_DEVICE: does a host with no MAC address at all count as "no MAC vendor"? (A MAC with no vendor does: V4's .99.)
-- OUTDATED_SERVICE: does "OpenSSH 7.2p2 Ubuntu" compare as 7.2?
+  A reads: yes.
+- OUTDATED_SERVICE: does "OpenSSH 7.2p2 Ubuntu" compare as 7.2? A reads: yes, the leading numbers.
 - What do you expect, at minimum, from the device-type guess?
 - Is OUTDATED_SERVICE reported when the service has no finding of its own (e.g. Apache 2.2 with no admin title)?
-- Old Samba: do we report OUTDATED_SERVICE on 445 or on 139?
-- Is the title keyword match case-insensitive?
-- Do `http-proxy` and `http-alt` count as `http`?
-- A valid nmap XML with no hosts: score 100 or ERROR?
+  A reads: yes.
+- Old Samba open on 139 and 445: one OUTDATED_SERVICE or two? A reads: one, on 445 (else 139), the port of the
+  service's own SMB_EXPOSED.
+- Is the title keyword match case-insensitive, and a part of the title ("Configuration" counts for "config")?
+  A reads: yes to both.
+- Do `http-proxy` and `http-alt` count as `http`? A reads: no, only `http` exactly.
+- A valid nmap XML with no hosts: score 100 or ERROR? A reads: 100.
 - The same port open on TCP and UDP with the same finding code: one row or two? (`findings.csv` has no protocol
   column; A keeps one, the TCP one.)
+- nmap's uncertain versions ("3.X", "3.X - 4.X"): outdated or not? A reads: only when every version they could
+  stand for is outdated ("3.X" Samba yes, "3.X - 4.X" no).
+- With `-sV`, nmap's own `mqtt-subscribe` script (category version) writes the broker version into the service
+  name (`mqtt-subscribe.nse` line 380): our scan_01 shows an open Mosquitto as service "mosquitto version 1.6.15",
+  not "mqtt". Does it still count as MQTT_EXPOSED? A reads: no, the catalog decides by the service name nmap
+  reports; the standard files show "mqtt", so only our live scans are affected (a limitation, stated).
