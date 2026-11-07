@@ -16,19 +16,27 @@ FOCUS_COLOUR = "#2F7CF6"
 PICKER_KEY = "scan_picker"
 PICKER_TINT_ALPHA = 0.08  # how much FOCUS_COLOUR shows behind the picker: enough to set it apart, little enough for AA
 PICKER_TINT = "rgba({}, {}, {}, {})".format(*(int(FOCUS_COLOUR[i:i + 2], 16) for i in (1, 3, 5)), PICKER_TINT_ALPHA)
-PICKER_FIELD_HEIGHT = "4rem"  # the example list and the upload area, side by side at one height (Streamlit's: ~2.5rem)
+PICKER_FIELD_HEIGHT = "3rem"  # the example list and the upload area, side by side at one height (Streamlit's: ~2.5rem)
 PICKER_TEXT_SIZE = "1.2rem"  # the picker's labels and the chosen file name: a step above the page's 16 px text
 PICKER = f".stApp .st-key-{PICKER_KEY}"
+# Streamlit leaves 6rem (96 px) above the page's title, under a 60 px header. 4rem still clears the header and gives
+# back 32 px, so with the picker box the headline and the score fit the first screen of a 1366×768 laptop in a browser
+# window, about 650 px tall (E's review of #71: score line bottom at 649 px).
+MAIN_TOP_PADDING = "4rem"
 # The !important below: the 16 px rule above is !important too, and Streamlit's own styles set the sizes on the inner
 # elements; a more specific selector with !important is how the picker's larger sizes win. The selectors are the
 # data-testid and role attributes Streamlit 1.67 writes (its list is a react-aria ComboBox: role="group" and an input).
 
 PAGE_CSS = f"""<style>
-.stApp p, .stApp span, .stApp label, .stApp small, .stApp li, .stApp button {{ font-size: max(1rem, 1em) !important; }}
+.stApp p, .stApp span, .stApp label, .stApp small, .stApp li, .stApp button, .stApp code {{
+  font-size: max(1rem, 1em) !important; }}
 .stApp a:focus-visible, .stApp button:focus-visible, .stApp summary:focus-visible {{
   outline: 3px solid {FOCUS_COLOUR} !important; outline-offset: 2px; }}
-{PICKER} {{ border: 2px solid {FOCUS_COLOUR}; border-radius: 1rem; padding: 1.25rem 1.5rem 1rem;
+.stApp [data-testid="stMainBlockContainer"] {{ padding-top: {MAIN_TOP_PADDING}; }}
+{PICKER} {{ border: 2px solid {FOCUS_COLOUR}; border-radius: 1rem; padding: 0.5rem 1.25rem 0.75rem;
   background: {PICKER_TINT}; }}
+{PICKER} h3 {{ padding: 0.25rem 0 0 !important; }}
+{PICKER} [data-testid="stVerticalBlock"] {{ gap: 0.5rem; }}
 {PICKER} [data-testid="stWidgetLabel"] p {{ font-size: {PICKER_TEXT_SIZE} !important; font-weight: 600; }}
 {PICKER} [data-testid="stSelectbox"] [role="group"] {{ min-height: {PICKER_FIELD_HEIGHT} !important; }}
 {PICKER} [data-testid="stSelectbox"] input {{ font-size: {PICKER_TEXT_SIZE} !important; }}

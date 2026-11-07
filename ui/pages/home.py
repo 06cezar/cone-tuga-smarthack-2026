@@ -235,11 +235,12 @@ def render() -> None:
     names = [p.name for p in examples]
     with st.container(key=PICKER_KEY):
         st.markdown(f"### {text['start']}")
-        st.markdown(text["start_help"])  # not st.caption: its grey is 3.88:1 on the light theme (E's FE-E2 audit)
         left, right = st.columns(2, gap="large")
         picked = left.selectbox(text["pick"], names, index=names.index("V2_smart_home.xml")
                                 if "V2_smart_home.xml" in names else 0) if names else None
-        upload = right.file_uploader(text["upload"], type=None)
+        # The help sits behind the upload's "?" so the box stays short and the headline stays on the first screen of a
+        # 1366×768 laptop, in a browser window (E's review of #71).
+        upload = right.file_uploader(text["upload"], type=None, help=text["start_help"])
 
     if upload is not None:
         result, content = analyse_upload(upload), upload.getvalue()
