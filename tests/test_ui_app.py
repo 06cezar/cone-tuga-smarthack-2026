@@ -130,3 +130,41 @@ def test_delete_my_history_leaves_nothing(history_in_tmp):
     assert not app.exception
     assert not history_in_tmp.exists()
     assert "Istoricul a fost șters" in all_text(app)
+
+
+def answer_of(app) -> str:
+    return " ".join(i.value for i in app.info).replace("\\", "")  # as a person reads it, without Markdown escapes
+
+
+def ask(scan: str, question: str, language: str = "English"):
+    app = run(scan=scan, language=language)
+    app.text_input[0].input(question).run()
+    return app
+
+
+def test_the_question_box_answers_the_briefs_example_from_the_scan():
+    app = ask("V3_small_office.xml", "is it safe that my printer has port 9100 open?")
+    assert not app.exception
+    assert "[192.168.1.10:9100 PRINTER_RAW_EXPOSED]" in answer_of(app)
+
+
+def test_the_question_box_says_when_the_scan_cannot_answer():
+    app = ask("V3_small_office.xml", "Is WPS turned on?")
+    assert answer_of(app) == "The scan doesn't show this."
+
+
+def test_the_question_box_answers_in_romanian_too():
+    app = ask("V3_small_office.xml", "E activat WPS?", language="Română")
+    assert answer_of(app) == "Scanul nu arată asta."
+
+
+def test_a_hostile_question_is_never_shown_back():
+    app = ask("V3_small_office.xml", "<script>alert(1)</script> [click](javascript:x) :red[fake]")
+    assert not app.exception
+    shown = answer_of(app)
+    assert "<script>" not in shown and "javascript:" not in shown and ":red[" not in shown
+
+
+def test_an_empty_question_shows_no_answer():
+    app = ask("V3_small_office.xml", "   ")
+    assert not app.exception and not app.info
