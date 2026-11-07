@@ -10,13 +10,14 @@ import sys
 from pathlib import Path
 
 from conetuga.analysis import analyse_file
-from conetuga.guard.export import FINDINGS_FILE, SCORES_FILE, ExportError, export_results
+from conetuga.guard.export import FINDINGS_FILE, SCORES_FILE, ExportError, export_results, scan_files
 from conetuga.guard.network import NetworkNotFound
 from conetuga.guard.scan import DEFAULT_OUT, ScanError, ScanRefused, live_scan
 
 EXIT_OK = 0
 EXIT_ERROR = 2  # the command couldn't run; argparse uses the same code for a wrong command
 EXIT_REFUSED = 3  # the guardrail refused the scan: nmap never started
+FOLDERS_SHOWN = 3  # subfolders named when the scans sit deeper than the folder given; one is the usual case
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -53,7 +54,11 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _analyse(folder: Path, out: Path) -> int:
-    """Runs the export, then prints one line per file: its score, or why it couldn't be read."""
+    """Runs the export, then prints one line per file: its score, or why it couldn't be read. A folder with no scan
+    file is refused before anything is written: its CSVs would be empty, an empty upload at hour 21."""
+    if folder.is_dir() and not scan_files(folder):
+        _print_message(_no_scan_files_message(folder))
+        return EXIT_ERROR
     try:
         results = export_results(folder, out)
     except ExportError as exc:
@@ -105,6 +110,28 @@ def _scan(target: str | None, confirmed: bool, out: Path) -> int:
         where = finding.ip if finding.port is None else f"{finding.ip}:{finding.port}"
         print(f"  {_printable(where)} {finding.code} ({finding.severity})")
     return EXIT_OK
+
+
+def _no_scan_files_message(folder: Path) -> str:
+    """Why the folder is refused, naming the subfolders that do hold scans: a zip often unpacks into
+    TestSet/TestSet/, and the person then gave the outer folder."""
+    deeper = _folders_with_scans(folder)
+    if not deeper:
+        return (f"Folderul {str(folder)!r} nu conține niciun fișier de scanare; nu am scris nimic.\n"
+                f"The folder {str(folder)!r} holds no scan file; nothing was written.")
+    shown = ", ".join(repr(str(path)) for path in deeper)
+    return (f"Folderul {str(folder)!r} nu conține direct niciun fișier de scanare; scanările sunt în {shown}. "
+            "Rulează din nou cu acel folder; nu am scris nimic.\n"
+            f"The folder {str(folder)!r} holds no scan file itself; the scans are in {shown}. "
+            "Run again with that folder; nothing was written.")
+
+
+def _folders_with_scans(folder: Path) -> list[Path]:
+    """Subfolders at any depth, hidden ones left out, that hold files `analyse` would read; the nearest first."""
+    found = [path for path in folder.rglob("*")
+             if path.is_dir() and not any(part.startswith(".") for part in path.relative_to(folder).parts)
+             and scan_files(path)]
+    return sorted(found, key=lambda path: (len(path.parts), str(path)))[:FOLDERS_SHOWN]
 
 
 def _ro_count(count: int, one: str, many: str) -> str:
