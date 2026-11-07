@@ -256,6 +256,45 @@ with its test.
   language and mode.
 - Test: `tests/test_wiki.py::test_contract_wiki_entries`
 
+### reply · owner: B · used by: the Întreabă page (`ui/pages/ask.py`)
+- Call: `reply(messages: list[dict], result: FileResult, lang: str, mode: str) -> Answer(text: str,
+  citations: list[str], source: str)`, from `conetuga.explain`; the same `Answer` as `answer_question`. The chat
+  behind the Întreabă page: the one place a future model plugs in (NFR-06), so the page never changes.
+  - `messages`: the conversation, oldest first; each is `{"role": "user" | "assistant", "text": str}`. Only the last
+    message is answered, and it must be the user's. Earlier messages are checked only for their form (role, text,
+    length), never read for meaning, never copied into the answer and never sent to a model. At most `MAX_MESSAGES`
+    (40) messages; a user message has at most `MAX_QUESTION_CHARS` (300, `answer_question`'s own limit); assistant
+    messages have no length limit, because they are our own answers.
+  - `mode` is `"simple"` or `"advanced"`, as in `narrate`. The answer is the same in both modes today; `mode` only
+    picks the tone of the optional local model (Tuga plain, Cone technical, every technical word explained, NFR-09).
+  - With no model (the default): `reply(messages, result, lang, mode) == answer_question(messages[-1]["text"],
+    result, lang)`.
+  - Optional local model (off by default; implemented in a later PR): it is on only when the environment variable
+    `CONETUGA_LLM_MODEL` names an Ollama model (e.g. `qwen2.5:3b`), read from `os.environ` at each call (set it in the
+    terminal before `streamlit run`); empty or unset means off. It is called only at `http://127.0.0.1:11434`, a fixed
+    address: nothing leaves the computer and no key is needed (NFR-01). Only an answer that cites findings for a
+    question naming something in the scan goes to the model; the cannot-answer sentence, "no catalog problem at …",
+    "nothing dangerous" and the "most dangerous" answer never do. The model gets only our system text and, wrapped as
+    data, each cited finding's citation, severity and `explain()` title, text and first step; never the question,
+    earlier messages, a hostname, a MAC address or a page title. Its answer is rejected when it has an IP or a number
+    that isn't in that evidence (step numbers aside), a CVE, a citation it wasn't given, or misses one it was given,
+    calls something safe ("safe", "secure", "sigur", "în siguranță"), holds HTML or a link (`<`, `](`), or is longer
+    than `MAX_LLM_CHARS` (800). A rejected answer is retried once (`LLM_ATTEMPTS` = 2 in all); a timeout
+    (`LLM_TIMEOUT_SECONDS` = 10) or a connection error is not retried. Whenever the model is off, missing, slow or
+    rejected, the retrieval answer is returned. An accepted answer has `source == "llm"` and the same `citations`.
+    Outcomes are cached in memory (at most `LLM_CACHE_SIZE`, 128), so a page rerun doesn't call the model again.
+- Input (real example): `analyse_file("V3_small_office.xml")`, messages
+  `[{"role": "user", "text": "Ce repar întâi?"}, {"role": "assistant", "text": <the answer to it>},
+  {"role": "user", "text": "is it safe that my printer has port 9100 open?"}]`, `lang="en"`, `mode="simple"`.
+- Output (no model): equal to `answer_question("is it safe that my printer has port 9100 open?", result, "en")`:
+  `citations == ["[192.168.1.10:9100 PRINTER_RAW_EXPOSED]"]`, `source == "retrieval"`; the same with
+  `mode="advanced"`.
+- Errors and edge cases: an unknown language or mode raises `KeyError`. `ValueError` for no messages, more than
+  `MAX_MESSAGES`, a message that isn't a dict with a `"role"` of `"user"` or `"assistant"` and a `"text"` string, a
+  last message that isn't the user's, and every case where `answer_question` raises it (an empty or too long question,
+  a scan in error). The model never makes `reply` raise.
+- Test: `tests/test_assistant.py::test_contract_reply`
+
 ## Template (copy it)
 
 ### <name> · owner: <stream> · used by: <streams>
