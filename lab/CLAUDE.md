@@ -11,7 +11,8 @@
 - Captures: nmap XML, the same format as the standard files, rate-limited (`--max-rate 100`, the rules of engagement)
   and with `--script http-title` (without it no page title is recorded). The raw XML stays in `results/` on the
   scanner (gitignored); only copies made by `lab/mask_scan.py` go into `lab/scans/` (`scan_01.xml`, ...). The mask
-  keeps the `vendor` attribute and checks that the copy gives the same findings and score.
+  keeps the `vendor` attribute, drops every other place nmap writes a computer name (`<service hostname>`, `extrainfo`,
+  scripts but http-title), and refuses a copy that still contains an original name or MAC or analyses differently.
 - The lab needs at least 3 targets and at least 5 different catalog codes; fix at least 2 findings and rescan.
 - Targets: `lab/targets/docker-compose.yml` (redis on 6380, `eclipse-mosquitto:1.6` on 1883, nginx "Admin Login" on
   8080) and `lab/targets/fake_services.py` (banner-only telnet on 2323, FTP saying vsFTPd 2.3.4 on 21, a silent printer

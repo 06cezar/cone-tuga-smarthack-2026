@@ -61,8 +61,10 @@ sudo nmap -sS -sU -sV --script http-title --max-rate 100 \
 ```
 
 `--exclude` leaves out the scanner itself: nmap lists it with no MAC, so it would show up as an UNKNOWN_DEVICE. The
-masked copy (MACs keep their vendor part, hostnames become `lab-host-<n>`) is the only file that leaves the laptop;
-E commits it to `lab/scans/`.
+masked copy is the only file that leaves the laptop; E commits it to `lab/scans/`. In it, MACs keep only their vendor
+part, hostnames become `lab-host-<n>`, and the other places where nmap writes a computer name are dropped (the
+service's `hostname` and `extrainfo`, scripts other than http-title). The script refuses to write a copy that still
+contains an original name or MAC, or that analyses differently from the raw file.
 
 ## When you leave
 

@@ -6,7 +6,11 @@ scanning laptop (NFR-02), while everything the analysis reads stays the same.
   and the same in every scan of the lab.
 - Hostname: a non-empty name becomes `lab-host-<last byte of the IPv4 address>`; an empty one stays empty, because
   "no hostname" is half of the UNKNOWN_DEVICE rule. History matches devices by IP + hostname, and both stay stable.
-- After writing, the copy is analysed next to the raw file: if findings or score differ, the copy is deleted.
+- Other places where nmap can write a computer name, a user name or a raw banner are dropped, because the analysis
+  reads none of them: the service's `hostname`, `extrainfo` and `servicefp`, every script but http-title, and host-
+  and run-level script output (e.g. a Windows name from SMB on 445, A's and D's review of PR #12).
+- After writing, two checks; if either fails, the copy is deleted: no original hostname or MAC may appear anywhere in
+  it (ignoring case), and it must give exactly the raw file's findings and score.
 
 Usage, on the scanning laptop from the repo root:
     python lab/mask_scan.py results/scan_01.xml results/masked/scan_01.xml
@@ -32,6 +36,10 @@ MAC_VISIBLE_BYTES = 3  # the vendor part (OUI), as in the analyser's own masking
 MASKED_MAC_FILLER = ["00", "00"]  # bytes 4 and 5 of a masked MAC; byte 6 is the device number
 NEUTRAL_HOSTNAME = "lab-host-{}"  # filled with the device number
 XML_HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE nmaprun>\n'  # what nmap writes; ElementTree drops it
+# Where nmap can write a computer name or raw banner bytes; the analysis reads none of these service attributes.
+DROPPED_SERVICE_ATTRIBUTES = ("hostname", "extrainfo", "servicefp")
+KEPT_PORT_SCRIPT = "http-title"  # the only script output the analysis reads (the page title)
+DROPPED_SCRIPT_TAGS = ("hostscript", "prescript", "postscript")  # host- and run-level script output, e.g. nbstat
 
 
 class MaskError(Exception):
@@ -39,11 +47,13 @@ class MaskError(Exception):
 
 
 def mask_scan(raw: Path, masked: Path) -> int:
-    """Write the masked copy of `raw` to `masked` and check it analyses the same. Returns the number of hosts."""
+    """Write the masked copy of `raw` to `masked`, then check it leaks nothing and analyses the same. Returns the
+    number of hosts."""
     raw, masked = Path(raw), Path(masked)
     if raw.resolve() == masked.resolve():
         raise MaskError("the masked copy must not overwrite the raw capture")
     root = _read_nmap_root(raw)
+    originals = _original_names_and_macs(root)
     hosts = root.findall("host")
     for host in hosts:
         device = _device_number(host)
@@ -53,11 +63,58 @@ def mask_scan(raw: Path, masked: Path) -> int:
         for hostname in host.iterfind("hostnames/hostname"):
             if hostname.get("name", "").strip():
                 hostname.set("name", NEUTRAL_HOSTNAME.format(device))
+        _drop_unread_details(host)
+    _drop_children(root, DROPPED_SCRIPT_TAGS)
     masked.parent.mkdir(parents=True, exist_ok=True)
     masked.write_text(XML_HEAD + ElementTree.tostring(root, encoding="unicode") + "\n", encoding="utf-8",
                       newline="\n")
+    _check_nothing_leaks(masked, originals)
     _check_same_analysis(raw, masked)
     return len(hosts)
+
+
+def _original_names_and_macs(root: Element) -> set[str]:
+    """Every hostname and MAC of the raw capture, upper-cased, as the leak check looks for them."""
+    found = set()
+    for host in root.iter("host"):
+        for address in host.iterfind("address"):
+            if address.get("addrtype") == "mac":
+                mac = address.get("addr", "").strip().upper()
+                found.update({mac, mac.replace(":", "-")})
+        found.update(h.get("name", "").strip().upper() for h in host.iterfind("hostnames/hostname"))
+        found.update(s.get("hostname", "").strip().upper() for s in host.iterfind("ports/port/service"))
+    found.discard("")
+    return found
+
+
+def _drop_unread_details(host: Element) -> None:
+    """Remove what the analysis never reads but where nmap can write a computer name, a user name or a raw banner."""
+    _drop_children(host, DROPPED_SCRIPT_TAGS)
+    for port in host.iterfind("ports/port"):
+        service = port.find("service")
+        if service is not None:
+            for attribute in DROPPED_SERVICE_ATTRIBUTES:
+                service.attrib.pop(attribute, None)
+        for script in port.findall("script"):
+            if script.get("id") != KEPT_PORT_SCRIPT:
+                port.remove(script)
+
+
+def _drop_children(parent: Element, tags: tuple[str, ...]) -> None:
+    for tag in tags:
+        for child in parent.findall(tag):
+            parent.remove(child)
+
+
+def _check_nothing_leaks(masked: Path, originals: set[str]) -> None:
+    """No original hostname or MAC may be left anywhere in the copy, ignoring case (D's request). The error gives only
+    a count, never the names themselves."""
+    text = masked.read_text(encoding="utf-8").upper()
+    leaked = [value for value in originals if value in text]
+    if leaked:
+        masked.unlink(missing_ok=True)
+        raise MaskError(f"the masked copy still contains {len(leaked)} original hostname(s) or MAC(s), so nothing was "
+                        "written; look for them in the raw file's titles or banners")
 
 
 def _read_nmap_root(path: Path) -> Element:
@@ -119,7 +176,8 @@ def main(argv: list[str] | None = None) -> int:
     except MaskError as exc:
         print(f"Not masked: {exc}", file=sys.stderr)
         return 1
-    print(f"Masked {count} host(s): {args.raw} -> {args.masked} (same findings and score as the raw file)")
+    print(f"Masked {count} host(s): {args.raw} -> {args.masked} (no original name or MAC left; same findings and "
+          "score as the raw file)")
     return 0
 
 
