@@ -3,52 +3,64 @@
 **Secure Networks, Simply Explained** (R Systems Hackathon 2026). ConeTuga scans a small network you own, explains each
 risk in plain Romanian and English, tells you exactly how to fix it, and shows whether the fix worked.
 
-> Status: hour 0. The commands under "Analyse scan files", "Live scan" and "UI" are the planned interface; this README
-> is updated as each one lands.
+## Setup (one command)
 
-## Setup (one command, Python 3.13)
+- Windows (needs Python 3.13, `py -3.13`): `powershell -ExecutionPolicy Bypass -File setup.ps1`
+- Linux (Python 3.13, or any 3.11+): `sh setup.sh`
 
-- Windows: `powershell -ExecutionPolicy Bypass -File setup.ps1`
-- Linux: `sh setup.sh`
+Both create `.venv`, install the requirements and run the tests. Run every command below **from the repository
+folder** (`cd cone-tuga-smarthack-2026`), with the `.venv` Python: `.venv\Scripts\python` on Windows,
+`.venv/bin/python` on Linux (written `python` below).
 
-Both create `.venv`, install the requirements and run the tests.
+Live scans also need nmap (Windows: the nmap.org installer, which includes Npcap; Linux: `sudo apt install nmap`).
+File analysis and the UI need no network and no administrator rights.
 
-Live scans also need nmap (Windows: the nmap.org installer, which includes Npcap; Linux: `sudo apt install nmap`), and
-administrator rights (`sudo` on Linux) for the scan step only. File analysis and the UI run without them.
-
-## Analyse scan files (no network, no admin rights)
+## Analyse scan files
 
 ```bash
 python -m conetuga analyse <folder> --out results/
 ```
 
-Reads every nmap XML file in the folder and writes `results/findings.csv` and `results/scores.csv`. A file that can't be
-read gets `ERROR` and the others still run.
+Reads every non-hidden file in the folder, whatever its extension, and writes `results/findings.csv` and
+`results/scores.csv`. A file that can't be read gets `ERROR` and the others still run. A folder whose scans sit one
+level down (an unzipped archive) is refused with the name of the subfolder to use.
 
-## Live scan (administrator rights for this step only)
+## Live scan (our hotspot only)
 
 ```bash
 python -m conetuga scan --confirm
+python -m conetuga scan 172.20.10.0/28 --confirm --minutes 10
 ```
 
-Finds the network it is connected to, scans only that subnet, refuses public IP ranges and anything outside the
-allowlist, and refuses to start without `--confirm`. The result goes through the same analysis.
+Finds the network it is connected to and asks the guardrail first: it refuses public IPs, the mobile carrier's range,
+multicast, anything outside the connected subnet, any Wi-Fi other than `RSH-ConeTuga`, and anything without
+`--confirm`. Then nmap runs at most 100 packets per second, with at most `--minutes` (default 5) per device; on Linux
+only nmap gets administrator rights, so `sudo` asks for your password. The raw XML stays in `results/`
+(`scan_<date>-<time>.xml`, real MACs and names, never committed) and goes through the same analysis.
+Exit codes: 0 done, 2 couldn't run, 3 refused by the guardrail, 4 done but nmap gave up on some devices.
 
 ## UI
 
 ```bash
-streamlit run ui/app.py
+python -m streamlit run ui/app.py
 ```
+
+The first screen says which device is the most dangerous and what to do first, then shows the traffic-light score,
+every device with its findings, explanations and fix steps (RO/EN), the history with before/after and change alerts,
+"Șterge istoricul meu", and a one-page report to download. Pick an example (the Validation Set or our lab scans) or
+upload your own nmap XML.
 
 ## Safety
 
-We built and scanned only our own phone-hotspot lab, under the rules of engagement we signed.
+We built and scanned only our own phone-hotspot lab, under the rules of engagement we signed. MAC addresses keep only
+their vendor part in every output; the history stays on this computer (`.history/`); no key or secret is needed.
 
 ## Repository
 
 - `specs/00-brief.md`: the R Systems brief, our contract · `specs/contracts.md`: how the parts talk to each other
 - `data/catalog.toml`: the official finding catalog · `tests/fixtures/validation/`: the Validation Set and its answers
-- `conetuga/`: analysis, explanations, guardrail, history · `ui/`: the web UI · `lab/`: our hotspot lab and its scans
+- `conetuga/`: analysis, explanations and Q&A, guardrail and live scan, history · `ui/`: the web UI and report ·
+  `lab/`: our hotspot lab, its masked scans and the mask · `docs/`: technical summary and jury-demo guide
 
 ## Team
 

@@ -13,15 +13,15 @@ Status lives here, not in CLAUDE.md. Milestones are the brief's; hours count fro
 ## B · explanations and fixes
 - [x] Built-in RO/EN text and 1–5 steps for every catalog code (hour 12): `data/explanations.toml` (PR #6), `explain()`
   and `device_label()` (PR #7)
-- [ ] Optional LLM explanations, with the grounding check and the fallback
-- [ ] Q&A assistant from scan evidence only (FR-12, Should)
+- [x] Optional LLM explanations: dropped on R Systems' advice (no key, no LLM); the built-in texts and a retrieval-based Q&A instead
+- [x] Q&A assistant from scan evidence only (FR-12, Should): `conetuga/explain/qa.py` (PR #41)
 
 ## C · guardrail, security, export
 - [x] Network detection (FR-01) and `check_scope` (FR-02): public IPs, out-of-scope ranges, hostnames and any network
   other than `RSH-ConeTuga` refused (hour 14)
-- [ ] CLI `conetuga/__main__.py`: `analyse` and `scan`
-- [ ] Live scan with `--confirm`, rate-limited, writing nmap XML (FR-04)
-- [ ] `export` for a folder: findings.csv and scores.csv (FR-15); MAC masking everywhere; gitleaks clean
+- [x] CLI `conetuga/__main__.py`: `analyse` and `scan` (PRs #14, #23)
+- [x] Live scan with `--confirm`, rate-limited, writing nmap XML (FR-04): run for real on the hotspot, score 70 (PRs #23, #36)
+- [x] `export` for a folder: findings.csv and scores.csv (FR-15); MAC masking everywhere; gitleaks clean (PRs #14, #25)
 
 ## D · UI, history, pitch
 - [x] UI with the most dangerous device and the first step on the first screen; score, devices, findings, fixes (FR-11):
@@ -31,11 +31,11 @@ Status lives here, not in CLAUDE.md. Milestones are the brief's; hours count fro
 - [ ] Pitch (5–7 minutes, English, 2+ speakers) and the one-page technical summary
 
 ## E · lab and QA
-- [ ] Hotspot `RSH-<team name>` (ours: `RSH-ConeTuga`), 3+ targets, 5+ catalog codes, three scans saved (hour 3)
-- [ ] Before/after pair: fix 2+ findings and rescan
+- [x] Hotspot `RSH-<team name>` (ours: `RSH-ConeTuga`), 3+ targets, 5+ catalog codes, three scans saved (hour 3)
+- [x] Before/after pair: fix 2+ findings and rescan (0 → 50 → 70)
 - [x] The 8 Validation Set XML files copied into `tests/fixtures/validation/scans/` (scan files only there)
 - [ ] Rehearse the 7 live checks
-- [ ] Lab scans used as fixtures: a test checks that our before/after pair shows the score improving
+- [x] Lab scans used as fixtures: a test checks that our before/after pair shows the score improving
 
 ## Deliverables (the brief's checklist)
 - [ ] Rules-of-engagement form signed by every team member (hour 0)
@@ -44,9 +44,9 @@ Status lives here, not in CLAUDE.md. Milestones are the brief's; hours count fro
 - [ ] Package versions pinned before the tag (`pip freeze` into `requirements.txt`), so the live re-run uses exactly
   the same versions
 - [ ] Git release tagged `final` at upload time (hour 22 at the latest); nothing after that tag counts
-- [ ] README explaining setup, live scan and file analysis, with one-command setup (`setup.ps1`, `setup.sh`)
+- [x] README explaining setup, live scan and file analysis, with one-command setup (`setup.ps1`, `setup.sh`)
 - [x] Validation Set reproduced: all 24 rows, no extra rows, correct scores (`tests/test_validation_set.py`, PR #5)
-- [ ] Our hotspot lab scans (nmap XML) in the repo, including one before/after pair
+- [x] Our hotspot lab scans (nmap XML) in the repo, including one before/after pair (`lab/scans/`, PR #27)
 - [x] Simple UI showing score, devices, findings, fixes and history (PRs #20, #22)
 - [x] One-page technical summary (`docs/technical-summary.md`): lab setup, architecture, assumptions, limitations, LLM use
 - [ ] 5–7 minute pitch in English: problem, demo, numbers, trade-offs, next steps; at least two speakers, juniors and
