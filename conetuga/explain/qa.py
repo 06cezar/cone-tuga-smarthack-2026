@@ -180,6 +180,10 @@ def _answer_about(asked: Asked, result, lang: str) -> Answer:
         # The place has findings, just not of the kind asked about: show them, never "no problem" where there is one.
         # When only a service is named there is no place, so "no problem from the catalog about this" is never false.
         return _found(at_place, result, lang)
+    if any(host.timed_out for host in hosts):
+        # nmap gave up on a device it asks about (or, for a service-only question, on any device): it wasn't checked,
+        # so "no problem from the catalog" could be false. Findings it does have were shown above.
+        return _cannot_answer(lang)
 
     phrases = PHRASES[lang]
     if asked.ports:

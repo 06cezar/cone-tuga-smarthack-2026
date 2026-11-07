@@ -1,6 +1,7 @@
 """answer_question(): the Q&A assistant (FR-12) answers only from the scan, cites what it relies on, says when the scan
 can't answer, never copies the question into the answer, and agrees with the UI on "most dangerous"."""
 import tomllib
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -206,6 +207,57 @@ def test_admin_as_a_person_gets_the_uis_most_dangerous_device(question, lang):
 def test_admin_page_words_still_find_the_admin_page(question, lang):
     answer = answer_question(question, scan("V1_home_basic.xml"), lang)
     assert answer.citations == ["[192.168.1.1:80 HTTP_ADMIN_CLEARTEXT]"]
+
+
+def timed_out(result, ip: str):
+    """The result with nmap having given up on one device: no ports, and only findings that need no port."""
+    hosts = [replace(host, ports=[], timed_out=True) if host.ip == ip else host for host in result.hosts]
+    findings = [f for f in result.findings if f.ip != ip or f.port is None]
+    return replace(result, hosts=hosts, findings=findings)
+
+
+@pytest.mark.parametrize(("question", "lang"), [
+    ("Is my laptop safe?", "en"),
+    ("Ce e cu calculatorul?", "ro"),
+    ("What about 192.168.1.20?", "en"),
+    ("Is telnet open?", "en"),  # only a service, while a device wasn't checked
+    ("Am telnet?", "ro"),
+])
+def test_a_device_nmap_gave_up_on_is_never_called_problem_free(question, lang):
+    answer = answer_question(question, timed_out(scan("V1_home_basic.xml"), "192.168.1.20"), lang)
+    assert answer.text == CANNOT[lang] and answer.citations == []
+
+
+def test_a_timed_out_device_still_shows_the_findings_it_has():
+    result = timed_out(analyse_file(LAB_SCANS / "scan_01.xml"), "172.20.10.2")
+    answer = answer_question("What about 172.20.10.2?", result, "en")
+    assert answer.citations == ["[172.20.10.2 UNKNOWN_DEVICE]"]
+
+
+def two_printers_one_timed_out():
+    result = scan("V3_small_office.xml")
+    printer = next(host for host in result.hosts if host.ip == "192.168.1.10")
+    unchecked = replace(printer, ip="192.168.1.11", hostname="", ports=[], timed_out=True)
+    return replace(result, hosts=[*result.hosts, unchecked])
+
+
+def test_two_printers_one_timed_out_still_shows_the_real_finding():
+    answer = answer_question("Is my printer safe?", two_printers_one_timed_out(), "en")
+    assert answer.citations == [PRINTER]
+
+
+def test_two_printers_one_timed_out_never_says_no_problem():
+    answer = answer_question("Portul 631 al imprimantei e periculos?", two_printers_one_timed_out(), "ro")
+    assert answer.text == CANNOT["ro"] and answer.citations == []
+
+
+@pytest.mark.parametrize(("question", "citations"), [
+    ("Is the router OK?", ["[192.168.1.1:80 HTTP_ADMIN_CLEARTEXT]"]),
+    ("What should I fix first?", ["[192.168.1.1:80 HTTP_ADMIN_CLEARTEXT]"]),
+])
+def test_devices_that_were_checked_answer_as_before_when_another_timed_out(question, citations):
+    answer = answer_question(question, timed_out(scan("V1_home_basic.xml"), "192.168.1.20"), "en")
+    assert answer.citations == citations
 
 
 def test_a_service_with_no_finding_in_the_scan():
