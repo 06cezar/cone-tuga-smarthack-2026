@@ -114,8 +114,13 @@ with its test.
     appears in `text`. When the scan can't answer, `text` is exactly "Scanul nu arată asta." (ro) / "The scan doesn't
     show this." (en) and `citations == []`. When the question names something the scan shows but no finding is on it,
     the answer says the scan found no catalog problem there, never that it is safe.
+  - A question about something no scan shows (WPS, a password, firmware, the SSID…) gets the cannot-answer sentence,
+    even when it names a device, unless it also names a service the scan checks.
+  - A device nmap gave up on (`Host.timed_out`) is never called problem-free: the answer never says "no catalog
+    problem" about a question that names it, or that names only a service while any device timed out; findings the
+    scan does have are still shown, and with none to show the answer is the cannot-answer sentence.
   - A number counts as a port after a word starting with "port", as `ip:port`, as `N/tcp` or `N/udp`, or when it is
-    an open port in `result`.
+    an open port in `result`. `N/tcp` or `N/udp` matches only that protocol.
   - "Most dangerous" / "what do I fix first" follows the UI's rule (`ui/view.py`, `devices_by_risk` and `headline`):
     the device with the highest sum of `points` (ties: the lower IP as a number), then its finding with the most
     `points` (ties: `analyse_file`'s order); "fix first" is that finding's `steps[0]`. When that device has 0 points,
