@@ -1,0 +1,73 @@
+# The Q&A assistant's own words (FR-12): fixed answer phrases and the words that point a question at part of the scan.
+# Owner: stream B. Used by conetuga/explain/qa.py; the contract is "answer_question" in specs/contracts.md.
+#
+# The answer is built only from these phrases, explain()'s text and values from the scan: the question itself is never
+# copied into it (NFR-03, NFR-06).
+#
+# Words are matched after normalisation: lower case, no diacritics (ș becomes s, also when written with a cedilla), split on anything that
+# isn't a letter, digit or "_". So write them here without diacritics. A word ending in "*" matches any word that
+# starts with it ("imprimant*" matches imprimanta, imprimantei); a phrase matches its words in a row.
+
+# Placeholders, filled in by code: {where} = ip:port or ip, {device} = device_label(), {ip}, {title}, {step}.
+[phrases.ro]
+cannot_answer = "Scanul nu arată asta."
+found = "La {where} ({device}), scanul a găsit: {title}."
+first_step = "Primul pas: {step}"
+more_found = "Scanul a mai găsit și altele aici; le vezi pe toate în listă."
+no_problem_at = "Scanul nu a găsit o problemă din catalog la {where}."
+no_problem_topic = "Scanul nu a găsit o problemă din catalog despre asta."
+most_dangerous = "Cel mai periculos: {device} ({ip}). {title}."
+do_first = "Fă asta întâi: {step}"
+nothing_dangerous = "Scanul nu a găsit nimic periculos."
+
+[phrases.en]
+cannot_answer = "The scan doesn't show this."
+found = "At {where} ({device}), the scan found: {title}."
+first_step = "First step: {step}"
+more_found = "The scan found more here; you can see them all in the list."
+no_problem_at = "The scan found no problem from the catalog at {where}."
+no_problem_topic = "The scan found no problem from the catalog about this."
+most_dangerous = "Most dangerous: {device} ({ip}). {title}."
+do_first = "Do this first: {step}"
+nothing_dangerous = "The scan found nothing dangerous."
+
+# "What is the most dangerous / what do I fix first": answered with the UI's rule (ui/view.py, devices_by_risk).
+[top]
+words = [
+  "cel mai periculos", "cea mai periculoasa", "cel mai grav", "cea mai grava", "cel mai mare risc",
+  "ce fac primul", "ce fac prima", "ce fac intai", "ce repar primul", "ce repar prima", "ce repar intai",
+  "mai intai", "prioritate*",
+  "most dangerous", "most risky", "riskiest", "worst", "biggest risk", "fix first", "do first", "start with",
+  "priority", "priorities",
+]
+
+# Host.device_type -> words that name it. Every type in [device_types] of explanations.toml has at least one.
+[devices]
+camera = ["camer*", "webcam*", "cctv"]
+printer = ["imprimant*", "printer*"]
+nas = ["nas", "stocare", "storage"]
+router = ["router*", "ruter*", "gateway", "access point*", "punct de acces", "puncte de acces"]
+tv = ["tv", "televizor*", "televiziune"]
+smart-home = ["smart home", "casa inteligenta", "priza*", "plug", "plugs", "bec", "becul", "becuri", "bulb", "bulbs"]
+computer = ["calculator*", "computer*", "laptop*", "pc"]
+server = ["server*"]
+phone = ["telefon*", "phone*", "smartphone*", "mobil", "mobilul"]
+unknown = ["necunoscut*", "unknown"]
+
+# Catalog code -> words that name its service or problem. The code itself (e.g. "ssh_open") always matches too.
+[services]
+TELNET_OPEN = ["telnet"]
+RDP_EXPOSED = ["rdp", "remote desktop", "desktop la distanta"]
+VNC_EXPOSED = ["vnc"]
+DB_EXPOSED = ["mysql", "postgres*", "redis", "mongo*", "database*", "baza de date", "baze de date", "bazei de date"]
+CAMERA_STREAM_EXPOSED = ["rtsp", "stream*", "flux video", "fluxul video"]
+OUTDATED_SERVICE = ["outdated", "old version*", "versiune veche", "versiuni vechi", "invechit*", "neactualizat*"]
+FTP_CLEARTEXT = ["ftp"]
+HTTP_ADMIN_CLEARTEXT = ["http", "admin*", "web", "pagina web"]
+SMB_EXPOSED = ["smb", "samba", "netbios", "partajare*", "share", "shares", "sharing", "file sharing"]
+MQTT_EXPOSED = ["mqtt"]
+UPNP_EXPOSED = ["upnp"]
+SNMP_EXPOSED = ["snmp"]
+PRINTER_RAW_EXPOSED = ["jetdirect", "print job*", "tiparire", "lucrari de tiparire"]
+UNKNOWN_DEVICE = ["intrus*", "intruder*", "strain*", "stranger*", "unknown device*", "dispozitiv necunoscut"]
+SSH_OPEN = ["ssh"]
