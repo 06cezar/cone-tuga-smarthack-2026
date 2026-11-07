@@ -19,15 +19,20 @@ with its test.
 ### analyse_file · owner: A · used by: C (export), D (UI, history), B (explanations)
 - Call: `analyse_file(path: Path) -> FileResult`
   - `FileResult(file: str, hosts: list[Host], findings: list[Finding], score: int | None, error: str)`
-  - `Finding(file: str, ip: str, port: int | None, code: str, severity: str, evidence: str)`
+  - `Finding(file: str, ip: str, port: int | None, proto: str, code: str, severity: str, points: int, evidence: str)`
+    - `proto` is `"tcp"` or `"udp"`: with `ip`, `port` and `proto`, B finds the finding's `Port` in `host.ports` even
+      when the same number is open on both. UNKNOWN_DEVICE has `port=None` and `proto=""`.
+    - `points` is the catalog's points for `severity` (`data/catalog.toml`, `[severity_points]`), so the UI ranks by
+      risk without computing anything; `score == max(0, 100 - sum(f.points for f in findings))`.
   - `Host(ip: str, mac_masked: str, vendor: str, hostname: str, device_type: str, ports: list[Port])`
   - `Port(port: int, proto: str, service: str, product: str, version: str, ssl: bool, title: str)`, open ports only
 - Input (real example): `V1_home_basic.xml` from the Validation Set.
-- Output: `findings == [Finding("V1_home_basic.xml", "192.168.1.1", 80, "HTTP_ADMIN_CLEARTEXT", "medium", ...)]`,
-  `score == 90`, `error == ""`.
+- Output: `findings == [Finding(file="V1_home_basic.xml", ip="192.168.1.1", port=80, proto="tcp",
+  code="HTTP_ADMIN_CLEARTEXT", severity="medium", points=10, evidence=...)]`, `score == 90`, `error == ""`.
 - Errors: an unreadable or truncated file (V7) returns `hosts=[]`, `findings=[]`, `score=None` and a clear `error`,
-  and never raises. Findings are sorted by IP (as a number), port (`None` as -1) and code, so two runs give the same
-  result; no finding appears twice.
+  and never raises. Findings are sorted by IP (as a number), port (`None` as -1), code and proto, so two runs give the
+  same result. No two findings share `(file, ip, port, code)`, the columns of `findings.csv`, so the export never
+  writes a duplicate row; if both protocols of one port would give the same code, only the TCP one is kept.
 - Test: `tests/test_analysis.py::test_contract_analyse_file`
 
 ### export · owner: C · used by: the CLI, the upload at hour 21
