@@ -2,7 +2,7 @@
 
 - Golden rule: simulate, don't expose. Weak services are banner-only listeners or containers with no real shell, data
   or passwords behind them.
-- Only our hotspot (`RSH-<team number>`, WPA2 or WPA3, a strong password, a mobile data limit) or our Docker lab
+- Only our hotspot (`RSH-<team name>`, i.e. `RSH-ConeTuga`, WPA2 or WPA3, a strong password, a mobile data limit) or our Docker lab
   network. While it scans, the scanner laptop is on no other network: no venue Wi-Fi, no cable. Only devices the team
   owns.
 - Captures are nmap XML in `lab/scans/` (`scan_01.xml`, ...), the same format as the standard files, run as
