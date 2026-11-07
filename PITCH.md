@@ -18,6 +18,11 @@ minutes, in English, with at least two speakers (juniors and seniors both speak)
 | "Ask in plain words: the answer comes only from the scan, cites the finding it relies on, and says when the scan can't answer." | `conetuga/explain/qa.py` | `tests/test_qa.py::test_contract_answer_question`, `::test_what_the_scan_does_not_show_gets_the_fixed_sentence`, `::test_a_device_without_findings_is_not_called_safe` |
 | "One click gives a one-page report for your IT supplier, with the before/after." | `ui/report.py` | `tests/test_ui_report.py` |
 | "Our findings log is tamper-evident: change, delete, swap or clear a row and `ledger verify` names the batch; the CSVs never change." | `conetuga/ledger/`, `contracts/src/FindingsLedger.sol` | `tests/test_ledger.py::test_any_change_to_an_anchored_row_is_found`, `::test_two_rows_swapped_are_found`, `::test_a_cleared_log_is_found`, `::test_analyse_logs_every_finding_and_its_csv_is_unchanged` |
+| "Two guides, one answer: Tuga explains in plain words, Cone adds the evidence and the catalog rule; the findings, the score and the headline never change with the mode." | `conetuga/explain/narrate.py`, `ui/cards.py`, `ui/state.py` | `tests/test_narrate.py::test_contract_narrate`, `tests/test_ui_guides.py::test_in_advanced_mode_cone_takes_over_and_the_headline_stays_the_same` |
+| "A device nmap gave up on is shown as 'not checked', never as safe." | `ui/view.py`, `ui/cards.py` | `tests/test_ui_devices_page.py::test_a_device_nmap_gave_up_on_is_not_checked_rather_than_safe`, `::test_a_timed_out_device_with_findings_shows_them_and_the_warning` |
+| "Hostile text inside a scan stays plain text: a MAC hidden in a banner is masked, and a hostname or a port protocol can't become a link on the page." | `conetuga/analysis/parser.py`, `ui/view.py` | `tests/test_mac_in_text.py::test_a_mac_in_any_other_scan_text_is_masked`, `::test_findings_are_the_same_with_or_without_a_mac_in_the_banner`, `tests/test_traps.py::test_a_protocol_nmap_never_writes_makes_the_file_unreadable`, `tests/test_ui_devices_page.py::test_a_hostile_hostname_is_shown_as_plain_text`, `tests/test_ui_protocol_escaped.py::test_a_hostile_protocol_is_plain_text_in_a_finding_card` |
+| "Accessible on both themes: text of at least 16 px, a keyboard focus you can see, colour never alone, and the guides' pictures readable on light and dark." | `ui/style.py`, `ui/view.py`, `ui/assets/` | `tests/test_ui_focus.py`, `tests/test_ui_assets.py::test_a_picture_reads_on_both_themes`, `tests/test_ui_devices_page.py::test_every_device_is_listed_riskiest_first` |
+| "Statistics are opt-in, count only kinds of problems (no IP, MAC or name), and 'Delete my history' deletes them." | `conetuga/insights/` | `tests/test_insights.py::test_statistics_are_off_until_the_person_turns_them_on`, `::test_the_store_holds_only_code_counts_and_the_opt_in`, `::test_deleting_the_history_deletes_the_statistics` |
 
 Planned claims, to move into the table once their test passes: none for now. (The old "the AI can't invent a port:
 code checks every sentence" is gone: we use no LLM, so there is nothing to check; say "retrieval-based", not "AI".)
@@ -26,6 +31,9 @@ code checks every sentence" is gone: we use no LLM, so there is nothing to check
 - Validation Set: 24/24 rows, 0 extra rows, 8/8 scores.
 - Our lab (`lab/scans/`, analysed by our own tool): score 0 → 50 → 70. Fix 1 (telnet and FTP off) and fix 2 (Redis
   off) resolved 4 findings and added none. In the UI: pick `scan_01.xml`, then `scan_03.xml`.
+- Accessibility (FE-E2, run by hand, not in CI): axe-core 4.10 with the WCAG 2.1 A/AA rules, on Acasă, Dispozitive,
+  Scanare and Despre, in Streamlit's light and dark themes: 0 violations, no text under 16 px. It found two things we
+  then fixed: a focused menu link you couldn't see (#61) and a 2.69:1 colour in the Scanare command (#64).
 
 ## Trade-offs (what we chose, and what we gave up for it)
 - **Exact catalog over clever guesses:** findings come only from nmap's service name and the official rules, so the
@@ -49,7 +57,8 @@ code checks every sentence" is gone: we use no LLM, so there is nothing to check
 ## Next steps
 - An optional LLM layer that only rephrases the built-in text, with every sentence checked against the scan.
 - Fix steps tailored to the detected router model.
-- Live scans saved straight into the history, for the loop "fix → rescan → ✅ resolved".
+- A one-click "rescan" in the UI for the loop "fix → rescan → ✅ resolved" (live scans already reach the history,
+  #47, but they are started from the terminal so the UI never needs administrator rights).
 
 ## What we brought, and what we built in 24 hours
 
