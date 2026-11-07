@@ -117,3 +117,20 @@ def test_hostile_markup_in_a_title_stays_plain_text(tmp_path):
     result = analyse_file(path)
     assert result.hosts[0].ports[0].title == "<script>alert(1)</script> Login"
     assert [f.code for f in result.findings] == ["HTTP_ADMIN_CLEARTEXT"]
+
+
+HOSTHINT = ('<hosthint><status state="up" reason="arp-response"/><address addr="10.0.0.1" addrtype="ipv4"/>'
+            '<address addr="AA:BB:CC:11:22:33" addrtype="mac" vendor="Acme"/><hostnames></hostnames></hosthint>\n')
+
+
+def test_hosthint_before_a_host_does_not_count_the_device_twice(tmp_path):
+    """nmap 7.80+ writes a <hosthint> (ARP discovery) before each <host>, as in our own lab capture: only <host> counts."""
+    result = analyse_file(write_raw(tmp_path, HOSTHINT + host("10.0.0.1", port(23, "telnet"))))
+    assert [h.ip for h in result.hosts] == ["10.0.0.1"]
+    assert [(f.ip, f.port, f.code) for f in result.findings] == [("10.0.0.1", 23, "TELNET_OPEN")]
+
+
+def test_hosthint_alone_is_not_a_host(tmp_path):
+    """A hint with no <host> after it (e.g. a host that went away before its port scan) reports nothing."""
+    result = analyse_file(write_raw(tmp_path, HOSTHINT))
+    assert (result.error, result.hosts, result.findings, result.score) == ("", [], [], 100)
