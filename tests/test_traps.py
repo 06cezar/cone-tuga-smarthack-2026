@@ -160,3 +160,36 @@ def test_ports_nmap_wrote_before_giving_up_still_count(tmp_path):
     telnet = '<port protocol="tcp" portid="23"><state state="open"/><service name="telnet"/></port>'
     result = analyse_file(write_raw(tmp_path, timed_out_host('timedout="true"', telnet)))
     assert result.hosts[0].timed_out and [(f.port, f.code) for f in result.findings] == [(23, "TELNET_OPEN")]
+
+
+def port_with_protocol(protocol: str) -> str:
+    return (f'<host><status state="up"/><address addr="10.0.0.1" addrtype="ipv4"/><hostnames><hostname name="box"/>'
+            f'</hostnames><ports><port protocol="{protocol}" portid="23"><state state="open"/><service name="telnet"/>'
+            f'</port></ports></host>')
+
+
+def test_a_protocol_nmap_never_writes_makes_the_file_unreadable(tmp_path):
+    """nmap.dtd allows only ip, tcp, udp and sctp. A hostile "[click](https://evil.example)" reached the device card
+    as a clickable link (A's review of #59): now the file is an ERROR row with no findings, and the reason doesn't
+    quote the hostile text back."""
+    result = analyse_file(write_raw(tmp_path, port_with_protocol("[click](https://evil.example)")))
+    assert (result.hosts, result.findings, result.score) == ([], [], None)
+    assert "protocol" in result.error and "evil.example" not in result.error
+
+
+def test_every_protocol_nmap_writes_is_read(tmp_path):
+    for protocol in ("ip", "tcp", "udp", "sctp"):
+        result = analyse_file(write_raw(tmp_path, port_with_protocol(protocol), name=f"{protocol}.xml"))
+        assert result.error == "" and [p.proto for p in result.hosts[0].ports] == [protocol]
+
+
+def test_a_protocol_in_capitals_is_read_as_nmap_writes_it(tmp_path):
+    result = analyse_file(write_raw(tmp_path, port_with_protocol("TCP")))
+    assert result.error == "" and [(f.proto, f.code) for f in result.findings] == [("tcp", "TELNET_OPEN")]
+
+
+def test_a_closed_port_with_an_odd_protocol_is_simply_skipped(tmp_path):
+    """Only open ports are read, so a closed one never makes a file unreadable."""
+    closed = port_with_protocol("bogus").replace('state="open"', 'state="closed"')
+    result = analyse_file(write_raw(tmp_path, closed))
+    assert result.error == "" and result.hosts[0].ports == []

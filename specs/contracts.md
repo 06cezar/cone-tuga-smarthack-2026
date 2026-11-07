@@ -43,6 +43,8 @@ with its test.
 - Output: `findings == [Finding(file="V1_home_basic.xml", ip="192.168.1.1", port=80, proto="tcp",
   code="HTTP_ADMIN_CLEARTEXT", severity="medium", points=10, evidence=...)]`, `score == 90`, `error == ""`.
 - Errors: an unreadable or truncated file (V7) returns `hosts=[]`, `findings=[]`, `score=None` and a clear `error`,
+  and so does a file with an open port whose `protocol` isn't one nmap writes (`ip`, `tcp`, `udp`, `sctp`, as
+  nmap.dtd says), so `Port.proto` and `Finding.proto` are only ever those four (or `""` for UNKNOWN_DEVICE);
   and never raises. Findings are sorted by IP (as a number), port (`None` as -1) and code, so two runs give the same
   result. No two findings share `(file, ip, port, code)`, the columns of `findings.csv`, so the export never
   writes a duplicate row; if both protocols of one port would give the same code, only the TCP one is kept.

@@ -17,6 +17,9 @@ from conetuga.analysis.models import Host, Port
 MAX_SCAN_BYTES = 20 * 1024 * 1024
 
 NMAP_ROOT_TAG = "nmaprun"
+# The only protocols nmap writes on a <port> (nmap.dtd: <!ENTITY % port_protocols "(ip|tcp|udp|sctp)">). Anything else
+# is not nmap output, and it would reach the UI as page text (a hostile "[click](https://...)" became a link).
+PORT_PROTOCOLS = ("ip", "tcp", "udp", "sctp")
 OPEN_STATE = "open"  # "open|filtered", "filtered" and "closed" are not open (brief: "only for ports in state open")
 UP_STATE = "up"
 NMAP_TRUE = "true"  # how nmap writes a true boolean attribute (nmap.dtd, %attr_bool: "true" or "false")
@@ -144,10 +147,14 @@ def _parse_port(element: Element) -> Port | None:
         number = int(element.get("portid", ""))
     except ValueError as exc:
         raise ScanReadError(f"a port number is not a number ({element.get('portid')!r})") from exc
+    proto = element.get("protocol", "").lower()
+    if proto not in PORT_PROTOCOLS:
+        # The value isn't quoted back: it is hostile text, and the error reason is shown on the page.
+        raise ScanReadError(f"a port has a protocol nmap never writes (only {', '.join(PORT_PROTOCOLS)})")
     service = element.find("service")
     return Port(
         port=number,
-        proto=element.get("protocol", "").lower(),
+        proto=proto,
         service=_attribute(service, "name"),
         product=_attribute(service, "product"),
         version=_attribute(service, "version"),
