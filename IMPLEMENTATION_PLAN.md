@@ -102,3 +102,6 @@ Status lives here, not in CLAUDE.md. Milestones are the brief's; hours count fro
   name (`mqtt-subscribe.nse` line 380): our scan_01 shows an open Mosquitto as service "mosquitto version 1.6.15",
   not "mqtt". Does it still count as MQTT_EXPOSED? A reads: no, the catalog decides by the service name nmap
   reports; the standard files show "mqtt", so only our live scans are affected (a limitation, stated).
+- Does the row order in `findings.csv` matter? Our export sorts by IP as a number, then port and code, so 4
+  Validation Set rows come out in another order than the answer key's. A reads: no, the brief compares rows
+  (correct, extra, missing), not their order; `tests/test_validation_set.py` compares them as a multiset.
