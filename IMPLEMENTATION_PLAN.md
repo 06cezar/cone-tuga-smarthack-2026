@@ -45,10 +45,12 @@ Order: the contracts first (FE-A1, FE-B1, FE-B3), D's shell (FE-D1) next, then t
 **D**
 - [ ] FE-D1 `ui/state.py` (scan, language, mode, theme in one place) and `st.navigation` with the pages below; the
   sidebar holds the language, the "Avansat / Advanced" toggle and the light/dark toggle
-- [ ] FE-D2 Acasă: pick or upload a scan; the headline said by the current guide; the traffic-light score
+- [x] FE-D2 Acasă: pick or upload a scan; the headline said by the current guide; the traffic-light score
 - [x] FE-D3 Dispozitive: devices by risk, each finding through `narrate`; "neverificat" for `Host.timed_out`
-- [ ] FE-D4 Istoric (today's history, report button) and Despre (how it works, safety, privacy, the rules we keep)
-- [ ] FE-D5 Light and dark theme: one set of colour tokens per theme, both WCAG AA (NFR-08)
+- [x] FE-D4 Istoric (today's history, report button) and Despre (how it works, safety, privacy, the rules we keep):
+  Despre is on main; the history and the report button stay on Acasă (Stefan, 22:48: tested there, live check 6)
+- [x] FE-D5 Light and dark theme: one set of colour tokens per theme, both WCAG AA (NFR-08): Streamlit's built-in
+  light and dark themes (⋮ → Settings), axe-core AA clean on every page in both, plus the focus outline (#61)
 - [ ] FE-D6 Review every front-end PR; the page AppTests (both languages, both modes) stay green
 
 **B**
@@ -78,7 +80,8 @@ Order: the contracts first (FE-A1, FE-B1, FE-B3), D's shell (FE-D1) next, then t
 
 **E**
 - [x] FE-E1 Original SVG drawings of Tuga 🐢 and Cone 🐇 in `ui/assets/`, small, with alt text, never shown alone
-- [ ] FE-E2 Accessibility pass on every page in both themes: 16 px, AA contrast, keyboard, icon + label
+- [ ] FE-E2 Accessibility pass on every page in both themes: 16 px, AA contrast, keyboard, icon + label (done for
+  Acasă, Dispozitive, Scanare, Despre: 0 axe-core violations, no text under 16 px; Wiki and Întreabă when they land)
 - [ ] FE-E3 Tuga's Romanian texts tested with a non-technical person; findings to B, the result to PITCH.md (D)
 - [ ] FE-E4 Rehearse the demo on the new UI; update `docs/jury-demo.md` with the new steps
 

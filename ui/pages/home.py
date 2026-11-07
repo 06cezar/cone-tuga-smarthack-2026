@@ -20,13 +20,14 @@ from conetuga.insights import record  # noqa: E402
 from ui.cards import show_device  # noqa: E402
 from ui.insights_panel import SEEN_KEY  # noqa: E402
 from ui.report import html_report  # noqa: E402
-from ui.state import current, remember_scan  # noqa: E402
+from ui.state import current, guide_of, remember_scan, show_guide  # noqa: E402
 from ui.view import device_name, devices_by_risk, headline, md, same_network, score_line  # noqa: E402
 
 # After "delete my history", the scan on screen is not saved again until the user picks another one.
 SKIP_SAVE_KEY = "history_skip_digest"
 DELETED_KEY = "history_just_deleted"
 TIME_OF_DAY = slice(11, 16)  # "HH:MM" inside an ISO timestamp "2026-11-07T16:40:12"
+HEADLINE_PICTURE_PX = 96  # the guide beside the headline: about as tall as its two lines of large text
 
 EXAMPLE_FOLDERS = [REPO_ROOT / "tests" / "fixtures" / "validation" / "scans", REPO_ROOT / "lab" / "scans"]
 
@@ -247,7 +248,10 @@ def render() -> None:
     record(result, digest_of(content), st.session_state.setdefault(SEEN_KEY, set()))
 
     devices = devices_by_risk(result, lang)
-    st.markdown(f"## {md(headline(devices, lang))}")
+    # FE-D2: the current guide says the headline: its picture and name beside the sentence, which stays the same in
+    # both modes (ui/CLAUDE.md's "Cel mai periculos: ... Fă asta întâi: ...").
+    show_guide(guide_of(advanced), lang, f"## {md(headline(devices, lang))}", HEADLINE_PICTURE_PX, name_below=True,
+               widths=(1, 9))
     icon, colour, sentence = score_line(result.score, lang)
     st.markdown(f"### {icon} {text['score']}: {result.score}/100 · {colour}. {sentence}")
 
