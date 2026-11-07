@@ -46,7 +46,7 @@ Order: the contracts first (FE-A1, FE-B1, FE-B3), D's shell (FE-D1) next, then t
 - [ ] FE-D1 `ui/state.py` (scan, language, mode, theme in one place) and `st.navigation` with the pages below; the
   sidebar holds the language, the "Avansat / Advanced" toggle and the light/dark toggle
 - [ ] FE-D2 Acasă: pick or upload a scan; the headline said by the current guide; the traffic-light score
-- [ ] FE-D3 Dispozitive: devices by risk, each finding through `narrate`; "neverificat" for `Host.timed_out`
+- [x] FE-D3 Dispozitive: devices by risk, each finding through `narrate`; "neverificat" for `Host.timed_out`
 - [ ] FE-D4 Istoric (today's history, report button) and Despre (how it works, safety, privacy, the rules we keep)
 - [ ] FE-D5 Light and dark theme: one set of colour tokens per theme, both WCAG AA (NFR-08)
 - [ ] FE-D6 Review every front-end PR; the page AppTests (both languages, both modes) stay green
@@ -77,7 +77,7 @@ Order: the contracts first (FE-A1, FE-B1, FE-B3), D's shell (FE-D1) next, then t
 - [ ] FE-C4 Security review of every front-end PR (escaping, uploads, no secret)
 
 **E**
-- [ ] FE-E1 Original SVG drawings of Tuga 🐢 and Cone 🐇 in `ui/assets/`, small, with alt text, never shown alone
+- [x] FE-E1 Original SVG drawings of Tuga 🐢 and Cone 🐇 in `ui/assets/`, small, with alt text, never shown alone
 - [ ] FE-E2 Accessibility pass on every page in both themes: 16 px, AA contrast, keyboard, icon + label
 - [ ] FE-E3 Tuga's Romanian texts tested with a non-technical person; findings to B, the result to PITCH.md (D)
 - [ ] FE-E4 Rehearse the demo on the new UI; update `docs/jury-demo.md` with the new steps
