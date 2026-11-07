@@ -8,7 +8,7 @@ import pytest
 from conetuga.analysis import analyse_file
 from conetuga.history import digest_of
 from conetuga.insights import record, set_enabled, status
-from ui.insights_panel import TEXT, common_problems
+from ui.insights_panel import TEXT, common_problems, how_many_times
 
 AppTest = pytest.importorskip("streamlit.testing.v1").AppTest
 
@@ -123,3 +123,17 @@ def test_the_switch_follows_the_store_after_the_history_is_deleted():
     delete_history()
     app.run()
     assert app.toggle[0].value is False and TEXT["ro"]["off"] in shown(app)
+
+
+@pytest.mark.parametrize("count, ro", [(1, "o dată"), (2, "2 ori"), (19, "19 ori"), (20, "20 de ori"), (21, "21 de ori"),
+                                       (99, "99 de ori"), (100, "100 de ori"), (101, "101 ori"), (119, "119 ori"),
+                                       (120, "120 de ori"), (1000, "1000 de ori"), (1001, "1001 ori")])
+def test_romanian_counts_take_de_after_00_or_20_and_above(count, ro):
+    """E's P3 on #60 (NFR-09): "20 de ori", "100 de ori", but "101 ori"."""
+    assert how_many_times(count, "ro") == ro
+
+
+@pytest.mark.parametrize("count, en", [(1, "once"), (2, "2 times"), (20, "20 times"), (101, "101 times")])
+def test_english_counts_have_no_de(count, en):
+    assert how_many_times(count, "en") == en
+

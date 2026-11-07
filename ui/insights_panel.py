@@ -12,6 +12,7 @@ import streamlit as st
 from conetuga.insights import STATUS_ON, STATUS_UNAVAILABLE, set_enabled, status, top_codes
 from ui.view import md
 
+ROMANIAN_DE_FROM = 20  # the Romanian rule for "de" after a number, see how_many_times
 TOP_N = 5  # how many problems the panel lists: enough to see a pattern, short enough to read at a glance
 SWITCH_KEY = "insights_switch"
 SAVE_FAILED_KEY = "insights_save_failed"
@@ -31,6 +32,7 @@ TEXT = {
         "empty": "Încă nimic de arătat: deschide o scanare și problemele ei apar aici.",
         "list_intro": "În scanările pe care le-ai deschis:",
         "times": "{count} ori",
+        "times_with_de": "{count} de ori",  # Romanian: "20 de ori", "100 de ori", but "101 ori"
         "once": "o dată",
     },
     "en": {
@@ -45,6 +47,7 @@ TEXT = {
         "empty": "Nothing to show yet: open a scan and its problems appear here.",
         "list_intro": "In the scans you looked at:",
         "times": "{count} times",
+        "times_with_de": "{count} times",  # English has no "de"
         "once": "once",
     },
 }
@@ -83,9 +86,19 @@ def render_common_problems(titles: dict[str, str], lang: str) -> None:
     if not rows:
         st.info(text["empty"])
         return
-    lines = [f"{i}. {md(row.title)}: {text['once'] if row.count == 1 else text['times'].format(count=row.count)}"
+    lines = [f"{i}. {md(row.title)}: {how_many_times(row.count, lang)}"
              for i, row in enumerate(rows, start=1)]
     st.markdown(text["list_intro"] + "\n\n" + "\n".join(lines))
+
+
+def how_many_times(count: int, lang: str) -> str:
+    """"o dată", "3 ori", "20 de ori": Romanian puts "de" after a number whose last two digits are 00 or 20 and above
+    ("20 de ori", "100 de ori", "120 de ori"), and not otherwise ("101 ori", "119 ori"). English: "once", "3 times"."""
+    text = TEXT[lang]
+    if count == 1:
+        return text["once"]
+    needs_de = count >= ROMANIAN_DE_FROM and (count % 100 == 0 or count % 100 >= ROMANIAN_DE_FROM)
+    return text["times_with_de" if needs_de else "times"].format(count=count)
 
 
 def _save_switch() -> None:
