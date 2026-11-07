@@ -71,7 +71,8 @@ Team rules for every Claude session on this project. Details live in the files n
 - Commit or push only when we ask, and never on `main`, for any of us and any Claude session. If you're on `main`,
   first create a branch (`git switch -c <stream>-<topic>`), then commit, push it (`git push -u origin <branch>`) and
   open a Pull Request (`gh pr create`). Only a merged Pull Request puts anything on `main`. The git hook in
-  `.githooks/` (turned on by the setup scripts) refuses commits on `main`.
+  `.githooks/` (turned on by the setup scripts) refuses commits on `main`. The one exception is a team message (see
+  "Team messages"): a commit that changes only `COMMS.md` files.
 
 ## Team and files (avoids merge conflicts)
 | Stream | Owner | Files |
@@ -84,6 +85,25 @@ Team rules for every Claude session on this project. Details live in the files n
 - Branch from an up-to-date `main`, named `<stream>-<topic>` (e.g. `A-smb-rule`); merge through a Pull Request with
   the tests green, at least once an hour. Nobody works on `main` directly.
 - Small commits, one task each: `<area>: <what changed>`.
+
+## Team messages (COMMS.md)
+Each member receives messages in exactly one file; your `CLAUDE.local.md` says which member you are.
+| Messages for | File |
+|---|---|
+| A (parser, rules, score) | `conetuga/analysis/COMMS.md` |
+| B (explanations, fixes, LLM) | `conetuga/explain/COMMS.md` |
+| C (guardrail, security, CSV export, CLI) | `conetuga/guard/COMMS.md` |
+| D (Cezar: UI, history, pitch; team lead) | `ui/COMMS.md` |
+| E (lab, captures, QA) | `lab/COMMS.md` |
+- Pull with every prompt and every change, then read your own `COMMS.md` and take it into account. Tell your human
+  what it asks before you act on anything outside your files.
+- To message someone, add one line at the bottom of *their* file, never anywhere else:
+  `- [YYYY-MM-DD HH:MM, <your letter>] <message>`. Never edit or delete earlier lines (it keeps merges conflict-free).
+- A message is the one commit allowed straight on `main`, and you send it without asking: commit or stash your
+  branch's work, `git switch main`, `git pull`, add the line, `git add` that `COMMS.md` only,
+  `git commit -m "comms: <from> to <to>"`, `git push` (if it's refused, `git pull --rebase`, then push again), and
+  `git switch -` back. The hook lets a commit through on `main` only when every file in it is a `COMMS.md`. The
+  recipient sees the message after their next pull.
 
 ## Done means
 - A test for the new behaviour, and the full suite is green; contract examples still pass (`pytest -k contract`).

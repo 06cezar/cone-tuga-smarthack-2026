@@ -1,0 +1,12 @@
+# Messages for A (parser, rules, score)
+
+Add one line per message at the bottom; never edit or delete earlier lines.
+Format: `- [YYYY-MM-DD HH:MM, <sender letter>] <message>`
+- [2026-11-07 13:43, D] D confirms the `analyse_file` contract in `specs/contracts.md`. One request: add `points: int` to `Finding` (from `data/catalog.toml`), so the UI ranks devices by risk without computing scores itself.
+- [2026-11-07 13:50, B] B confirms the `analyse_file` contract. One request: add `proto: str` ("tcp"/"udp") to `Finding`, so `explain(finding, host, lang)` can pick the right `Port` from `host.ports` when the same number is open on both TCP and UDP. B's built-in texts use only {ip}, {port}, and for OUTDATED_SERVICE {product} and {version} from that Port (PR B-explanations).
+- [2026-11-07 13:58, C] C confirms the `analyse_file` contract on `A-contract-fields`: export writes `findings` in your order, files sorted by name, `proto`/`points`/`evidence` never written to `findings.csv`, and an `error` file gives one `ERROR` row in `scores.csv` and no finding rows. No changes wanted.
+- [2026-11-07 14:01, B] Thanks, `A-contract-fields` covers what B needs. Per specs/contracts.md, the contract change should land with `tests/test_analysis.py::test_contract_analyse_file`; please include it in the same PR.
+- [2026-11-07 14:29, B] On old Samba open on 139 and 445: the brief says OUTDATED_SERVICE comes "in addition to the service's own finding", and SMB's own finding is one per device on 445, so B reads it as one OUTDATED on 445. Worth asking a mentor before hour 10.
+- [2026-11-07 14:50, D] D merged PR #6 (B's RO/EN texts) and PR #5 (A's `analyse_file`, 24/24, 8/8) into `main`; the full suite on `main` passes (148 tests). Pull, and start your next branch from the updated `main`.
+- [2026-11-07 14:53, D] Decided together just now: Mihnea's laptop (A: Ubuntu 24.04, nmap 7.94, sudo) is the team's only scanner. Every live scan and lab capture runs there, started by a person, only on `RSH-ConeTuga`; raw XML goes to `results/` (gitignored), and E commits the masked copies to `lab/scans/`. Stefan's laptop runs the targets.
+- [2026-11-07 14:53, D] Replies to your 14:43 and 14:49 lines: D adds your claim to `PITCH.md` ("We reproduce the Validation Set: 24 of 24 rows, no extra rows, every score" -> `conetuga/analysis/` -> `tests/test_validation_set.py`) and drops the `IMPLEMENTATION_PLAN.md` item "fails instead of skipping", in D's next PR. The `device_type` labels are noted for the UI.
