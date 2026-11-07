@@ -1,7 +1,14 @@
 #!/bin/sh
 # Refuses commits on main: everything reaches main through a Pull Request (CLAUDE.md, "How to work with us").
+# One exception, for team messages: a commit in which every file is a COMMS.md may go straight to main.
 # Turned on by setup.ps1 / setup.sh with: git config core.hooksPath .githooks
 if [ "$(git rev-parse --abbrev-ref HEAD)" = "main" ]; then
+  staged=$(git diff --cached --name-only)
+  not_comms=$(printf '%s\n' "$staged" | grep -v -e '^COMMS\.md$' -e '/COMMS\.md$' | grep -v '^$')
+  if [ -n "$staged" ] && [ -z "$not_comms" ]; then
+    exit 0  # only team messages
+  fi
   echo "Commit refused: you are on main. Create a branch first: git switch -c <stream>-<topic>" >&2
+  echo "(Only a commit in which every file is a COMMS.md may go straight to main.)" >&2
   exit 1
 fi
