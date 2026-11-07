@@ -12,18 +12,21 @@
   a subnet: iPhone hotspots usually use 172.20.10.0/28, Android ones vary. Local IP: a UDP socket "connected" to an
   outside address (nothing is sent); netmask: `psutil.net_if_addrs()`; gateway: `ip route show default` on Linux,
   `Get-NetRoute -DestinationPrefix 0.0.0.0/0` on Windows. Branch on `sys.platform`.
-- nmap: `apt install nmap` on Linux; the nmap.org installer with Npcap on Windows (without Npcap, `-sS` fails). The scan
-  step runs with `sudo` on Linux or from an administrator terminal on Windows.
+- nmap: `apt install nmap` on Linux; the nmap.org installer with Npcap on Windows (without Npcap, `-sS` fails). Only
+  nmap gets administrator rights: on Linux `scan.py` runs it through `sudo` (our own code stays an ordinary user); on
+  Windows the terminal must be an administrator one.
 - "Top 1,000 TCP ports" means nmap's most common 1,000 (`--top-ports 1000`), not ports 1–1000; nmap can't combine
-  `--top-ports` with a UDP list in one `-p`, so either run TCP and UDP separately and merge, or build the TCP list from
-  `nmap-services`. Scanning more TCP ports is allowed: the catalog decides by service, so a redis on 6380 is found only
-  if 6380 is scanned.
+  `--top-ports` with a UDP list in one `-p`, so `scan.py` asks the installed nmap for its list with no target (it sends
+  nothing) and adds the catalog's ports outside it (1883, 6379, 6380, 27017). Scanning more TCP ports is allowed: the
+  catalog decides by service, so a redis on 6380 is found only if 6380 is scanned.
 - Live scan: nmap with `-sS -sU -sV`, the top 1,000 TCP ports plus UDP 53, 123, 161, 1900 and 5353, rate-limited to at
   most 100 packets/second, plus `--script http-title` (a "safe" script): `-sV` alone doesn't record page titles, and
   without them HTTP_ADMIN_CLEARTEXT can never fire on a live scan. Discover the live hosts first and scan ports only
-  on them: that's the only way to keep the packet limit and still finish a /24 in under 5 minutes (NFR-07). It
-  writes nmap XML to `lab/scans/` (E's folder: data only), and the same analyser reads it. Only this step needs
-  administrator rights.
+  on them: that's the only way to keep the packet limit and still finish a /24 in under 5 minutes (NFR-07); nmap's
+  default host discovery does exactly that. The scanner itself is excluded (`--exclude <own IP>`): nmap lists it with
+  no MAC, a false UNKNOWN_DEVICE. nmap gets the range `check_scope` parsed, never the raw text. It writes the raw XML
+  to `results/` (gitignored: real MACs and names; team decision, Nov 7), and the same analyser reads it; only copies
+  made by `lab/mask_scan.py` go to `lab/scans/` (E). Only this step needs administrator rights.
 - C also owns the CLI (`conetuga/__main__.py`): `analyse <folder> --out <dir>` and `scan --confirm`.
 - Claude never starts a live scan; a team member runs it, on our hotspot only.
 - Allowed: host discovery (ARP, ping), TCP and UDP port scans, version and banner detection, and reading passive
