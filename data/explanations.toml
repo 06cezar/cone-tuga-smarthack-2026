@@ -96,7 +96,7 @@ steps = [
   "Află ce program folosește baza de date și dacă alte calculatoare chiar au nevoie de ea.",
   "Dacă o folosește doar calculatorul pe care stă, setează baza de date să accepte conectări doar de pe acel calculator.",
   "Pune o parolă puternică pentru fiecare utilizator al bazei de date.",
-  "În firewall (paravanul de protecție al calculatorului), blochează portul {port} (portul e „ușa” prin care se intră în dispozitiv) pentru calculatoarele care nu au nevoie de ea.",
+  "În firewall (paravanul de protecție al calculatorului), blochează portul {port} (portul e „ușa” prin care se intră în dispozitiv) pentru calculatoarele care nu au nevoie de el.",
 ]
 
 [DB_EXPOSED.en]
@@ -241,7 +241,7 @@ steps = [
   "Deschide setările programului MQTT (de obicei în aplicația aparatului central care comandă casa smart) și oprește accesul fără parolă („anonymous”).",
   "Creează un utilizator cu parolă pentru fiecare dispozitiv care trimite mesaje.",
   "Dacă se poate, activează criptarea conexiunilor (opțiunea TLS).",
-  "În firewall (paravanul de protecție), blochează portul {port} (portul e „ușa” prin care se intră în dispozitiv) pentru dispozitivele care nu au nevoie de ea.",
+  "În firewall (paravanul de protecție), blochează portul {port} (portul e „ușa” prin care se intră în dispozitiv) pentru dispozitivele care nu au nevoie de el.",
 ]
 
 [MQTT_EXPOSED.en]
