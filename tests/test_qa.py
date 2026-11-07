@@ -150,6 +150,44 @@ def test_tcp_or_no_protocol_still_finds_the_port(question):
     assert answer_question(question, scan("V3_small_office.xml"), "en").citations == [PRINTER]
 
 
+@pytest.mark.parametrize(("name", "question", "lang"), [
+    ("V3_small_office.xml", "Is WPS enabled on my printer?", "en"),
+    ("V3_small_office.xml", "E activat WPS pe imprimantă?", "ro"),
+    ("V3_small_office.xml", "Is the printer firmware up to date?", "en"),
+    ("V1_home_basic.xml", "What is the password of the router?", "en"),
+    ("V1_home_basic.xml", "Care e parola routerului?", "ro"),
+    ("V1_home_basic.xml", "Ce SSID are routerul?", "ro"),
+    ("V1_home_basic.xml", "Is the router WPA2?", "en"),
+    ("V1_home_basic.xml", "Ce viteză are routerul?", "ro"),
+    ("V1_home_basic.xml", "Is there a guest network on 192.168.1.1?", "en"),
+    ("V1_home_basic.xml", "Am rețea pentru oaspeți pe router?", "ro"),
+])
+def test_what_no_scan_shows_gets_the_fixed_sentence_even_when_a_device_is_named(name, question, lang):
+    answer = answer_question(question, scan(name), lang)
+    assert answer.text == CANNOT[lang] and answer.citations == []
+
+
+@pytest.mark.parametrize(("name", "question", "lang", "citations"), [
+    ("V1_home_basic.xml", "Is the admin page password sent in clear?", "en", ["[192.168.1.1:80 HTTP_ADMIN_CLEARTEXT]"]),
+    ("V4_legacy.xml", "Parola de telnet trece în clar?", "ro", ["[192.168.1.1:23 TELNET_OPEN]"]),
+    ("V1_home_basic.xml", "Is my Wi-Fi router safe?", "en", ["[192.168.1.1:80 HTTP_ADMIN_CLEARTEXT]"]),
+])
+def test_an_unknowable_word_next_to_a_service_or_wifi_still_gets_the_finding(name, question, lang, citations):
+    assert answer_question(question, scan(name), lang).citations == citations
+
+
+def test_unknowable_words_overlap_no_service_device_or_top_word():
+    words = tomllib.loads(QA_FILE.read_text(encoding="utf-8"))
+    no_scan = SimpleNamespace(hosts=[])
+    for word in words["unknowable"]["words"]:
+        asked = read_question(word.replace(STEM_MARK, ""), no_scan)
+        assert not (asked.codes or asked.device_types or asked.most_dangerous), word
+    others = [*words["top"]["words"], *(w for ws in words["devices"].values() for w in ws),
+              *(w for ws in words["services"].values() for w in ws)]
+    for word in others:
+        assert not read_question(word.replace(STEM_MARK, ""), no_scan).unknowable, word
+
+
 def test_a_service_with_no_finding_in_the_scan():
     answer = answer_question("Is telnet open?", scan("V1_home_basic.xml"), "en")
     assert answer.text == PHRASES["en"]["no_problem_topic"] and answer.citations == []

@@ -55,6 +55,7 @@ def _phrase(words: str) -> tuple[tuple[str, bool], ...]:
 _FILE = tomllib.loads(QA_FILE.read_text(encoding="utf-8"))
 PHRASES = _FILE["phrases"]
 TOP_WORDS = [_phrase(words) for words in _FILE["top"]["words"]]
+UNKNOWABLE_WORDS = [_phrase(words) for words in _FILE["unknowable"]["words"]]
 DEVICE_WORDS = {device_type: [_phrase(words) for words in all_words]
                 for device_type, all_words in _FILE["devices"].items()}
 # Every code is also named by itself, e.g. "ssh_open".
@@ -78,6 +79,7 @@ class Asked:
     device_types: set[str]
     codes: set[str]
     most_dangerous: bool
+    unknowable: bool  # it asks about something no scan shows, such as WPS or a password
 
     def names_something(self) -> bool:
         return bool(self.ips or self.ports or self.device_types or self.codes)
@@ -98,6 +100,11 @@ def answer_question(question: str, result, lang: str) -> Answer:
         raise ValueError("the scan file could not be read, so there is nothing to answer from")
 
     asked = read_question(question, result)
+    if asked.unknowable and not asked.codes:
+        # WPS, a password, the SSID: no scan shows them, so a device's findings would answer another question. With a
+        # service named too ("Parola de telnet trece în clar?"), the question is about that service, which we can
+        # answer.
+        return _cannot_answer(lang)
     if asked.names_something():
         return _answer_about(asked, result, lang)
     if asked.most_dangerous:
@@ -127,6 +134,7 @@ def read_question(question: str, result) -> Asked:
         device_types={kind for kind, phrases in DEVICE_WORDS.items() if _any_in(phrases, words)},
         codes={code for code, phrases in CODE_WORDS.items() if _any_in(phrases, words)},
         most_dangerous=_any_in(TOP_WORDS, words),
+        unknowable=_any_in(UNKNOWABLE_WORDS, words),
     )
 
 
