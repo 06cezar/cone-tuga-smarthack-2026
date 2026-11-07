@@ -4,6 +4,10 @@
   and every range outside the allowlist; a live scan without `--confirm` is refused too. Each refusal has a test.
 - The allowlist decides, not "is it private": the venue Wi-Fi is private too, but it isn't ours. 100.64.0.0/10 (the
   mobile carrier's shared range) is neither private nor global for `ipaddress`: refuse it explicitly.
+- A live scan runs only when the active Wi-Fi is our hotspot (SSID `RSH-ConeTuga`): on the venue Wi-Fi its subnet would
+  be "the connected subnet", and live check 4 would wrongly pass. SSID: `netsh wlan show interfaces` on Windows,
+  `nmcli -t -f active,ssid dev wifi` on Linux. Setup D (inside Docker) needs a team decision before any exception.
+- Targets are IP addresses or CIDR ranges written as numbers; a hostname or domain is refused, with no DNS lookup.
 - Network detection (FR-01) finds the active interface, its subnet and its gateway with no manual input. Never hard-code
   a subnet: iPhone hotspots usually use 172.20.10.0/28, Android ones vary. Local IP: a UDP socket "connected" to an
   outside address (nothing is sent); netmask: `psutil.net_if_addrs()`; gateway: `ip route show default` on Linux,
@@ -16,9 +20,11 @@
   if 6380 is scanned.
 - Live scan: nmap with `-sS -sU -sV`, the top 1,000 TCP ports plus UDP 53, 123, 161, 1900 and 5353, rate-limited to at
   most 100 packets/second, plus `--script http-title` (a "safe" script): `-sV` alone doesn't record page titles, and
-  without them HTTP_ADMIN_CLEARTEXT can never fire on a live scan. Discover the live hosts first and scan ports only on them: that's the only way to keep the
-  packet limit and still finish a /24 in under 5 minutes (NFR-07). It writes nmap XML to `lab/scans/`, and the same analyser reads it. Only this step needs
+  without them HTTP_ADMIN_CLEARTEXT can never fire on a live scan. Discover the live hosts first and scan ports only
+  on them: that's the only way to keep the packet limit and still finish a /24 in under 5 minutes (NFR-07). It
+  writes nmap XML to `lab/scans/` (E's folder: data only), and the same analyser reads it. Only this step needs
   administrator rights.
+- C also owns the CLI (`conetuga/__main__.py`): `analyse <folder> --out <dir>` and `scan --confirm`.
 - Claude never starts a live scan; a team member runs it, on our hotspot only.
 - Allowed: host discovery (ARP, ping), TCP and UDP port scans, version and banner detection, and reading passive
   mDNS/SSDP announcements. Never: password guessing, exploits, NSE scripts from the brute, exploit, dos, intrusive or

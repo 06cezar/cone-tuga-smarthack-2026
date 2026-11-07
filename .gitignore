@@ -7,6 +7,8 @@ __pycache__/
 .cache/
 logs/
 results/
+# the organizers' original files (PDF, zip); the Validation Set goes into tests/fixtures/validation/scans/
+rsystems-docs/
 # scan history stays on this computer (NFR-02)
 .history/
 # each person's Claude Code settings and personal notes

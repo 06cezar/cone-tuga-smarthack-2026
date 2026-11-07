@@ -1,0 +1,7 @@
+#!/bin/sh
+# Refuses commits on main: everything reaches main through a Pull Request (CLAUDE.md, "How to work with us").
+# Turned on by setup.ps1 / setup.sh with: git config core.hooksPath .githooks
+if [ "$(git rev-parse --abbrev-ref HEAD)" = "main" ]; then
+  echo "Commit refused: you are on main. Create a branch first: git switch -c <stream>-<topic>" >&2
+  exit 1
+fi

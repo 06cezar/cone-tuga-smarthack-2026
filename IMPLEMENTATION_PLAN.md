@@ -7,6 +7,8 @@ Status lives here, not in CLAUDE.md. Milestones are the brief's; hours count fro
 - [ ] Parser for nmap XML: hosts, MAC + vendor, hostname, open ports, service, product, version, ssl, `http-title`
 - [ ] Rules from `data/catalog.toml` and the standard score
 - [ ] `tests/test_validation_set.py` green: 24/24 rows, no extra rows, every score (hour 10)
+- [ ] Once `analyse_file` lands, the Validation Set test fails instead of skipping when the function is missing
+  (a test change: the team agrees first)
 
 ## B · explanations and fixes
 - [ ] Built-in RO/EN text and 1–5 steps for every catalog code (hour 12)
@@ -14,7 +16,9 @@ Status lives here, not in CLAUDE.md. Milestones are the brief's; hours count fro
 - [ ] Q&A assistant from scan evidence only (FR-12, Should)
 
 ## C · guardrail, security, export
-- [ ] Network detection (FR-01) and `check_scope` (FR-02): public IPs and out-of-scope ranges refused (hour 14)
+- [ ] Network detection (FR-01) and `check_scope` (FR-02): public IPs, out-of-scope ranges, hostnames and any network
+  other than `RSH-ConeTuga` refused (hour 14)
+- [ ] CLI `conetuga/__main__.py`: `analyse` and `scan`
 - [ ] Live scan with `--confirm`, rate-limited, writing nmap XML (FR-04)
 - [ ] `export` for a folder: findings.csv and scores.csv (FR-15); MAC masking everywhere; gitleaks clean
 
@@ -26,13 +30,16 @@ Status lives here, not in CLAUDE.md. Milestones are the brief's; hours count fro
 ## E · lab and QA
 - [ ] Hotspot `RSH-<team name>` (ours: `RSH-ConeTuga`), 3+ targets, 5+ catalog codes, three scans saved (hour 3)
 - [ ] Before/after pair: fix 2+ findings and rescan
-- [ ] Validation Set XML copied into `tests/fixtures/validation/`; rehearse the 7 live checks
+- [ ] The 8 Validation Set XML files copied into `tests/fixtures/validation/scans/` (scan files only there); rehearse
+  the 7 live checks
 - [ ] Lab scans used as fixtures: a test checks that our before/after pair shows the score improving
 
 ## Deliverables (the brief's checklist)
 - [ ] Rules-of-engagement form signed by every team member (hour 0)
 - [ ] Test Set results uploaded by hour 21: `findings.csv`, `scores.csv` and a UI screenshot. Commit a copy of exactly
   what we uploaded in `submission/`, with the `final` tag, so the live re-run can be compared with it
+- [ ] Package versions pinned before the tag (`pip freeze` into `requirements.txt`), so the live re-run uses exactly
+  the same versions
 - [ ] Git release tagged `final` at upload time (hour 22 at the latest); nothing after that tag counts
 - [ ] README explaining setup, live scan and file analysis, with one-command setup (`setup.ps1`, `setup.sh`)
 - [ ] Validation Set reproduced: all 24 rows, no extra rows, correct scores
@@ -71,8 +78,8 @@ Status lives here, not in CLAUDE.md. Milestones are the brief's; hours count fro
 ## Questions for humans
 - What clock times are brief hours 16, 20, 21 and 22?
 - Can we use code we wrote before the event, if we declare it?
-- HTTP_ADMIN_CLEARTEXT needs the page title (`http-title`): do the standard files include it?
-- UNKNOWN_DEVICE: does a host with no MAC address at all count as "no MAC vendor"?
+- Which files in the Test Set folder count: only `*.xml`, or every file (a broken file may have another extension)?
+- UNKNOWN_DEVICE: does a host with no MAC address at all count as "no MAC vendor"? (A MAC with no vendor does: V4's .99.)
 - OUTDATED_SERVICE: does "OpenSSH 7.2p2 Ubuntu" compare as 7.2?
 - What do you expect, at minimum, from the device-type guess?
 - Is OUTDATED_SERVICE reported when the service has no finding of its own (e.g. Apache 2.2 with no admin title)?
