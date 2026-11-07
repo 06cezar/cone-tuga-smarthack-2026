@@ -77,7 +77,7 @@ Order: the contracts first (FE-A1, FE-B1, FE-B3), D's shell (FE-D1) next, then t
 - [ ] FE-C4 Security review of every front-end PR (escaping, uploads, no secret)
 
 **E**
-- [ ] FE-E1 Original SVG drawings of Tuga 🐢 and Cone 🐇 in `ui/assets/`, small, with alt text, never shown alone
+- [x] FE-E1 Original SVG drawings of Tuga 🐢 and Cone 🐇 in `ui/assets/`, small, with alt text, never shown alone
 - [ ] FE-E2 Accessibility pass on every page in both themes: 16 px, AA contrast, keyboard, icon + label
 - [ ] FE-E3 Tuga's Romanian texts tested with a non-technical person; findings to B, the result to PITCH.md (D)
 - [ ] FE-E4 Rehearse the demo on the new UI; update `docs/jury-demo.md` with the new steps
