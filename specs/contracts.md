@@ -100,6 +100,35 @@ with its test.
   digest: str, result: FileResult)]` oldest first, `delete_history()` removes the folder and everything in it.
 - Test: `tests/test_history.py::test_contract_diff`
 
+### answer_question · owner: B · used by: D (UI)
+- Call: `answer_question(question: str, result: FileResult, lang: str) -> Answer(text: str, citations: list[str],
+  source: str)`, from `conetuga.explain`. The Q&A assistant (FR-12), with no network and no key.
+  - `lang` is `"ro"` or `"en"`, the language of the answer (the question may be in either). `source` is `"retrieval"`:
+    the answer is built only from `result`'s findings and hosts, `explain()` and fixed texts in `data/` (later maybe
+    `"llm"`, only behind the NFR-06 check).
+  - Every citation is a finding the text relies on, written `[ip:port CODE]` (`[ip CODE]` for UNKNOWN_DEVICE), and
+    appears in `text`. When the scan can't answer, `text` is exactly "Scanul nu arată asta." (ro) / "The scan doesn't
+    show this." (en) and `citations == []`. When the question names something the scan shows but no finding is on it,
+    the answer says the scan found no catalog problem there, never that it is safe.
+  - A number counts as a port after a word starting with "port", as `ip:port`, as `N/tcp` or `N/udp`, or when it is
+    an open port in `result`.
+  - "Most dangerous" / "what do I fix first" follows the UI's rule (`ui/view.py`, `devices_by_risk` and `headline`):
+    the device with the highest sum of `points` (ties: the lower IP as a number), then its finding with the most
+    `points` (ties: `analyse_file`'s order); "fix first" is that finding's `steps[0]`. When that device has 0 points,
+    the answer says the scan found nothing dangerous. On `V6a_before.xml`, the router at 192.168.1.1 (10 + 10) beats
+    192.168.1.30 (20) on IP, and its finding is HTTP_ADMIN_CLEARTEXT.
+  - The question is untrusted text (NFR-03): no part of it is ever copied into the answer. Same inputs, same answer.
+- Input (real example): `analyse_file("V3_small_office.xml")`, the brief's question
+  "is it safe that my printer has port 9100 open?", `lang="en"`.
+- Output: `citations == ["[192.168.1.10:9100 PRINTER_RAW_EXPOSED]"]`, `text` contains `192.168.1.10` and that
+  citation, `source == "retrieval"`. On the same result, "Is WPS turned on?" with `lang="en"` gives
+  `text == "The scan doesn't show this."` and `citations == []`.
+- Errors and edge cases: an unknown language raises `KeyError`; an empty question (only spaces) or one longer than
+  `MAX_QUESTION_CHARS` (300, a named constant) raises `ValueError`; a result with an `error` raises `ValueError`
+  (nothing to answer from, as in `diff`), so the UI offers no question box for such a file.
+- Test: `tests/test_qa.py::test_contract_answer_question`; `tests/test_qa.py` also checks that "most dangerous"
+  names the same device and finding as `ui.view.devices_by_risk` on V1–V6.
+
 ## Template (copy it)
 
 ### <name> · owner: <stream> · used by: <streams>
