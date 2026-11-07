@@ -15,33 +15,46 @@ verificarea 4 sunt refuzate de guardrail înainte să pornească nmap (`conetuga
 
 ## Ora 20–22: Test Set-ul și încărcarea (E conduce, Mihnea tastează)
 
+Regula acestor ore: **din momentul în care rulăm Test Set-ul, nimeni nu mai face merge de cod în `main`** până după
+tag. Tag-ul `final` trebuie să marcheze exact codul care a produs rezultatele, iar brief-ul îl cere **la momentul
+încărcării** („Git repository tagged final at upload time”, pagina 13). De aceea ordinea e: rezultate → PR cu
+`submission/` → tag → încărcarea imediată a acelorași fișiere.
+
 1. Descarcă Test Set-ul într-un folder **în afara repo-ului**, de ex. `~/TestSet/`. Dacă e o arhivă, dezarhiveaz-o și
    verifică să nu fie un folder în alt folder (`~/TestSet/TestSet/`): `analyse` refuză atunci și numește subfolderul.
    Apoi `ls ~/TestSet` și mută afară doar ce e clar un fișier în plus al organizatorilor (un README, un PDF, o foaie
    de răspunsuri): `analyse` citește orice fișier care nu e ascuns, și fiecare ar adăuga un rând ERROR în
    `scores.csv`. Nu muta niciodată un `.xml` sau un fișier necunoscut: cel stricat poate avea altă extensie.
-2. Rulează pe tot folderul:
+2. Pe `main` la zi, rulează pe tot folderul:
    ```bash
+   git switch main && git pull
    .venv/bin/python -m conetuga analyse ~/TestSet --out submission/
    ```
 3. Verifică repede: `wc -l submission/findings.csv submission/scores.csv` (un rând de antet plus câte un rând pe
    finding / pe fișier) și `grep ERROR submission/scores.csv` (brief-ul spune că un fișier e stricat).
-4. Fă captura de ecran a UI-ului (vezi „Înainte de sesiune”, pasul 3), cu unul dintre fișierele Test Set-ului deschis.
-5. Încarcă `findings.csv`, `scores.csv` și captura în formularul organizatorilor, **până la ora 21**.
-6. Pune exact ce am încărcat în repo, prin PR (nimic pe `main` direct):
+4. Fă captura de ecran a UI-ului (vezi „Înainte de sesiune”, pasul 3), cu unul dintre fișierele Test Set-ului deschis,
+   și salveaz-o ca `submission/ui-screenshot.png`.
+5. Pune rezultatele în repo, prin PR (nimic pe `main` direct), și fă merge imediat ce CI-ul e verde:
    ```bash
-   git switch main && git pull
    git switch -c E-submission
-   git add submission/ && git commit -m "submission: the Test Set results we uploaded"
+   git add submission/ && git commit -m "submission: the Test Set results we upload"
    git push -u origin E-submission
-   gh pr create --base main --head E-submission --title "submission: Test Set results as uploaded" --body "The files we uploaded, unchanged."
+   gh pr create --base main --head E-submission --title "submission: Test Set results as uploaded" --body "The files we upload, unchanged."
+   gh pr checks --watch && gh pr merge --merge
    ```
-7. După merge, pe `main`, la momentul încărcării (**ora 22 cel târziu**; nimic după tag nu mai contează):
+6. Tag-ul `final` pe acel merge, **chiar înainte de încărcare** (nimic după tag nu mai contează):
    ```bash
    git switch main && git pull
    git tag final && git push origin final
+   git ls-remote --tags origin final   # tag-ul e pe GitHub
    ```
-   După tag: nicio schimbare de cod.
+7. **Imediat**, încarcă în formularul organizatorilor exact fișierele din `submission/`: `findings.csv`, `scores.csv`
+   și `ui-screenshot.png`, **până la ora 21**. Tag-ul și încărcarea sunt la câteva minute distanță, cu aceleași
+   fișiere. După tag: nicio schimbare de cod.
+
+   **Dacă până la ora 21 au rămas sub 10 minute** și CI-ul n-a terminat: pune tag-ul pe `main` așa cum e (e același
+   cod care a produs rezultatele, pentru că nimeni n-a mai făcut merge), urcă-l, încarcă, iar PR-ul cu `submission/`
+   intră după. Tag-ul nu se mută și nu se șterge niciodată.
 
 ## Înainte de sesiune (cu 30 de minute înainte)
 
