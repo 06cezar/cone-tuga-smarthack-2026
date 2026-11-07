@@ -188,6 +188,26 @@ def test_unknowable_words_overlap_no_service_device_or_top_word():
         assert not read_question(word.replace(STEM_MARK, ""), no_scan).unknowable, word
 
 
+@pytest.mark.parametrize(("question", "lang"), [
+    ("What should the admin of this network fix first?", "en"),
+    ("Ce ar trebui să repare primul administratorul rețelei?", "ro"),
+])
+def test_admin_as_a_person_gets_the_uis_most_dangerous_device(question, lang):
+    result = scan("V2_smart_home.xml")
+    top = devices_by_risk(result, lang)[0]
+    assert answer_question(question, result, lang).citations == [citation(top.findings[0].finding)]
+
+
+@pytest.mark.parametrize(("question", "lang"), [
+    ("Is the admin page of the router encrypted?", "en"),
+    ("Pagina de administrare a routerului e criptată?", "ro"),
+    ("Is the admin panel safe?", "en"),
+])
+def test_admin_page_words_still_find_the_admin_page(question, lang):
+    answer = answer_question(question, scan("V1_home_basic.xml"), lang)
+    assert answer.citations == ["[192.168.1.1:80 HTTP_ADMIN_CLEARTEXT]"]
+
+
 def test_a_service_with_no_finding_in_the_scan():
     answer = answer_question("Is telnet open?", scan("V1_home_basic.xml"), "en")
     assert answer.text == PHRASES["en"]["no_problem_topic"] and answer.citations == []
