@@ -17,6 +17,9 @@ verificarea 4 sunt refuzate de guardrail înainte să pornească nmap (`conetuga
 
 1. Descarcă Test Set-ul într-un folder **în afara repo-ului**, de ex. `~/TestSet/`. Dacă e o arhivă, dezarhiveaz-o și
    verifică să nu fie un folder în alt folder (`~/TestSet/TestSet/`): `analyse` refuză atunci și numește subfolderul.
+   Apoi `ls ~/TestSet` și mută afară doar ce e clar un fișier în plus al organizatorilor (un README, un PDF, o foaie
+   de răspunsuri): `analyse` citește orice fișier care nu e ascuns, și fiecare ar adăuga un rând ERROR în
+   `scores.csv`. Nu muta niciodată un `.xml` sau un fișier necunoscut: cel stricat poate avea altă extensie.
 2. Rulează pe tot folderul:
    ```bash
    .venv/bin/python -m conetuga analyse ~/TestSet --out submission/
@@ -57,6 +60,10 @@ verificarea 4 sunt refuzate de guardrail înainte să pornească nmap (`conetuga
    ```
    În pagină: „🗑️ Șterge istoricul meu”; apoi, la „Alege o scanare din exemple”, `scan_01.xml` (din `lab/scans`),
    apoi `scan_03.xml`. Istoricul are acum înainte/după al laboratorului nostru.
+   **Cât timp PR #35 nu e pe `main`**, istoricul compară orice scanare cu cea de dinainte, chiar dacă e altă rețea:
+   atunci apasă „🗑️ Șterge istoricul meu” chiar înainte de verificarea 2 și din nou chiar înainte de verificarea 6
+   (acolo pregătești din nou `scan_01` → `scan_03`). Cu #35 pe `main`, istoricul arată doar scanări ale aceleiași
+   rețele, și ștergerile în plus nu mai trebuie.
 4. **E:** `submission/` are exact ce am încărcat, iar tag-ul e pe GitHub: `git ls-remote --tags origin final`.
 5. Laptopul în priză; încărcătorul la îndemână.
 
@@ -96,8 +103,11 @@ scanare e refuzată (nu e `RSH-ConeTuga`). Fără `--confirm`, și scanarea prop
 Așteptat: `V7_broken.xml: EROARE / ERROR: ... not complete, valid XML ...`, iar celelalte 7 fișiere sunt analizate.
 
 ### 6. Istoricul: înainte/după din laboratorul nostru, cu scorul crescând
-În UI, istoricul („Compară cu scanarea de la” `scan_01`): `scan_01` → `scan_03`, scor **0 → 70**, 4 findings rezolvate, niciunul nou. E povestește ce a oprit
-Stefan: telnet și FTP (0 → 50), apoi Redis (50 → 70). `scan_02` e pasul din mijloc, dacă îl cer.
+Fișierul juriului încărcat are prioritate față de lista de exemple: **întâi scoate-l din „sau încarcă fișierul tău
+nmap XML” (×)**, apoi alege `scan_03.xml` din exemple; la „Compară cu scanarea de la” apare `scan_01`. (Cât timp
+PR #35 nu e pe `main`: „🗑️ Șterge istoricul meu”, apoi `scan_01.xml`, apoi `scan_03.xml`.) Istoricul arată
+`scan_01` → `scan_03`, scor **0 → 70**, 4 findings rezolvate, niciunul nou. E povestește ce a oprit Stefan: telnet și
+FTP (0 → 50), apoi Redis (50 → 70). `scan_02` e pasul din mijloc, dacă îl cer.
 
 ### 7. Fără secrete în repo
 ```bash
@@ -110,6 +120,9 @@ Așteptat: `no leaks found`.
 - **„De ce laptopul din laborator apare ca imprimantă?”** Am simulat pe el un port de imprimantă (9100); scanările de
   laborator n-au portul Windows (135), deci nimic din ele nu spune „calculator”. Tipul e doar o etichetă: findings și
   scorul nu depind de el. Scanarea live, cu cele 1.000 de porturi, îl vede drept calculator.
+- **„De ce e laptopul din laborator un dispozitiv necunoscut (UNKNOWN_DEVICE)?”** Prefixul MAC al plăcii lui Wi-Fi
+  (`6C:2F:80`) nu e în lista de producători a nmap, iar hotspot-ul nu îi dă niciun nume: după catalog, n-are nici
+  producător, nici hostname, și are porturi deschise.
 - **„De ce are telefonul FTP deschis?”** Telefonul hotspot răspunde pe portul 21, fără banner; nmap îl numește „ftp”,
   iar catalogul decide după numele serviciului.
 - **„De ce lipsește MQTT în laborator?”** Cu `-sV`, scriptul `mqtt-subscribe` al nmap pune versiunea brokerului în
