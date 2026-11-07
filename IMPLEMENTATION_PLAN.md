@@ -4,9 +4,9 @@ Status lives here, not in CLAUDE.md. Milestones are the brief's; hours count fro
 
 ## A · parser, rules, score
 - [x] Contract `analyse_file` agreed (hour 2): B, C and D confirmed, with `proto` and `points` added
-- [ ] Parser for nmap XML: hosts, MAC + vendor, hostname, open ports, service, product, version, ssl, `http-title`
-- [ ] Rules from `data/catalog.toml` and the standard score
-- [ ] `tests/test_validation_set.py` green: 24/24 rows, no extra rows, every score (hour 10)
+- [x] Parser for nmap XML: hosts, MAC + vendor, hostname, open ports, service, product, version, ssl, `http-title`
+- [x] Rules from `data/catalog.toml` and the standard score
+- [x] `tests/test_validation_set.py` green: 24/24 rows, no extra rows, every score (hour 10)
 - [ ] Once `analyse_file` lands, the Validation Set test fails instead of skipping when the function is missing
   (a test change: the team agrees first)
 
