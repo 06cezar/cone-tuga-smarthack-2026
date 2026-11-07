@@ -7,8 +7,9 @@ scanning laptop (NFR-02), while everything the analysis reads stays the same.
 - Hostname: a non-empty name becomes `lab-host-<last byte of the IPv4 address>`; an empty one stays empty, because
   "no hostname" is half of the UNKNOWN_DEVICE rule. History matches devices by IP + hostname, and both stay stable.
 - Other places where nmap can write a computer name, a user name or a raw banner are dropped, because the analysis
-  reads none of them: the service's `hostname`, `extrainfo` and `servicefp`, every script but http-title, and host-
-  and run-level script output (e.g. a Windows name from SMB on 445, A's and D's review of PR #12).
+  reads none of them: the service's `hostname`, `extrainfo` and `servicefp`, every script but http-title, host- and
+  run-level script output (e.g. a Windows name from SMB on 445, A's and D's review of PR #12), and nmap 7.94's
+  `<hosthint>` elements, which repeat each host's full MAC from ARP discovery (found on scan_01, A's 16:28).
 - After writing, two checks; if either fails, the copy is deleted: no original hostname or MAC may appear anywhere in
   it (ignoring case), and it must give exactly the raw file's findings and score.
 
@@ -39,7 +40,10 @@ XML_HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE nmaprun>\n'  # wha
 # Where nmap can write a computer name or raw banner bytes; the analysis reads none of these service attributes.
 DROPPED_SERVICE_ATTRIBUTES = ("hostname", "extrainfo", "servicefp")
 KEPT_PORT_SCRIPT = "http-title"  # the only script output the analysis reads (the page title)
-DROPPED_SCRIPT_TAGS = ("hostscript", "prescript", "postscript")  # host- and run-level script output, e.g. nbstat
+DROPPED_HOST_CHILDREN = ("hostscript",)  # host-level script output, e.g. nbstat with a Windows name and user
+# Run-level script output, and nmap 7.94's <hosthint> per host (ARP discovery: status, IPv4 and the full MAC). The
+# analyser reads only <host>, so none of these change the findings.
+DROPPED_ROOT_CHILDREN = ("hosthint", "prescript", "postscript")
 
 
 class MaskError(Exception):
@@ -64,7 +68,7 @@ def mask_scan(raw: Path, masked: Path) -> int:
             if hostname.get("name", "").strip():
                 hostname.set("name", NEUTRAL_HOSTNAME.format(device))
         _drop_unread_details(host)
-    _drop_children(root, DROPPED_SCRIPT_TAGS)
+    _drop_children(root, DROPPED_ROOT_CHILDREN)
     masked.parent.mkdir(parents=True, exist_ok=True)
     masked.write_text(XML_HEAD + ElementTree.tostring(root, encoding="unicode") + "\n", encoding="utf-8",
                       newline="\n")
@@ -74,22 +78,22 @@ def mask_scan(raw: Path, masked: Path) -> int:
 
 
 def _original_names_and_macs(root: Element) -> set[str]:
-    """Every hostname and MAC of the raw capture, upper-cased, as the leak check looks for them."""
+    """Every hostname and MAC anywhere in the raw capture (in <host>, <hosthint> or wherever nmap adds them next),
+    upper-cased, as the leak check looks for them."""
     found = set()
-    for host in root.iter("host"):
-        for address in host.iterfind("address"):
-            if address.get("addrtype") == "mac":
-                mac = address.get("addr", "").strip().upper()
-                found.update({mac, mac.replace(":", "-")})
-        found.update(h.get("name", "").strip().upper() for h in host.iterfind("hostnames/hostname"))
-        found.update(s.get("hostname", "").strip().upper() for s in host.iterfind("ports/port/service"))
+    for address in root.iter("address"):
+        if address.get("addrtype") == "mac":
+            mac = address.get("addr", "").strip().upper()
+            found.update({mac, mac.replace(":", "-")})
+    found.update(h.get("name", "").strip().upper() for h in root.iter("hostname"))
+    found.update(s.get("hostname", "").strip().upper() for s in root.iter("service"))
     found.discard("")
     return found
 
 
 def _drop_unread_details(host: Element) -> None:
     """Remove what the analysis never reads but where nmap can write a computer name, a user name or a raw banner."""
-    _drop_children(host, DROPPED_SCRIPT_TAGS)
+    _drop_children(host, DROPPED_HOST_CHILDREN)
     for port in host.iterfind("ports/port"):
         service = port.find("service")
         if service is not None:

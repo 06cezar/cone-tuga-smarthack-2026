@@ -19,9 +19,19 @@ def test_analyse_writes_both_files_and_says_what_happened_to_each(tmp_path, caps
     assert cli.main(["analyse", str(SCANS), "--out", str(tmp_path)]) == 0
     assert (tmp_path / "findings.csv").is_file() and (tmp_path / "scores.csv").is_file()
     output = capsys.readouterr().out
-    assert "V1_home_basic.xml: scor / score 90, 1 probleme / findings" in output
+    assert "V1_home_basic.xml: scor 90, 1 problemă / score 90, 1 finding" in output
+    assert "V2_smart_home.xml: scor 40, 5 probleme / score 40, 5 findings" in output
     assert "V7_broken.xml: EROARE / ERROR: V7_broken.xml: the file is not complete" in output
-    assert "(24 rânduri / rows)" in output and "(8 rânduri / rows)" in output
+    assert "(24 de rânduri / 24 rows)" in output and "(8 rânduri / 8 rows)" in output
+
+
+def test_romanian_counts_follow_romanian_grammar():
+    """A's note on scan_01: "1 rânduri" isn't Romanian. From 20 up, "de" comes in, except after 01 to 19."""
+    counts = {count: cli._ro_count(count, "rând", "rânduri") for count in [0, 1, 2, 19, 20, 24, 100, 101, 119, 120]}
+    assert counts == {0: "0 rânduri", 1: "1 rând", 2: "2 rânduri", 19: "19 rânduri", 20: "20 de rânduri",
+                      24: "24 de rânduri", 100: "100 de rânduri", 101: "101 rânduri", 119: "119 rânduri",
+                      120: "120 de rânduri"}
+    assert [cli._en_count(count, "row") for count in (0, 1, 2)] == ["0 rows", "1 row", "2 rows"]
 
 
 def test_python_m_conetuga_runs_end_to_end(tmp_path):
