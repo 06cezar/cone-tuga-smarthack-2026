@@ -183,6 +183,9 @@ with its test.
     the answer says the scan found nothing dangerous. On `V6a_before.xml`, the router at 192.168.1.1 (10 + 10) beats
     192.168.1.30 (20) on IP, and its finding is HTTP_ADMIN_CLEARTEXT.
   - The question is untrusted text (NFR-03): no part of it is ever copied into the answer. Same inputs, same answer.
+  - Devices are named as the UI names them, with `device_name(host, lang)` (from `conetuga.explain`, also used by
+    `ui/view.py`): `hostname — label`, or the label alone when the scan shows no hostname. The hostname is scan text,
+    inserted through `fill()` as plain text; the UI escapes it with `md()`.
 - Input (real example): `analyse_file("V3_small_office.xml")`, the brief's question
   "is it safe that my printer has port 9100 open?", `lang="en"`.
 - Output: `citations == ["[192.168.1.10:9100 PRINTER_RAW_EXPOSED]"]`, `text` contains `192.168.1.10` and that
