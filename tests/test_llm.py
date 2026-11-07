@@ -310,3 +310,32 @@ def test_chat_turns_a_strange_reply_into_model_unavailable(monkeypatch, body):
     monkeypatch.setattr(llm.OPENER, "open", lambda request, timeout: FakeResponse(body))
     with pytest.raises(ModelUnavailable):
         llm.chat(MODEL, "s", "p", LLM_TIMEOUT_SECONDS)
+
+
+# Run in a fresh Python, so no module another test imported can hide what the CLI itself loads.
+LOADED_BY_ANALYSE = """
+import sys
+from conetuga.__main__ import main
+code = main(["analyse", sys.argv[1], "--out", sys.argv[2]])
+print("exit", code)
+print("llm loaded", "conetuga.explain.llm" in sys.modules)
+"""
+
+
+def test_analyse_never_loads_the_local_model(tmp_path):
+    """E's 00:32: the model stays out of the Test Set path. Even with CONETUGA_LLM_MODEL set, `python -m conetuga
+    analyse` (which writes the CSVs we upload) never imports llm.py, so it can't call a model."""
+    import os
+    import subprocess
+    import sys
+
+    env = {**os.environ, MODEL_VARIABLE: MODEL, "CONETUGA_HISTORY_DIR": str(tmp_path / "history"),
+           "CONETUGA_ENV_FILE": str(tmp_path / "no-env-file"), "PYTHONIOENCODING": "utf-8"}
+    out = tmp_path / "out"
+    run = subprocess.run([sys.executable, "-c", LOADED_BY_ANALYSE, str(SCANS), str(out)], cwd=ROOT, env=env,
+                         capture_output=True, text=True, encoding="utf-8", timeout=120)
+
+    lines = run.stdout.splitlines()
+    assert "exit 0" in lines, run.stdout + run.stderr
+    assert "llm loaded False" in lines
+    assert (out / "findings.csv").is_file() and (out / "scores.csv").is_file()
