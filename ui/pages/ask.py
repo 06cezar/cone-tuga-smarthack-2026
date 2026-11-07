@@ -3,11 +3,12 @@ from that scan only, with the findings each answer relies on. The conversation s
 cleared when another scan is picked; nothing is written anywhere.
 
 Every text is shown through view.md: the answers carry scan text (hostnames, products), and the question is the
-user's own untrusted text (NFR-03)."""
+user's own untrusted text (NFR-03). An answer rephrased by the optional local model (off by default) says so."""
 import streamlit as st
 
 from conetuga.explain import reply
 from conetuga.explain.assistant import ASSISTANT, MAX_MESSAGES, USER
+from conetuga.explain.llm import SOURCE_LLM
 from conetuga.explain.qa import MAX_QUESTION_CHARS
 from ui.assets import guide_picture
 from ui.cards import mode_of
@@ -30,6 +31,8 @@ TEXT = {
         "invalid": "Scrie o întrebare de cel mult {limit} de caractere.",
         "source_retrieval": "Răspunsul vine doar din această scanare și din textele noastre, cu problemele pe care se "
                             "sprijină.",
+        "source_llm": "✍️ Reformulat de un model local (pe acest calculator), verificat cu scanul: fiecare adresă, "
+                      "număr și problemă citată vine din scanare.",
         "clear": "Șterge conversația",
     },
     "en": {
@@ -42,6 +45,8 @@ TEXT = {
         "placeholder": "For example: \"What do I fix first?\" or \"Is my printer's port 9100 dangerous?\"",
         "invalid": "Write a question of at most {limit} characters.",
         "source_retrieval": "The answer comes only from this scan and our own texts, with the findings it relies on.",
+        "source_llm": "✍️ Rephrased by a local model (on this computer), checked against the scan: every address, "
+                      "number and cited finding comes from the scan.",
         "clear": "Clear the conversation",
     },
 }
@@ -104,4 +109,5 @@ def show_message(message: dict, lang: str, advanced: bool) -> None:
     path, _alt = guide_picture(guide_of(advanced), lang)
     with st.chat_message(ASSISTANT, avatar=str(path)):
         st.markdown(md(message["text"]))
-        st.markdown(f"*{TEXT[lang]['source_retrieval']}*")
+        source = "source_llm" if message.get("source") == SOURCE_LLM else "source_retrieval"
+        st.markdown(f"*{TEXT[lang][source]}*")

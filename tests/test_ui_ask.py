@@ -93,3 +93,24 @@ def test_clearing_empties_the_conversation():
     app.button[0].click().run()
     assert not app.exception
     assert not app.chat_message
+
+
+def test_an_answer_rephrased_by_the_local_model_says_so(monkeypatch):
+    from conetuga.explain import llm
+
+    llm.clear_cache()
+    monkeypatch.setenv(llm.MODEL_VARIABLE, "test-model")
+    monkeypatch.setattr(llm, "chat", lambda model, system, prompt, timeout: (
+        "Anyone on your network can print on it. [192.168.1.10:9100 PRINTER_RAW_EXPOSED]"))
+    try:
+        app = ask(show(V3, "English"), QUESTION["English"])
+    finally:
+        llm.clear_cache()
+    answer = chat_text(app)[1:]
+    assert unescaped(answer[0]).startswith("Anyone on your network")
+    assert "Rephrased by a local model" in answer[1]
+
+
+def test_without_the_model_the_answer_says_it_comes_from_the_scan():
+    answer = chat_text(ask(show(V3, "English"), QUESTION["English"]))[1:]
+    assert "comes only from this scan" in answer[1]
