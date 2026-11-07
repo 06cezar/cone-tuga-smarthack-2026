@@ -1,6 +1,7 @@
 """The settings every page shares, in one place: the language and the mode (Simple with Tuga 🐢, Advanced with
 Cone 🐇). ui/app.py draws them in the sidebar on every page; a page reads them with `current()` and never keeps its own
-copy, so switching the language or the mode changes every page at once."""
+copy, so switching the language or the mode changes every page at once. The scan picked on Acasă is shared the same
+way (`remember_scan`, `current_scan`), so every page shows the same scan."""
 from dataclasses import dataclass
 
 import streamlit as st
@@ -8,6 +9,7 @@ import streamlit as st
 LANGUAGES = {"Română": "ro", "English": "en"}  # shown name -> the code every contract takes
 LANGUAGE_KEY = "language_choice"
 ADVANCED_KEY = "advanced_mode"
+SCAN_KEY = "scan_result"  # the scan picked on Acasă, shared with the other pages
 DEFAULT_LANGUAGE = "Română"  # the brief's users are Romanian; English is one click away
 
 TEXT = {
@@ -41,6 +43,17 @@ def sidebar_settings() -> Settings:
         advanced = st.toggle(TEXT[lang]["advanced"], key=ADVANCED_KEY, help=TEXT[lang]["advanced_help"])
         st.markdown(TEXT[lang]["advanced_guide" if advanced else "simple_guide"])
     return Settings(lang=lang, advanced=advanced)
+
+
+def remember_scan(result) -> None:
+    """Keep the scan Acasă just analysed (its FileResult, an error included) for this session, so the other pages show
+    the same scan. Only in this session's memory: nothing is written anywhere (the history saves scans itself)."""
+    st.session_state[SCAN_KEY] = result
+
+
+def current_scan():
+    """The FileResult Acasă last analysed in this session, or None before any scan was picked."""
+    return st.session_state.get(SCAN_KEY)
 
 
 def current() -> Settings:
