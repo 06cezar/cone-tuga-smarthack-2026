@@ -12,6 +12,9 @@ def history_in_a_temporary_folder(tmp_path, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
-def no_blockchain_settings(monkeypatch):
+def no_blockchain_settings(monkeypatch, tmp_path):
     for name in CHAIN_SETTINGS:
         monkeypatch.delenv(name, raising=False)
+    # The CLI reads CONETUGA_* settings from the repo's .env: point it at a file that isn't there, so a person's own
+    # .env (with a real chain's settings) never reaches a test.
+    monkeypatch.setenv("CONETUGA_ENV_FILE", str(tmp_path / "no-env-file"))
