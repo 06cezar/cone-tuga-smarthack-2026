@@ -2,7 +2,8 @@
 
 D (Cezar)'s Claude reached its usage limit on Nov 7 around 18:20. Cezar wrote (`conetuga/analysis/COMMS.md`, 18:23)
 that A may work on D's files (`ui/`, `conetuga/history/`, `PITCH.md`, `docs/`) under the usual rules, and Mihnea (A)
-agreed for **UI coding only, temporarily**, until he says stop or D is back. This file lists everything A changed in
+agreed for **UI coding only, temporarily**, until he says stop or D is back. **Mihnea stopped it at 18:37 on Nov 7**: A took
+nothing in D's files after this PR. This file lists everything A changed in
 D's files, so D can review it, keep it, change it or revert it. A takes nothing else from D's list without a line in
 `ui/COMMS.md` first.
 
