@@ -12,6 +12,7 @@ minutes, in English, with at least two speakers (juniors and seniors both speak)
 | "Every one of the 15 findings is explained in Romanian and English, in at most 2 sentences, with 1–5 fixes, and no hand-written IP, port or CVE." | `data/explanations.toml` | `tests/test_explanations.py` |
 | "The tool refuses public IPs and anything outside our hotspot." | `conetuga/guard/scope.py` | `tests/test_guard.py::test_contract_check_scope`, `::test_venue_network_is_refused_while_we_are_on_our_hotspot`, `::test_every_target_is_refused_on_the_venue_wifi` |
 | "A broken file shows a clear error, and the other files still run." | `conetuga/guard/export.py` | `tests/test_export.py::test_broken_file_gets_an_error_row_and_the_export_goes_on`, `::test_a_crash_in_the_analysis_becomes_an_error_row`, `tests/test_cli.py::test_analyse_writes_both_files_and_says_what_happened_to_each` |
+| "A live scan runs only on our hotspot, with --confirm, at most 100 packets per second, and only nmap gets administrator rights." | `conetuga/guard/scan.py` | `tests/test_scan.py::test_nothing_reaches_nmap_without_the_guardrails_yes`, `::test_rate_is_at_most_100_packets_per_second`, `::test_without_root_on_linux_only_nmap_runs_through_sudo` |
 
 Planned claims, to move into the table once their test passes:
 - "The AI can't invent a port or a CVE: code checks every sentence."
