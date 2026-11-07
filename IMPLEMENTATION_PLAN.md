@@ -70,7 +70,7 @@ Order: the contracts first (FE-A1, FE-B1, FE-B3), D's shell (FE-D1) next, then t
 - [x] FE-A4 Data for the Dispozitive page in `ui/view.py`: filter by risk and type, sort
 
 **C**
-- [ ] FE-C1 Scan page `ui/pages/scan.py`: the detected network (FR-01) and the exact `scan --confirm` command; it runs
+- [x] FE-C1 Scan page `ui/pages/scan.py`: the detected network (FR-01) and the exact `scan --confirm` command; it runs
   nothing (NFR-04)
 - [ ] FE-C2 NFR-07: a /24 live scan under 5 minutes, or the limitation written down
 - [ ] FE-C3 `tests/test_privacy.py` over every page, both modes, both themes
