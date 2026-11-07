@@ -11,9 +11,9 @@ minutes, in English, with at least two speakers (juniors and seniors both speak)
 | "A hostile scan file can't trick the parser: external entities (XXE), truncated and oversized files are refused with a clear error." | `conetuga/analysis/parser.py` | `tests/test_analysis.py::test_xml_external_entities_are_refused`, `::test_truncated_file_gives_no_findings_from_its_first_half`, `::test_file_larger_than_the_limit_is_an_error` |
 | "Every one of the 15 findings is explained in Romanian and English, in at most 2 sentences, with 1–5 fixes, and no hand-written IP, port or CVE." | `data/explanations.toml` | `tests/test_explanations.py` |
 | "The tool refuses public IPs and anything outside our hotspot." | `conetuga/guard/scope.py` | `tests/test_guard.py::test_contract_check_scope`, `::test_venue_network_is_refused_while_we_are_on_our_hotspot`, `::test_every_target_is_refused_on_the_venue_wifi` |
+| "A broken file shows a clear error, and the other files still run." | `conetuga/guard/export.py` | `tests/test_export.py::test_broken_file_gets_an_error_row_and_the_export_goes_on`, `::test_a_crash_in_the_analysis_becomes_an_error_row`, `tests/test_cli.py::test_analyse_writes_both_files_and_says_what_happened_to_each` |
 
 Planned claims, to move into the table once their test passes:
-- "A broken file shows a clear error, and the other files still run."
 - "The AI can't invent a port or a CVE: code checks every sentence."
 - "MAC addresses are masked everywhere."
 
