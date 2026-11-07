@@ -22,7 +22,7 @@ Team rules for every Claude session on this project. Details live in the files n
   Tasks: `IMPLEMENTATION_PLAN.md` · Pitch claims: `PITCH.md`
 - Deliverables: the Test Set upload, the `final` tag, a README with one-command setup, our lab scans and the Validation
   Set as test fixtures, a one-page technical summary, the pitch. The full checklist is in `IMPLEMENTATION_PLAN.md`.
-- Stack: Python 3.13, `defusedxml`, Streamlit for the UI, nmap for live scans; the Anthropic SDK only for optional
+- Stack: Python 3.13 (3.11 or newer works; the tests need `tomllib`), `defusedxml`, Streamlit for the UI, nmap for live scans; the Anthropic SDK only for optional
   explanations.
 
 ## Commands (Windows; in Git Bash use forward slashes)
@@ -68,16 +68,19 @@ Team rules for every Claude session on this project. Details live in the files n
 - When a task is done, say in at most 3 sentences what changed (`file:line`), why, and what breaks without it.
   We must be able to explain every part to the jury ourselves.
 - Report honestly: paste the failing output; never say "done" without running the tests.
-- Commit or push only when we ask.
+- Commit or push only when we ask, and never on `main`, for any of us and any Claude session. If you're on `main`,
+  first create a branch (`git switch -c <stream>-<topic>`), then commit, push it (`git push -u origin <branch>`) and
+  open a Pull Request (`gh pr create`). Only a merged Pull Request puts anything on `main`. The git hook in
+  `.githooks/` (turned on by the setup scripts) refuses commits on `main`.
 
 ## Team and files (avoids merge conflicts)
 | Stream | Owner | Files |
 |---|---|---|
 | A parser, rules, score | <name> | `conetuga/analysis/`, `data/catalog.toml` |
 | B explanations, fixes, LLM | <name> | `conetuga/explain/`, `data/explanations.toml` |
-| C guardrail, security, CSV export | <name> | `conetuga/guard/` |
+| C guardrail, security, CSV export | <name> | `conetuga/guard/`, `conetuga/__main__.py` (the CLI) |
 | D UI, history, pitch | Cezar | `ui/`, `conetuga/history/`, `PITCH.md`, `docs/` |
-| E lab, captures, QA | <name> | `lab/`, `tests/fixtures/` |
+| E lab, captures, QA | <name> | `lab/`, `tests/fixtures/`, `submission/` |
 - Branch from an up-to-date `main`, named `<stream>-<topic>` (e.g. `A-smb-rule`); merge through a Pull Request with
   the tests green, at least once an hour. Nobody works on `main` directly.
 - Small commits, one task each: `<area>: <what changed>`.

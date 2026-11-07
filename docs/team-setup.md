@@ -19,6 +19,8 @@
      atingi altceva.”
 6. Pornește Claude Code din folderul repo-ului. Primul mesaj: „Citește CLAUDE.md, specs/00-brief.md și
    specs/contracts.md.”
-7. Git: branch din `main` actualizat, Pull Request, merge măcar o dată pe oră. Nimeni nu lucrează direct pe `main`.
+7. Git: **niciun commit pe `main`**, nici de la voi, nici de la Claude-ul vostru. Pentru fiecare task: `git switch main`,
+   `git pull`, `git switch -c <stream>-<subiect>`, commit, `git push -u origin <branch>`, apoi Pull Request. Merge
+   măcar o dată pe oră. Setup-ul de la pasul 4 pornește un hook git care refuză orice commit pe `main`.
 
 Pe laptopul care scanează mai trebuie nmap cu Npcap (de pe nmap.org) și gitleaks.

@@ -25,13 +25,16 @@ with its test.
 - Input (real example): `V1_home_basic.xml` from the Validation Set.
 - Output: `findings == [Finding("V1_home_basic.xml", "192.168.1.1", 80, "HTTP_ADMIN_CLEARTEXT", "medium", ...)]`,
   `score == 90`, `error == ""`.
-- Errors: an unreadable or truncated file (V7) returns `score=None` and a clear `error`, and never raises. Findings are
-  sorted by IP (as a number), port and code, so two runs give the same result; no finding appears twice.
+- Errors: an unreadable or truncated file (V7) returns `hosts=[]`, `findings=[]`, `score=None` and a clear `error`,
+  and never raises. Findings are sorted by IP (as a number), port (`None` as -1) and code, so two runs give the same
+  result; no finding appears twice.
 - Test: `tests/test_analysis.py::test_contract_analyse_file`
 
 ### export · owner: C · used by: the CLI, the upload at hour 21
 - Call: `export(folder: Path, out: Path) -> None`, also `python -m conetuga analyse <folder> --out <out>`
-- Input: the Validation Set folder. Output: `out/findings.csv` and `out/scores.csv`, exactly as above.
+- Input: `tests/fixtures/validation/scans/`. Output: `out/findings.csv` and `out/scores.csv`, exactly as above.
+- Which files count: every file in the folder except hidden ones (names starting with `.`), whatever the extension,
+  sorted by name, so a broken file named `.txt` still gets its `ERROR` row. Ask a mentor; change this only on their answer.
 - Errors: a broken file adds an `ERROR` row and the export goes on.
 - Test: `tests/test_export.py::test_contract_export`
 
@@ -42,15 +45,18 @@ with its test.
 - Test: `tests/test_guard.py::test_contract_detect_network`, with the output of the OS commands saved as fixtures
 
 ### check_scope · owner: C · used by: the live scan
-- Call: `check_scope(target: str, allowlist: list[str], confirmed: bool) -> ScopeDecision(allowed: bool, reason: str)`
-- Examples, with the laptop on `172.20.10.0/28`: `8.8.8.8` is refused (public IP); `100.64.0.1` is refused (the mobile
-  carrier's shared range); `192.168.1.0/24` is refused (outside the allowlist, like the venue network);
-  `172.20.0.0/16` is refused (larger than our subnet); `172.20.10.0/28` with `confirmed=False` is refused (needs
-  `--confirm`); with `confirmed=True` it is allowed.
+- Call: `check_scope(target: str, allowlist: list[str], confirmed: bool, ssid: str) -> ScopeDecision(allowed: bool,
+  reason: str)`
+- Examples, with the laptop on `172.20.10.0/28` and `ssid="RSH-ConeTuga"`: `8.8.8.8` is refused (public IP);
+  `100.64.0.1` is refused (the mobile carrier's shared range); `192.168.1.0/24` is refused (outside the allowlist,
+  like the venue network); `172.20.0.0/16` is refused (larger than our subnet); `router.local` is refused (not an IP
+  or a CIDR); `172.20.10.0/28` with `confirmed=False` is refused (needs `--confirm`); with `confirmed=True` it is
+  allowed. With `ssid="Venue-WiFi"`, every target is refused, the connected subnet too.
 - Test: `tests/test_guard.py::test_contract_check_scope`
 
 ### explain · owner: B · used by: D (UI)
-- Call: `explain(finding: Finding, lang: str) -> Explanation(text: str, steps: list[str], source: str)`
+- Call: `explain(finding: Finding, host: Host, lang: str) -> Explanation(text: str, steps: list[str], source: str)`.
+  The host gives the structured evidence (service, product, version of the finding's port) that the LLM check needs.
 - Example: HTTP_ADMIN_CLEARTEXT on 192.168.1.1:80 with `lang="ro"` gives at most 2 sentences, 1–5 steps, and
   `source="template"` when there's no LLM.
 - Errors: an unknown code or language raises `KeyError`; an LLM failure falls back to the template and never raises.
