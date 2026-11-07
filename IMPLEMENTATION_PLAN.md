@@ -62,11 +62,12 @@ Order: the contracts first (FE-A1, FE-B1, FE-B3), D's shell (FE-D1) next, then t
 - [ ] FE-B6 The Q&A names devices as the UI does (`ui.view.device_name`)
 
 **A**
-- [ ] FE-A1 Contract `conetuga/insights`: `record(result)`, `top_codes(n) -> list[(code, count)]`
-- [ ] FE-A2 Local store in `.history/`: code counts only (no IP, MAC, hostname, file name), opt-in, cleared by
+- [x] FE-A1 Contract `conetuga/insights`: `set_enabled`, `is_enabled`, `status`, `record(result, scan_id, seen)`,
+  `top_codes(n) -> list[(code, count)]` (D's OK, Nov 7 21:40)
+- [x] FE-A2 Local store in `.history/`: code counts only (no IP, MAC, hostname, file name), opt-in, cleared by
   "Șterge istoricul meu" (NFR-02)
 - [ ] FE-A3 "Cele mai comune probleme" panel on the Wiki page, with B
-- [ ] FE-A4 Data for the Dispozitive page in `ui/view.py`: filter by risk and type, sort
+- [x] FE-A4 Data for the Dispozitive page in `ui/view.py`: filter by risk and type, sort
 
 **C**
 - [ ] FE-C1 Scan page `ui/pages/scan.py`: the detected network (FR-01) and the exact `scan --confirm` command; it runs
