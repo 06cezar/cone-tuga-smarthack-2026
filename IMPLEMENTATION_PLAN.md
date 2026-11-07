@@ -11,7 +11,8 @@ Status lives here, not in CLAUDE.md. Milestones are the brief's; hours count fro
   `tests/test_analysis.py` and `tests/test_rules.py` import it (checked by A and D), so no test change is needed
 
 ## B · explanations and fixes
-- [ ] Built-in RO/EN text and 1–5 steps for every catalog code (hour 12)
+- [x] Built-in RO/EN text and 1–5 steps for every catalog code (hour 12): `data/explanations.toml` (PR #6), `explain()`
+  and `device_label()` (PR #7)
 - [ ] Optional LLM explanations, with the grounding check and the fallback
 - [ ] Q&A assistant from scan evidence only (FR-12, Should)
 
@@ -30,8 +31,8 @@ Status lives here, not in CLAUDE.md. Milestones are the brief's; hours count fro
 ## E · lab and QA
 - [ ] Hotspot `RSH-<team name>` (ours: `RSH-ConeTuga`), 3+ targets, 5+ catalog codes, three scans saved (hour 3)
 - [ ] Before/after pair: fix 2+ findings and rescan
-- [ ] The 8 Validation Set XML files copied into `tests/fixtures/validation/scans/` (scan files only there); rehearse
-  the 7 live checks
+- [x] The 8 Validation Set XML files copied into `tests/fixtures/validation/scans/` (scan files only there)
+- [ ] Rehearse the 7 live checks
 - [ ] Lab scans used as fixtures: a test checks that our before/after pair shows the score improving
 
 ## Deliverables (the brief's checklist)
@@ -42,7 +43,7 @@ Status lives here, not in CLAUDE.md. Milestones are the brief's; hours count fro
   the same versions
 - [ ] Git release tagged `final` at upload time (hour 22 at the latest); nothing after that tag counts
 - [ ] README explaining setup, live scan and file analysis, with one-command setup (`setup.ps1`, `setup.sh`)
-- [ ] Validation Set reproduced: all 24 rows, no extra rows, correct scores
+- [x] Validation Set reproduced: all 24 rows, no extra rows, correct scores (`tests/test_validation_set.py`, PR #5)
 - [ ] Our hotspot lab scans (nmap XML) in the repo, including one before/after pair
 - [ ] Simple UI showing score, devices, findings, fixes and history
 - [ ] One-page technical summary (`docs/technical-summary.md`): lab setup, architecture, assumptions, limitations, LLM use
