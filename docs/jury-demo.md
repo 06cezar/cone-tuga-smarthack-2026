@@ -28,8 +28,13 @@ tag. Tag-ul `final` trebuie să marcheze exact codul care a produs rezultatele, 
 2. Pe `main` la zi, rulează pe tot folderul:
    ```bash
    git switch main && git pull
+   env | grep CONETUGA_CHAIN || echo "fara blockchain"   # trebuie să scrie: fara blockchain
    .venv/bin/python -m conetuga analyse ~/TestSet --out submission/
    ```
+   Dacă `env` arată vreo variabilă `CONETUGA_CHAIN_*`, rulează întâi
+   `unset CONETUGA_CHAIN_RPC_URL CONETUGA_CHAIN_CONTRACT CONETUGA_CHAIN_PRIVATE_KEY`: altfel `analyse` încearcă să
+   trimită amprentele jurnalului pe un blockchain (#62). CSV-urile nu se schimbă, dar Test Set-ul nu are nevoie de
+   rețea. Rândul `Jurnal: N constatări salvate` de la final e normal: e jurnalul local din `.history/`.
 3. Verifică repede: `wc -l submission/findings.csv submission/scores.csv` (un rând de antet plus câte un rând pe
    finding / pe fișier) și `grep ERROR submission/scores.csv` (brief-ul spune că un fișier e stricat).
 4. Fă captura de ecran a UI-ului (vezi „Înainte de sesiune”, pasul 3), cu unul dintre fișierele Test Set-ului deschis,
@@ -58,10 +63,12 @@ tag. Tag-ul `final` trebuie să marcheze exact codul care a produs rezultatele, 
 
 ## Înainte de sesiune (cu 30 de minute înainte)
 
-1. **Mihnea:** repo-ul la zi și testele verzi:
+1. **Mihnea:** repo-ul la zi, testele verzi, și niciun blockchain setat în terminal (verificările 1 și 5 rulează
+   `analyse`, care altfel ar încerca să trimită amprentele jurnalului):
    ```bash
    git switch main && git pull
    .venv/bin/python -m pytest -q
+   env | grep CONETUGA_CHAIN || echo "fara blockchain"   # trebuie să scrie: fara blockchain
    ```
 2. **E:** hotspot-ul `RSH-ConeTuga` pornit, cu ecranul Personal Hotspot deschis pe telefon (iPhone-ul nu se arată
    dispozitivelor noi altfel). **Mihnea:** conectează-te la `RSH-ConeTuga` (meniul Wi-Fi sau
@@ -72,11 +79,10 @@ tag. Tag-ul `final` trebuie să marcheze exact codul care a produs rezultatele, 
    .venv/bin/streamlit run ui/app.py
    ```
    În pagină: „🗑️ Șterge istoricul meu”; apoi, la „Alege o scanare din exemple”, `scan_01.xml` (din `lab/scans`),
-   apoi `scan_03.xml`. Istoricul are acum înainte/după al laboratorului nostru.
-   **Cât timp PR #35 nu e pe `main`**, istoricul compară orice scanare cu cea de dinainte, chiar dacă e altă rețea:
-   atunci apasă „🗑️ Șterge istoricul meu” chiar înainte de verificarea 2 și din nou chiar înainte de verificarea 6
-   (acolo pregătești din nou `scan_01` → `scan_03`). Cu #35 pe `main`, istoricul arată doar scanări ale aceleiași
-   rețele, și ștergerile în plus nu mai trebuie.
+   apoi `scan_03.xml`. Istoricul are acum înainte/după al laboratorului nostru. Istoricul compară singur doar scanări
+   ale aceleiași rețele (#35, #40), deci fișierele juriului nu se amestecă cu laboratorul și nu mai trebuie șters
+   între verificări.
+   Verifică și modul: comutatorul „Avansat (Cone 🐇)” din stânga **oprit**, ca juriul să înceapă cu Tuga 🐢.
 4. **E:** `submission/` are exact ce am încărcat, iar tag-ul e pe GitHub: `git ls-remote --tags origin final`.
 5. Laptopul în priză; încărcătorul la îndemână.
 
@@ -94,10 +100,16 @@ Așteptat: `IDENTICAL` (același fișier dă mereu același rezultat, octet cu o
 
 ### 2. Sarcina practică: un membru al juriului folosește UI-ul singur
 Deschide în UI fișierul juriului și dă-i laptopul. **Nu spunem nimic.** Primul ecran răspunde „Cel mai periculos
-dispozitiv și ce fac întâi”.
+dispozitiv și ce fac întâi”: titlul mare de pe Acasă, spus de Tuga 🐢 (desenul și numele lui sunt lângă titlu), apoi
+scorul cu semaforul, apoi dispozitivele, de la cel mai periculos, primul deschis.
 
 ### 3. Explicațiile: trei findings alese de juriu
 În UI, deschide cele trei findings: explicația (cel mult 2 propoziții) și pașii (1–5). Comută RO/EN dacă cer.
+- Pe **Acasă** sunt toate dispozitivele, fiecare cu problemele lui. Pe pagina **Dispozitive** (meniul din stânga) le
+  filtrezi după risc sau tip și le ordonezi: cel mai repede ajungi la un finding anume.
+- Dacă juriul e tehnic, pornește „Avansat (Cone 🐇)”: Cone dă textul tehnic, codul din catalog, dovada (portul,
+  serviciul, programul și versiunea văzute de nmap) și referințele CIS Controls / OWASP IoT. Titlul de sus nu se
+  schimbă.
 
 ### 4. Guardrail-ul: un IP public și rețeaua locației sunt refuzate
 ```bash
@@ -107,6 +119,8 @@ dispozitiv și ce fac întâi”.
 Așteptat: ambele refuzate, cu motivul în română și engleză, și nmap nu pornește. `10.240.0.0/16` e rețeaua Wi-Fi a
 locației („UnivBuc”); dacă juriul dă alt interval al locației, folosește-l pe acela. Pe Wi-Fi-ul locației orice
 scanare e refuzată (nu e `RSH-ConeTuga`). Fără `--confirm`, și scanarea propriei rețele e refuzată.
+În UI, pagina **Scanare** arată același lucru fără să ruleze nimic: rețeaua la care e conectat laptopul, „✅ Ești pe
+hotspotul echipei” sau „⛔ Scanarea ar fi refuzată acum”, cu motivul, și comanda exactă de rulat.
 
 ### 5. Fișier stricat: o eroare clară, fără crash
 În UI, deschide `V7_broken.xml` (sau fișierul stricat din Test Set). Din linia de comandă:
@@ -117,8 +131,7 @@ Așteptat: `V7_broken.xml: EROARE / ERROR: ... not complete, valid XML ...`, iar
 
 ### 6. Istoricul: înainte/după din laboratorul nostru, cu scorul crescând
 Fișierul juriului încărcat are prioritate față de lista de exemple: **întâi scoate-l din „sau încarcă fișierul tău
-nmap XML” (×)**, apoi alege `scan_03.xml` din exemple; la „Compară cu scanarea de la” apare `scan_01`. (Cât timp
-PR #35 nu e pe `main`: „🗑️ Șterge istoricul meu”, apoi `scan_01.xml`, apoi `scan_03.xml`.) Istoricul arată
+nmap XML” (×)**, apoi alege `scan_03.xml` din exemple; la „Compară cu scanarea de la” apare `scan_01`. Istoricul arată
 `scan_01` → `scan_03`, scor **0 → 70**, 4 findings rezolvate, niciunul nou. E povestește ce a oprit Stefan: telnet și
 FTP (0 → 50), apoi Redis (50 → 70). `scan_02` e pasul din mijloc, dacă îl cer.
 
@@ -140,6 +153,18 @@ Așteptat: `no leaks found`.
   iar catalogul decide după numele serviciului.
 - **„De ce lipsește MQTT în laborator?”** Cu `-sV`, scriptul `mqtt-subscribe` al nmap pune versiunea brokerului în
   locul numelui serviciului; catalogul decide după nume, deci nu raportăm. E o limitare spusă deschis.
+- **„Cine sunt Tuga și Cone?”** Doi ghizi pentru același rezultat: Tuga 🐢 explică pe înțelesul oricui (implicit),
+  Cone 🐇 dă detaliile tehnice (comutatorul „Avansat”). Findings și scorul sunt aceleași: le decide codul, din
+  catalog, nu ghidul și nu un AI.
+- **„La ce folosește blockchain-ul?”** Jurnalul local al problemelor găsite (SQLite, în `.history/`) e protejat la
+  modificări: la fiecare 10 rânduri, amprenta lor (SHA-256, legată de lotul dinainte) poate fi pusă într-un contract
+  pe un blockchain de test. `ledger verify` arată ce lot a fost schimbat, șters sau inversat. Pleacă de pe calculator
+  doar amprentele, și doar dacă un om setează cele trei variabile `CONETUGA_CHAIN_*`. Dacă juriul vrea să vadă, o
+  arătăm pe un Anvil local (pe laptopul care are Foundry), nu pe o rețea publică. Util, de exemplu, pentru un
+  asigurator care vrea dovada că jurnalul n-a fost rescris.
+- **„E accesibil?”** Am verificat cu axe-core (regulile WCAG 2.1 AA) fiecare pagină, pe tema deschisă și pe cea
+  închisă: 0 probleme. Textul are cel puțin 16 px, culoarea nu e niciodată singurul semn (mereu iconiță și cuvânt), și
+  totul merge din tastatură, cu un contur albastru pe elementul curent.
 
 ## Dacă ceva nu merge
 
