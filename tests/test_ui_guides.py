@@ -37,19 +37,27 @@ def headline(app) -> str:
     return next(m.value for m in app.markdown if m.value.startswith("## "))
 
 
+def named_under_the_headline_picture(app, name: str) -> bool:
+    """The headline's guide is named in its own column: the name alone on its line, not the sidebar's sentence
+    ("🐢 **Tuga** îți explică pe înțeles.") that also holds the name (A's P3 on #66)."""
+    return any(m.value == name for m in app.markdown)
+
+
 def test_in_simple_mode_tuga_says_the_headline_and_sits_in_the_sidebar():
     app = run()
     alts = [p.alt for p in pictures(app)]
     assert alts == [guide_picture("tuga", "ro")[1]] * 2  # the sidebar and the headline
     assert all(p.url.startswith("data:image/svg+xml") for p in pictures(app))
-    assert "🐢 **Tuga**" in texts(app)  # named beside the picture, never the picture alone
+    assert "🐢 **Tuga** îți explică" in texts(app)  # the sidebar names its picture
+    assert named_under_the_headline_picture(app, "🐢 **Tuga**")  # so does the headline: never a picture alone
 
 
 def test_in_advanced_mode_cone_takes_over_and_the_headline_stays_the_same():
     simple = headline(run())
     app = run(advanced=True)
     assert [p.alt for p in pictures(app)] == [guide_picture("cone", "ro")[1]] * 2
-    assert "🐇 **Cone**" in texts(app)
+    assert "🐇 **Cone** îți arată" in texts(app)
+    assert named_under_the_headline_picture(app, "🐇 **Cone**")
     assert headline(app) == simple
 
 
