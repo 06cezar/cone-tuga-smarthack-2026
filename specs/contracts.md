@@ -106,6 +106,30 @@ with its test.
   bytes as `content`; the stored result holds masked MACs only, and devices nmap gave up on keep `timed_out=True`.
 - Test: `tests/test_history.py::test_contract_diff`
 
+### insights · owner: A · used by: D (UI: the opt-in switch), A and B (the "Cele mai comune probleme" panel, FE-A3)
+- Calls, from `conetuga.insights`:
+  - `set_enabled(on: bool) -> None` and `is_enabled() -> bool`: the opt-in. Off until the person turns it on
+    (NFR-02); the UI shows the switch.
+  - `record(result: FileResult, scan_id: str) -> bool`: when enabled, adds this scan's findings to the counts, **once
+    per `scan_id`**. `scan_id` is the history's `digest_of(content)` of the scan file, so a page that reruns, or the
+    same scan opened again, counts once. Returns True when it counted; False, with nothing stored, when disabled, when
+    the result has an `error`, or when that `scan_id` was already counted.
+  - `top_codes(n: int) -> list[tuple[str, int]]`: the `n` catalog codes found most often across the counted scans, as
+    `(code, number of findings)`, most first, ties by code; only codes found at least once, so fewer than `n` when
+    fewer exist.
+- What is stored, and only this: a count per catalog code, the counted `scan_id`s (SHA-256 digests of scan files that
+  `.history/` already keeps) and the opt-in flag. Never an IP, MAC, hostname, vendor, port, page title or file name.
+- Where: one SQLite file in the history folder (`conetuga.history.store.history_dir()`, so `CONETUGA_HISTORY_DIR` in
+  tests). `delete_history()` removes that folder, so "Șterge istoricul meu" deletes the counts and the opt-in with it,
+  with no extra call. A shared, anonymous store later would sit behind the same calls, after a team decision on NFR-02.
+- Example: enabled, then `record(V2_smart_home.xml, its digest)` → True, `record(V4_legacy.xml, its digest)` → True,
+  `record(V2_smart_home.xml, its digest)` again → False; `top_codes(2) == [("HTTP_ADMIN_CLEARTEXT", 3),
+  ("CAMERA_STREAM_EXPOSED", 1)]` (V2 has HTTP_ADMIN_CLEARTEXT twice, V4 once; the 1s are tied and sorted by code).
+- Errors and edge cases: `n < 1` raises `ValueError`. No store yet (nothing recorded, or after "Șterge istoricul meu")
+  gives `is_enabled() == False` and `top_codes(n) == []`. A store file that can't be read is never overwritten:
+  `record` returns False and `top_codes` returns `[]`, so the page never crashes and nothing is lost.
+- Test: `tests/test_insights.py::test_contract_insights`
+
 ### answer_question · owner: B · used by: D (UI)
 - Call: `answer_question(question: str, result: FileResult, lang: str) -> Answer(text: str, citations: list[str],
   source: str)`, from `conetuga.explain`. The Q&A assistant (FR-12), with no network and no key.
