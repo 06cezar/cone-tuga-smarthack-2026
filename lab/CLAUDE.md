@@ -5,16 +5,18 @@
 - Only our hotspot (`RSH-<team name>`, i.e. `RSH-ConeTuga`, WPA2 or WPA3, a strong password, a mobile data limit) or our Docker lab
   network. While it scans, the scanner laptop is on no other network: no venue Wi-Fi, no cable. Only devices the team
   owns.
-- Captures are nmap XML in `lab/scans/` (`scan_01.xml`, ...), the same format as the standard files, run as
-  administrator. Until our own `scan --confirm` works, a quick capture of the lab's ports is enough:
-  `nmap -sS -sU -sV --script http-title -p T:21-23,80,139,445,554,1883,2323,3306,3389,5900,6379,6380,8080,8443,9100,U:53,123,161,1900,5353 -oX lab/scans/scan_01.xml <our subnet>`.
-  The brief's example has no `--script http-title`, but without it no page title is recorded. Keep at least one
-  before/after pair.
+- Roles, settled by the team on 2026-11-07: Mihnea's laptop (A, Ubuntu, nmap with sudo) is the only scanner; Stefan's
+  laptop (Windows, Docker Desktop) runs the targets; Stefan's phone is the hotspot. The steps, the capture command and
+  the expected findings are in `lab/README.md`: keep that the one place for them.
+- Captures: nmap XML, the same format as the standard files, rate-limited (`--max-rate 100`, the rules of engagement)
+  and with `--script http-title` (without it no page title is recorded). The raw XML stays in `results/` on the
+  scanner (gitignored); only copies made by `lab/mask_scan.py` go into `lab/scans/` (`scan_01.xml`, ...). The mask
+  keeps the `vendor` attribute, drops every other place nmap writes a computer name (`<service hostname>`, `extrainfo`,
+  scripts but http-title), and refuses a copy that still contains an original name or MAC or analyses differently.
 - The lab needs at least 3 targets and at least 5 different catalog codes; fix at least 2 findings and rescan.
-- Targets that work: `redis` published on 6380 (DB_EXPOSED on a non-standard port), `eclipse-mosquitto:1.6`
-  (MQTT_EXPOSED; 2.x listens only locally by default), `nginx` on 8080 serving a page titled "Admin Login"
-  (HTTP_ADMIN_CLEARTEXT), a fake telnet banner on 2323 (TELNET_OPEN), plus SSH (SSH_OPEN). Test client isolation
-  with `ping` first; if the hotspot blocks it, use setup D and say so in the pitch.
+- Targets: `lab/targets/docker-compose.yml` (redis on 6380, `eclipse-mosquitto:1.6` on 1883, nginx "Admin Login" on
+  8080) and `lab/targets/fake_services.py` (banner-only telnet on 2323, FTP saying vsFTPd 2.3.4 on 21, a silent printer
+  port on 9100). Test client isolation with `ping` first; if the hotspot blocks it, use setup D and say so in the pitch.
 - On Windows: setup D (scanning the internal Docker subnet) doesn't work from the host, because the bridge network
   lives inside the WSL2 VM; run the scanner in a container on the same network. The Windows firewall blocks ping and
   test ports by default: open them for the lab and close them afterwards.
