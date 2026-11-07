@@ -140,6 +140,53 @@ with its test.
 - Test: `tests/test_qa.py::test_contract_answer_question`; `tests/test_qa.py` also checks that "most dangerous"
   names the same device and finding as `ui.view.devices_by_risk` on V1–V6.
 
+### narrate · owner: B · used by: D (Dispozitive, Acasă), later B's assistant
+- Call: `narrate(finding: Finding, host: Host, lang: str, mode: str) -> Narration(speaker: str, title: str, text: str,
+  evidence: list[str], steps: list[str], references: list[str], source: str)`, from `conetuga.explain`.
+  - `mode` is `"simple"` or `"advanced"`; the UI passes `"advanced" if current().advanced else "simple"`
+    (`ui/state.py`). `speaker` is `"tuga"` for simple and `"cone"` for advanced; a third guide would be a new mode,
+    not a UI change. `source` is `"template"`.
+  - Simple (Tuga, the default) is exactly today's `explain(finding, host, lang)`: the same `title`, `text`, `steps`
+    and `references` (the CIS Controls / OWASP IoT bonus is visible without switching modes); `evidence == []`.
+  - Advanced (Cone), from `data/cone.toml`: its own `title`, a `text` of at most 2 sentences that names the technical
+    terms and explains each in a few words (NFR-09), 1–5 precise `steps`, and the same `references` as `explain`.
+    These texts hold no scan value and no placeholder; scan values appear only in `evidence`.
+  - `evidence` (Advanced only): short lines built by code from the scan and the catalog: the port and protocol
+    (`9100/tcp`), nmap's service, the product and version when nmap gave them, and the catalog rule that fired
+    (code, severity, points and what it means, translated). For UNKNOWN_DEVICE, which has no port: the IP, "no
+    vendor", "no name", the number of open ports, and "private (locally administered) MAC address" when the second
+    hex digit of `mac_masked` is 2, 6, A or E; never the MAC itself.
+  - Every scan value (ip, port, proto, service, product, version) enters `evidence` through `fill()` as plain text,
+    never read as a template (NFR-03); the UI still escapes everything with `md()`. No hostname, no MAC, no page title.
+- Input (real example): `analyse_file("V3_small_office.xml")`, the finding PRINTER_RAW_EXPOSED on
+  `192.168.1.10:9100/tcp` and its host (service `jetdirect`, no product).
+- Output: with `lang="ro"`, `mode="simple"`: `speaker == "tuga"`; `title`, `text`, `steps` and `references` equal
+  `explain()`'s; `evidence == []`. With `lang="en"`, `mode="advanced"`: `speaker == "cone"`; `evidence` contains
+  `9100/tcp`, `jetdirect` and `PRINTER_RAW_EXPOSED` and no line about a product;
+  `references == explain(...).references`; 1–5 steps; `source == "template"`.
+- Errors and edge cases: an unknown code, language or mode raises `KeyError`; in Advanced, when no `Port` in
+  `host.ports` matches `(finding.port, finding.proto)` for a finding that has a port, `narrate` raises `LookupError`
+  (as `explain` does for OUTDATED_SERVICE: analyse_file returned inconsistent data).
+- Test: `tests/test_narrate.py::test_contract_narrate`
+
+### wiki_entries · owner: B · used by: the Wiki page, A (the "most common problems" panel links to entries)
+- Call: `wiki_entries(lang: str, mode: str) -> list[WikiEntry(id: str, kind: str, speaker: str, title: str, text: str,
+  references: list[str])]`, from `conetuga.explain`. No scan needed: no entry holds an IP, a port number, a version or
+  any other scan value.
+  - `kind` is `"code"` (one entry per catalog code; `id` is the code, e.g. `"TELNET_OPEN"`, so `top_codes()` links
+    straight to it) or `"concept"` (`id` is `"port"`, `"encryption"`, `"firewall"`, `"mac"` or `"upnp"`).
+  - Order: the 15 codes in `data/catalog.toml`'s order, then the 5 concepts in the order above; the same every time.
+  - `mode` and `speaker` as in `narrate`. Simple: texts from `data/wiki.toml`, at most 3 sentences, no unexplained
+    term. Advanced: for the 15 codes, `title` and `text` are Cone's from `data/cone.toml`; the 5 concepts have their
+    own Advanced text in `data/wiki.toml`, at most 4 sentences, technical terms explained in a few words.
+  - `references` (CIS Controls / OWASP IoT, as in `explain`) for codes in both modes; `[]` for concepts.
+- Input (real example): `wiki_entries("ro", "simple")`.
+- Output: 20 entries; the first has `id == "TELNET_OPEN"`, `kind == "code"`, `speaker == "tuga"`; the last 5 are the
+  concepts in the order above; every `title` and `text` is non-empty and has no `{` or `}`.
+- Errors and edge cases: an unknown language or mode raises `KeyError`. The ids and their order are the same in every
+  language and mode.
+- Test: `tests/test_wiki.py::test_contract_wiki_entries`
+
 ## Template (copy it)
 
 ### <name> · owner: <stream> · used by: <streams>
