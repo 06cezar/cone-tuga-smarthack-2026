@@ -110,6 +110,9 @@ with its test.
 - Calls, from `conetuga.insights`:
   - `set_enabled(on: bool) -> bool` and `is_enabled() -> bool`: the opt-in, off until the person turns it on
     (NFR-02); the UI shows the switch. `set_enabled` returns True when the choice was saved.
+  - `status() -> str`: exactly one of `"off"` (no store yet, or statistics turned off), `"on"`, or `"unavailable"`
+    (a store file exists but can't be read). It never creates the folder or the file. The UI calls it to tell
+    "statistics off" from "statistics unavailable", which `is_enabled()` and `top_codes()` alone can't.
   - `record(result: FileResult, scan_id: str, seen: set[str]) -> bool`: when enabled, adds this scan's findings to the
     counts, once per `scan_id` within `seen`. `scan_id` is the history's `digest_of(content)`; `seen` is a set the
     **caller keeps in its session memory** (the UI: `st.session_state`), and `record` adds `scan_id` to it. So a page
@@ -125,18 +128,24 @@ with its test.
   started again) the same scan opened again is counted again. The counts therefore mean "findings in the scans opened
   while statistics were on", not "findings in different scans"; the panel says "most common problems in the scans
   you looked at".
+- Deleting: "Șterge istoricul meu" calls `delete_history()` and, in the same click, `seen.clear()` on the session's
+  set, so after the person opts in again a scan they reopen is counted again (otherwise the session would still
+  remember it). `status()` is then `"off"`.
 - Where: one SQLite file in the history folder (`conetuga.history.store.history_dir()`, so `CONETUGA_HISTORY_DIR` in
   tests). `delete_history()` removes that folder, so "Șterge istoricul meu" deletes the counts and the opt-in with it,
   with no extra call. A shared, anonymous store later would sit behind the same calls, after a team decision on NFR-02.
 - Example: `seen = set()`, `set_enabled(True)` → True, then `record(V2_smart_home.xml, its digest, seen)` → True,
   `record(V4_legacy.xml, its digest, seen)` → True, `record(V2_smart_home.xml, its digest, seen)` again → False;
   `top_codes(2) == [("HTTP_ADMIN_CLEARTEXT", 3), ("CAMERA_STREAM_EXPOSED", 1)]` (V2 has HTTP_ADMIN_CLEARTEXT twice,
-  V4 once; the 1s are tied and sorted by code).
+  V4 once; the 1s are tied and sorted by code). `status() == "on"`. Then "Șterge istoricul meu" (`delete_history()` and
+  `seen.clear()`): `status() == "off"`, `top_codes(2) == []`; after `set_enabled(True)`, `record(V2, its digest,
+  seen)` → True again.
 - Errors and edge cases: `n < 1` raises `ValueError`. No store yet (nothing saved, or after "Șterge istoricul meu")
   gives `is_enabled() == False` and `top_codes(n) == []`, and reading never creates the folder. A store file that
   can't be read or written (corrupt, locked, no permission, disk full) is never overwritten and nothing raises:
-  `is_enabled()` gives False (statistics off, the safe side), `set_enabled` and `record` give False (nothing saved),
-  `top_codes` gives `[]`; the page shows "statistics unavailable" instead of crashing.
+  `status()` gives `"unavailable"`, `is_enabled()` gives False (statistics off, the safe side), `set_enabled` and
+  `record` give False (nothing saved), `top_codes` gives `[]`; the page shows "statistics unavailable" instead of
+  crashing. `status()` never raises either.
 - Test: `tests/test_insights.py::test_contract_insights`
 
 ### answer_question · owner: B · used by: D (UI)
