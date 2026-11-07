@@ -16,20 +16,27 @@ a laptop) and setup C (simulated banners): no real login, shell, data or passwor
 | Service | Runs as | Port | Expected finding | Points |
 |---|---|---|---|---|
 | Redis, empty | container | 6380 | DB_EXPOSED | 20 |
-| Mosquitto 1.6 | container | 1883 | MQTT_EXPOSED | 10 |
+| Mosquitto 1.6 | container | 1883 | none on a live scan (see below) | 0 |
 | nginx, page "Admin Login" | container | 8080 | HTTP_ADMIN_CLEARTEXT | 10 |
 | Fake telnet (greeting only) | `fake_services.py` | 2323 | TELNET_OPEN | 20 |
 | Fake FTP ("vsFTPd 2.3.4", refuses every login) | `fake_services.py` | 21 | FTP_CLEARTEXT + OUTDATED_SERVICE | 10 + 20 |
 | Fake printer port (silent) | `fake_services.py` | 9100 | PRINTER_RAW_EXPOSED | 5 |
 
-7 catalog codes (the brief asks for 5). The phone and the laptops can add real findings of their own: check each
-capture with `analyse_file` before keeping it.
+What `scan_01` really showed (A's check, 2026-11-07 16:28): 2 devices up, 7 catalog codes, score 0 (100 points).
+Three differences from the plan, all real, none a bug:
+- No MQTT_EXPOSED: with `-sV`, nmap's own `mqtt-subscribe` script reads the broker's version and writes it into the
+  service name ("mosquitto version 1.6.15" instead of "mqtt"), and the catalog decides by service name. A limitation
+  for the technical summary; the mentors have the question.
+- UNKNOWN_DEVICE on the targets laptop (+5): its Wi-Fi card's MAC prefix isn't in nmap's vendor list, and the hotspot
+  gives no hostname.
+- FTP_CLEARTEXT on the phone (+10): the iPhone answers on port 21 with no banner, and nmap names it ftp from its port
+  table.
 
-| Capture | What runs | Expected score |
+| Capture | What runs on the targets laptop | Score |
 |---|---|---|
-| `scan_01.xml` (before) | everything | 5 |
-| `scan_02.xml` (fix 1: telnet and FTP off) | containers + printer | 55 |
-| `scan_03.xml` (fix 2: Redis off too) | Mosquitto, nginx, printer | 75 |
+| `scan_01.xml` (before) | everything | 0 (measured) |
+| `scan_02.xml` (fix 1: telnet and FTP off) | containers + printer | 50 expected |
+| `scan_03.xml` (fix 2: Redis off too) | Mosquitto, nginx, printer | 70 expected |
 
 ## On the targets laptop (Windows)
 
