@@ -56,6 +56,8 @@ TEXT = {
         "history_where": "Fiecare scanare analizată e păstrată doar pe acest calculator.",
         "history_empty": "Istoricul e gol.",
         "first_scan": "Aceasta e prima scanare din istoric. Repară ceva, scanează din nou și vezi aici diferența.",
+        "first_of_network": "Nicio scanare mai veche din istoric nu are dispozitivele acestei rețele, deci nu avem cu "
+                            "ce compara. Repară ceva, scanează din nou și vezi aici diferența.",
         "compare_with": "Compară cu scanarea de la",
         "better": "mai bine",
         "worse": "mai rău",
@@ -93,6 +95,8 @@ TEXT = {
         "history_where": "Every analysed scan is kept only on this computer.",
         "history_empty": "The history is empty.",
         "first_scan": "This is the first scan in the history. Fix something, scan again, and see the difference here.",
+        "first_of_network": "No earlier scan in the history has this network's devices, so there is nothing to compare "
+                            "with. Fix something, scan again, and see the difference here.",
         "compare_with": "Compare with the scan from",
         "better": "better",
         "worse": "worse",
@@ -125,8 +129,18 @@ def analyse_upload(upload):
         return analyse_file(path)
 
 
+def same_network(earlier, current) -> bool:
+    """True when the two scans share at least one device, by the key `diff` matches devices on (IP + hostname): only
+    then is a before/after meaningful. Two unrelated networks (V2 then V3, or our lab then a jury's file) share none,
+    and comparing them showed false "new device" alerts and "resolved" findings (C's review, 17:37)."""
+    if earlier.error or earlier.score is None:
+        return False
+    return len(diff(earlier, current).new_devices) < len(current.hosts)
+
+
 def show_history(result, content: bytes, lang: str) -> None:
-    """FR-10 and FR-13: store this scan, show the score trend, compare with an earlier scan, and offer to delete."""
+    """FR-10 and FR-13: store this scan, show the score trend of its network, compare with an earlier scan of the same
+    network, and offer to delete."""
     text = TEXT[lang]
     st.subheader(text["history"])
     digest = digest_of(content)
@@ -141,13 +155,16 @@ def show_history(result, content: bytes, lang: str) -> None:
     st.markdown(text["history_where"])
     st.markdown("\n".join(f"- {r.saved_at[TIME_OF_DAY]} · {md(r.file)} · {score_line(r.result.score, lang)[0]} "
                           f"{r.result.score}/100" for r in records))
-    if len(records) > 1:
-        st.line_chart({text["score"]: [r.result.score for r in records]})
+    this_network = [r for r in records if same_network(r.result, result)]
+    if len(this_network) > 1:
+        st.line_chart({text["score"]: [r.result.score for r in this_network]})
 
     current = next((i for i, r in enumerate(records) if r.digest == digest), len(records))
-    earlier = records[:current]
-    if not earlier:
+    earlier = [r for r in records[:current] if same_network(r.result, result)]
+    if not records[:current]:
         st.markdown(text["first_scan"])
+    elif not earlier:
+        st.markdown(text["first_of_network"])
     else:
         choice = st.selectbox(text["compare_with"], range(len(earlier)), index=len(earlier) - 1,
                               format_func=lambda i: f"{earlier[i].saved_at[TIME_OF_DAY]} · {earlier[i].file}")
