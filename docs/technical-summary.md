@@ -8,8 +8,8 @@
 - **Scanner:** Mihnea's Ubuntu laptop, nmap 7.94, started by a person: `-sS -sU -sV --script http-title --max-rate 100`,
   scanner excluded. Raw XML stays on it (gitignored); `lab/mask_scan.py` writes the repo copy and refuses it if any
   original MAC or hostname is still inside.
-- **Measured:** `scan_01` scores 0 (7 catalog codes, 2 devices); after fix 1 (telnet and FTP off) `scan_02` scores 50.
-  Fix 2 (Redis off) comes next.
+- **Measured** (`lab/scans/`): `scan_01` scores 0 (7 catalog codes, 2 devices); fix 1 (telnet and FTP off) gives
+  `scan_02` = 50; fix 2 (Redis off) gives `scan_03` = 70: 4 findings resolved, none new.
 
 ## Architecture
 `nmap XML → parser → catalog rules → standard score → explanations → CLI / CSV export / UI + history` (Python 3.13).

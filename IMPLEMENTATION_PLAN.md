@@ -48,8 +48,7 @@ Status lives here, not in CLAUDE.md. Milestones are the brief's; hours count fro
 - [x] Validation Set reproduced: all 24 rows, no extra rows, correct scores (`tests/test_validation_set.py`, PR #5)
 - [ ] Our hotspot lab scans (nmap XML) in the repo, including one before/after pair
 - [x] Simple UI showing score, devices, findings, fixes and history (PRs #20, #22)
-- [ ] One-page technical summary (`docs/technical-summary.md`): lab setup, architecture, assumptions, limitations, LLM use
-  (written; add scan_03's score once it is measured)
+- [x] One-page technical summary (`docs/technical-summary.md`): lab setup, architecture, assumptions, limitations, LLM use
 - [ ] 5–7 minute pitch in English: problem, demo, numbers, trade-offs, next steps; at least two speakers, juniors and
   seniors both speak
 - [ ] Laptop ready for the 7 live checks, rehearsed in order
