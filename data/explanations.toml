@@ -1,0 +1,368 @@
+# Built-in explanations and fixes for every catalog code, in Romanian and English. Owner: stream B.
+# Used when there's no LLM, or when an LLM answer fails the grounding check (conetuga/explain/CLAUDE.md).
+#
+# Format, per code:
+#   references = CIS Controls v8.1 safeguards and OWASP IoT Top 10 (2018) items (bonus signal in the brief)
+#   [CODE.ro] / [CODE.en]:
+#     title = short label for the UI
+#     text  = at most 2 sentences, about a 12-year-old's reading level; a technical word gets a plain explanation
+#     steps = 1-5 ordered, concrete steps, most important first
+#
+# Placeholders: only values the scan gives us, filled in by code.
+#   {ip}, {port}            from the finding (UNKNOWN_DEVICE has no {port})
+#   {product}, {version}    from the host's port, used only by OUTDATED_SERVICE
+# No number, address, version or CVE is written by hand: the text must stay true for every network. Product and
+# feature names (Windows, Remote Desktop, JetDirect) appear only to help the user find the right setting.
+
+[TELNET_OPEN]
+references = ["CIS Controls v8.1 4.6", "CIS Controls v8.1 4.8", "CIS Controls v8.1 3.10", "OWASP IoT I2"]
+
+[TELNET_OPEN.ro]
+title = "Conectare de la distanță necriptată (Telnet)"
+text = "Dispozitivul de la {ip} acceptă conectări de la distanță prin Telnet, o metodă veche care trimite parola necriptată, așa că cineva din rețea ar putea s-o citească. Cine află parola poate controla complet dispozitivul."
+steps = [
+  "Intră în setările dispozitivului (din aplicația lui sau din browser) și caută opțiunea „Telnet”.",
+  "Oprește Telnet; dacă ai nevoie de acces de la distanță, folosește SSH, varianta criptată.",
+  "Schimbă parola dispozitivului cu una lungă, pe care nu o mai folosești în altă parte.",
+  "Instalează cea mai nouă versiune a programului din interiorul dispozitivului (firmware).",
+  "Dacă nu poți opri Telnet, scoate dispozitivul din rețea până primești ajutor.",
+]
+
+[TELNET_OPEN.en]
+title = "Unencrypted remote login (Telnet)"
+text = "The device at {ip} accepts remote logins over Telnet, an old method that sends the password unencrypted, so someone on the network could read it. Whoever learns the password can fully control the device."
+steps = [
+  "Open the device's settings (in its app or in a browser) and look for the \"Telnet\" option.",
+  "Turn Telnet off; if you need remote access, use SSH, the encrypted alternative.",
+  "Change the device's password to a long one you don't use anywhere else.",
+  "Install the newest version of the software inside the device (firmware).",
+  "If you can't turn Telnet off, unplug the device from the network until you get help.",
+]
+
+[RDP_EXPOSED]
+references = ["CIS Controls v8.1 4.5", "CIS Controls v8.1 4.8", "CIS Controls v8.1 7.3"]
+
+[RDP_EXPOSED.ro]
+title = "Control de la distanță al calculatorului (Remote Desktop)"
+text = "Calculatorul de la {ip} poate fi controlat de pe alt calculator prin Remote Desktop, ca și cum cineva ar sta în fața lui. Dacă parola e slabă sau Windows nu e actualizat, un străin ar putea prelua calculatorul."
+steps = [
+  "Pe calculatorul respectiv, deschide Setări → Sistem → Desktop la distanță și oprește-l dacă nu îl folosești.",
+  "Dacă îl folosești, lasă accesul doar pentru contul tău și pune-i o parolă lungă.",
+  "Deschide Windows Update și instalează toate actualizările.",
+  "În pagina routerului (aparatul care îți dă internetul), verifică să nu existe o „redirecționare de port” (port forwarding) pentru portul {port} (portul e „ușa” prin care se intră în dispozitiv), ca să nu se poată intra din internet.",
+]
+
+[RDP_EXPOSED.en]
+title = "Remote control of the computer (Remote Desktop)"
+text = "The computer at {ip} can be controlled from another computer through Remote Desktop, as if someone were sitting in front of it. If the password is weak or Windows isn't up to date, a stranger could take over the computer."
+steps = [
+  "On that computer, open Settings → System → Remote Desktop and turn it off if you don't use it.",
+  "If you use it, allow access only for your own account and give it a long password.",
+  "Open Windows Update and install every update.",
+  "In the router's page (the box that gives you internet), check that there is no \"port forwarding\" for port {port} (a port is the \"door\" used to get into the device), so nobody can get in from the internet.",
+]
+
+[VNC_EXPOSED]
+references = ["CIS Controls v8.1 4.5", "CIS Controls v8.1 4.8", "OWASP IoT I2"]
+
+[VNC_EXPOSED.ro]
+title = "Ecran partajat în rețea (VNC)"
+text = "Dispozitivul de la {ip} își partajează ecranul prin VNC, deci cineva din rețea l-ar putea vedea și controla. Multe programe de acest fel au parole slabe sau trimit totul necriptat."
+steps = [
+  "Pe dispozitiv, închide programul de partajare a ecranului (VNC) și oprește-i pornirea automată.",
+  "Dacă ai nevoie de el, pune o parolă lungă și permite conectări doar de pe calculatoarele care chiar au nevoie.",
+  "Actualizează programul de partajare a ecranului la ultima versiune.",
+  "În pagina routerului (aparatul care îți dă internetul), verifică să nu existe o „redirecționare de port” (port forwarding) pentru portul {port} (portul e „ușa” prin care se intră în dispozitiv).",
+]
+
+[VNC_EXPOSED.en]
+title = "Screen shared on the network (VNC)"
+text = "The device at {ip} shares its screen over VNC, so someone on the network could see and control it. Many programs like this have weak passwords or send everything unencrypted."
+steps = [
+  "On the device, close the screen-sharing program (VNC) and stop it from starting automatically.",
+  "If you need it, set a long password and allow connections only from the computers that really need it.",
+  "Update the screen-sharing program to its latest version.",
+  "In the router's page (the box that gives you internet), check that there is no \"port forwarding\" for port {port} (a port is the \"door\" used to get into the device).",
+]
+
+[DB_EXPOSED]
+references = ["CIS Controls v8.1 4.8", "CIS Controls v8.1 4.4", "CIS Controls v8.1 3.3", "OWASP IoT I2"]
+
+[DB_EXPOSED.ro]
+title = "Bază de date accesibilă din rețea"
+text = "La {ip} există o bază de date (locul unde un program își păstrează informațiile) la care se poate conecta oricine din rețea. Dacă nu are parolă sau are una slabă, datele pot fi citite, schimbate sau șterse."
+steps = [
+  "Înainte de orice schimbare, fă o copie de siguranță a datelor.",
+  "Află ce program folosește baza de date și dacă alte calculatoare chiar au nevoie de ea.",
+  "Dacă o folosește doar calculatorul pe care stă, setează baza de date să accepte conectări doar de pe acel calculator.",
+  "Pune o parolă puternică pentru fiecare utilizator al bazei de date.",
+  "În firewall (paravanul de protecție al calculatorului), blochează portul {port} (portul e „ușa” prin care se intră în dispozitiv) pentru calculatoarele care nu au nevoie de el.",
+]
+
+[DB_EXPOSED.en]
+title = "Database reachable from the network"
+text = "There is a database at {ip} (the place where a program keeps its information) that anyone on the network can connect to. If it has no password or a weak one, the data can be read, changed or deleted."
+steps = [
+  "Before changing anything, make a backup copy of the data.",
+  "Find out which program uses the database and whether other computers really need it.",
+  "If only the computer it runs on uses it, set the database to accept connections only from that computer.",
+  "Set a strong password for every database user.",
+  "In the firewall (the computer's protective barrier), block port {port} (a port is the \"door\" used to get into the device) for the computers that don't need it.",
+]
+
+[CAMERA_STREAM_EXPOSED]
+references = ["CIS Controls v8.1 4.7", "CIS Controls v8.1 4.8", "OWASP IoT I1", "OWASP IoT I9"]
+
+[CAMERA_STREAM_EXPOSED.ro]
+title = "Imaginea camerei se poate vedea din rețea"
+text = "Camera de la {ip} transmite imaginea printr-un flux video (RTSP) pe care îl poate deschide oricine din rețea. Unele camere nu cer deloc parolă, așa că un străin ar putea vedea ce filmează camera."
+steps = [
+  "Intră în aplicația sau pagina camerei și schimbă parola din fabrică cu una lungă.",
+  "Activează cererea de parolă pentru fluxul video (RTSP) sau oprește-l, dacă folosești doar aplicația camerei.",
+  "Actualizează programul din interiorul camerei (firmware), din aplicație.",
+  "În pagina routerului (aparatul care îți dă internetul), verifică să nu existe o „redirecționare de port” (port forwarding) pentru portul {port} (portul e „ușa” prin care se intră în dispozitiv).",
+  "Dacă routerul are o rețea pentru oaspeți, poți muta camerele acolo; verifică apoi că aplicația camerei încă merge.",
+]
+
+[CAMERA_STREAM_EXPOSED.en]
+title = "The camera's picture can be watched from the network"
+text = "The camera at {ip} sends its picture through a video stream (RTSP) that anyone on the network can open. Some cameras don't ask for a password at all, so a stranger could see what the camera is filming."
+steps = [
+  "Open the camera's app or page and change the factory password to a long one.",
+  "Turn on the password for the video stream (RTSP), or turn the stream off if you only use the camera's app.",
+  "Update the software inside the camera (firmware) from the app.",
+  "In the router's page (the box that gives you internet), check that there is no \"port forwarding\" for port {port} (a port is the \"door\" used to get into the device).",
+  "If the router has a guest network, you can move the cameras there; then check that the camera's app still works.",
+]
+
+[OUTDATED_SERVICE]
+references = ["CIS Controls v8.1 2.2", "CIS Controls v8.1 7.3", "CIS Controls v8.1 7.4", "OWASP IoT I5"]
+
+[OUTDATED_SERVICE.ro]
+title = "Program vechi, cu probleme cunoscute"
+text = "Programul {product} {version} de la {ip} este o versiune veche, cu probleme de securitate cunoscute public. Pentru versiuni ca aceasta pot exista deja metode de atac gata făcute."
+steps = [
+  "Actualizează {product} la cea mai nouă versiune oferită de producător.",
+  "Dacă programul nu mai primește actualizări, înlocuiește-l cu unul care încă e întreținut.",
+  "Până la actualizare, oprește programul sau blochează-i portul {port} (portul e „ușa” prin care se intră în dispozitiv) în firewall (paravanul de protecție).",
+  "După actualizare, scanează din nou rețeaua ca să vezi că problema a dispărut.",
+]
+
+[OUTDATED_SERVICE.en]
+title = "Old software with known problems"
+text = "The program {product} {version} at {ip} is an old version with publicly known security problems. Ready-made attack methods may already exist for versions like this one."
+steps = [
+  "Update {product} to the newest version from its maker.",
+  "If the program no longer gets updates, replace it with one that is still maintained.",
+  "Until it's updated, stop the program or block its port {port} (a port is the \"door\" used to get into the device) in the firewall (the protective barrier).",
+  "After the update, scan the network again to check that the problem is gone.",
+]
+
+[FTP_CLEARTEXT]
+references = ["CIS Controls v8.1 3.10", "CIS Controls v8.1 4.8", "OWASP IoT I7"]
+
+[FTP_CLEARTEXT.ro]
+title = "Transfer de fișiere necriptat (FTP)"
+text = "Dispozitivul de la {ip} primește fișiere prin FTP, un mod vechi de a trimite fișiere în care parola și fișierele circulă necriptate. Cineva din aceeași rețea ar putea să le citească."
+steps = [
+  "Dacă nu folosești FTP, oprește-l din setările dispozitivului sau ale programului.",
+  "Dacă ai nevoie să muți fișiere, alege în program varianta criptată, numită SFTP sau FTPS.",
+  "Schimbă parola folosită pentru FTP, pentru că s-ar putea să fi fost văzută.",
+  "În pagina routerului (aparatul care îți dă internetul), verifică să nu existe o „redirecționare de port” (port forwarding) pentru portul {port} (portul e „ușa” prin care se intră în dispozitiv).",
+]
+
+[FTP_CLEARTEXT.en]
+title = "Unencrypted file transfer (FTP)"
+text = "The device at {ip} accepts files over FTP, an old way of sending files where the password and the files travel unencrypted. Someone on the same network could read them."
+steps = [
+  "If you don't use FTP, turn it off in the device's or program's settings.",
+  "If you need to move files, choose the encrypted option in the program, called SFTP or FTPS.",
+  "Change the password used for FTP, because it may already have been seen.",
+  "In the router's page (the box that gives you internet), check that there is no \"port forwarding\" for port {port} (a port is the \"door\" used to get into the device).",
+]
+
+[HTTP_ADMIN_CLEARTEXT]
+references = ["CIS Controls v8.1 3.10", "CIS Controls v8.1 4.6", "OWASP IoT I7", "OWASP IoT I9"]
+
+[HTTP_ADMIN_CLEARTEXT.ro]
+title = "Pagină de administrare fără criptare"
+text = "Pagina de administrare de la {ip} se deschide prin HTTP simplu, fără criptare, adică fără lacătul din browser. Când te conectezi, parola trece prin rețea în clar și cineva conectat ar putea s-o citească."
+steps = [
+  "În setările dispozitivului, caută o opțiune numită „HTTPS” sau „acces securizat” și activeaz-o.",
+  "Oprește accesul prin HTTP simplu, dacă dispozitivul permite asta.",
+  "Schimbă parola de administrare cu una lungă, pe care nu o mai folosești în altă parte.",
+  "Oprește „administrarea de la distanță” (Remote Management), ca pagina să nu poată fi deschisă din internet.",
+  "Actualizează programul din interiorul dispozitivului (firmware).",
+]
+
+[HTTP_ADMIN_CLEARTEXT.en]
+title = "Admin page without encryption"
+text = "The admin page at {ip} opens over plain HTTP, without encryption, meaning without the padlock in the browser. When you log in, the password crosses the network in plain text and someone connected could read it."
+steps = [
+  "In the device's settings, look for an option called \"HTTPS\" or \"secure access\" and turn it on.",
+  "Turn off access over plain HTTP, if the device allows it.",
+  "Change the admin password to a long one you don't use anywhere else.",
+  "Turn off \"remote management\", so the page can't be opened from the internet.",
+  "Update the software inside the device (firmware).",
+]
+
+[SMB_EXPOSED]
+references = ["CIS Controls v8.1 3.3", "CIS Controls v8.1 4.8", "CIS Controls v8.1 7.3"]
+
+[SMB_EXPOSED.ro]
+title = "Fișiere partajate în rețea (SMB)"
+text = "Dispozitivul de la {ip} partajează fișiere în rețea prin SMB, sistemul de foldere partajate din Windows. Dacă folderele nu au parolă sau sistemul nu e actualizat, alții pot citi fișierele sau pot răspândi viruși."
+steps = [
+  "Verifică ce foldere partajezi (în Windows: clic dreapta pe folder → Proprietăți → Partajare) și oprește partajarea celor de care nu ai nevoie.",
+  "Oprește versiunea veche și periculoasă a SMB: pe un calculator Windows, deschide „Activare sau dezactivare caracteristici Windows” și debifează opțiunea care conține „SMB” și „CIFS”; pe un dispozitiv de stocare în rețea, caută „SMB1” în setări și dezactivează-l.",
+  "Cere parolă pentru folderele care rămân partajate.",
+  "Instalează toate actualizările sistemului (Windows Update sau actualizarea dispozitivului de stocare în rețea).",
+  "În pagina routerului (aparatul care îți dă internetul), verifică să nu existe o „redirecționare de port” (port forwarding) pentru portul {port} (portul e „ușa” prin care se intră în dispozitiv).",
+]
+
+[SMB_EXPOSED.en]
+title = "Files shared on the network (SMB)"
+text = "The device at {ip} shares files on the network through SMB, the shared-folders system from Windows. If the folders have no password or the system isn't up to date, others can read the files or spread viruses."
+steps = [
+  "Check which folders you share (in Windows: right-click the folder → Properties → Sharing) and stop sharing the ones you don't need.",
+  "Turn off the old, dangerous version of SMB: on a Windows computer, open \"Turn Windows features on or off\" and untick the option with \"SMB\" and \"CIFS\"; on a network storage box, look for \"SMB1\" in the settings and turn it off.",
+  "Require a password for the folders that stay shared.",
+  "Install every system update (Windows Update, or the update of your network storage box).",
+  "In the router's page (the box that gives you internet), check that there is no \"port forwarding\" for port {port} (a port is the \"door\" used to get into the device).",
+]
+
+[MQTT_EXPOSED]
+references = ["CIS Controls v8.1 3.10", "CIS Controls v8.1 4.8", "OWASP IoT I2"]
+
+[MQTT_EXPOSED.ro]
+title = "Mesageria dispozitivelor smart e deschisă (MQTT)"
+text = "La {ip} rulează MQTT, un fel de poștaș prin care dispozitivele smart din casă își trimit mesaje și comenzi. Fără parolă, oricine din rețea poate citi mesajele sau poate trimite comenzi false, de exemplu să aprindă sau să stingă ceva."
+steps = [
+  "Deschide setările programului MQTT (de obicei în aplicația aparatului central care comandă casa smart) și oprește accesul fără parolă („anonymous”).",
+  "Creează un utilizator cu parolă pentru fiecare dispozitiv care trimite mesaje.",
+  "Dacă se poate, activează criptarea conexiunilor (opțiunea TLS).",
+  "În firewall (paravanul de protecție), blochează portul {port} (portul e „ușa” prin care se intră în dispozitiv) pentru dispozitivele care nu au nevoie de el.",
+]
+
+[MQTT_EXPOSED.en]
+title = "The smart devices' messaging is open (MQTT)"
+text = "MQTT runs at {ip}, a kind of postman that smart home devices use to send each other messages and commands. Without a password, anyone on the network can read the messages or send fake commands, for example to turn something on or off."
+steps = [
+  "Open the MQTT program's settings (usually in the app of the central box that controls the smart home) and turn off access without a password (\"anonymous\").",
+  "Create a user with a password for every device that sends messages.",
+  "If you can, turn on encrypted connections (the TLS option).",
+  "In the firewall (the protective barrier), block port {port} (a port is the \"door\" used to get into the device) for the devices that don't need it.",
+]
+
+[UPNP_EXPOSED]
+references = ["CIS Controls v8.1 4.2", "CIS Controls v8.1 4.8", "OWASP IoT I9"]
+
+[UPNP_EXPOSED.ro]
+title = "Aparatele pot deschide singure „uși” spre internet (UPnP)"
+text = "Dispozitivul de la {ip} folosește UPnP, o funcție prin care aparatele din casă pot cere routerului (aparatul care îți dă internetul) să le deschidă singur „uși” spre internet. Un aparat virusat ar putea astfel să devină accesibil din afară fără să știi."
+steps = [
+  "Dacă {ip} este routerul, intră în pagina lui cu parola de administrator, caută opțiunea „UPnP” (deseori în meniul Avansat) și oprește-o.",
+  "Dacă {ip} este alt aparat (televizor, imprimantă, consolă), caută „UPnP” în setările lui și oprește-l dacă nu ai nevoie de el.",
+  "Salvează setările și repornește aparatul.",
+  "Dacă o aplicație sau o consolă de jocuri nu mai merge, deschide manual din router doar „ușa” (portul) de care are nevoie ea.",
+]
+
+[UPNP_EXPOSED.en]
+title = "Devices can open \"doors\" to the internet by themselves (UPnP)"
+text = "The device at {ip} uses UPnP, a feature that lets gadgets in the house ask the router (the box that gives you internet) to open \"doors\" to the internet for them. An infected gadget could use it to become reachable from outside without you knowing."
+steps = [
+  "If {ip} is the router, open its page with the admin password, find the \"UPnP\" option (often under Advanced) and turn it off.",
+  "If {ip} is another gadget (TV, printer, console), look for \"UPnP\" in its settings and turn it off if you don't need it.",
+  "Save the settings and restart the gadget.",
+  "If an app or a game console stops working, open by hand, in the router, only the \"door\" (port) it needs.",
+]
+
+[SNMP_EXPOSED]
+references = ["CIS Controls v8.1 4.6", "CIS Controls v8.1 4.7", "OWASP IoT I2", "OWASP IoT I9"]
+
+[SNMP_EXPOSED.ro]
+title = "Setările dispozitivului se pot citi din rețea (SNMP)"
+text = "Dispozitivul de la {ip} răspunde la SNMP, o metodă prin care alte aparate îi pot citi și uneori schimba setările. Versiunile vechi folosesc „parole” simple, pe care le știe aproape oricine."
+steps = [
+  "Intră în setările dispozitivului și oprește SNMP, dacă nu îl folosești.",
+  "Dacă îl folosești, treci la SNMPv3, varianta cu parolă și criptare.",
+  "Schimbă parolele din fabrică (numite „community”, de obicei „public” și „private”) cu unele greu de ghicit.",
+  "Actualizează programul din interiorul dispozitivului (firmware).",
+]
+
+[SNMP_EXPOSED.en]
+title = "The device's settings can be read from the network (SNMP)"
+text = "The device at {ip} answers SNMP, a way for other machines to read and sometimes change its settings. Old versions use simple \"passwords\" that almost everyone knows."
+steps = [
+  "Open the device's settings and turn SNMP off if you don't use it.",
+  "If you use it, switch to SNMPv3, the version with a password and encryption.",
+  "Change the factory passwords (called \"community\", usually \"public\" and \"private\") to ones that are hard to guess.",
+  "Update the software inside the device (firmware).",
+]
+
+[PRINTER_RAW_EXPOSED]
+references = ["CIS Controls v8.1 4.7", "CIS Controls v8.1 4.8", "OWASP IoT I2"]
+
+[PRINTER_RAW_EXPOSED.ro]
+title = "Oricine poate trimite lucrări la imprimantă"
+text = "Imprimanta de la {ip} acceptă lucrări de tipărire direct, fără nicio parolă. Oricine din rețea poate tipări pe ea sau îi poate trimite comenzi care îi schimbă setările."
+steps = [
+  "Deschide pagina imprimantei (în browser, la adresa {ip}) și pune o parolă de administrator, ca nimeni să nu-i mai poată schimba setările.",
+  "Caută în setările imprimantei o listă de calculatoare permise (numită des „Access Control” sau „IP Filter”) și lasă doar calculatoarele tale.",
+  "Actualizează programul din interiorul imprimantei (firmware).",
+  "Ține imprimanta doar în rețeaua ta, nu în rețeaua pentru oaspeți.",
+]
+
+[PRINTER_RAW_EXPOSED.en]
+title = "Anyone can send jobs to the printer"
+text = "The printer at {ip} accepts print jobs directly, with no password at all. Anyone on the network can print on it or send it commands that change its settings."
+steps = [
+  "Open the printer's page (in a browser, at the address {ip}) and set an admin password, so nobody else can change its settings.",
+  "Look in the printer's settings for a list of allowed computers (often called \"Access Control\" or \"IP Filter\") and keep only your own computers.",
+  "Update the software inside the printer (firmware).",
+  "Keep the printer only on your own network, not on the guest network.",
+]
+
+[UNKNOWN_DEVICE]
+references = ["CIS Controls v8.1 1.1", "CIS Controls v8.1 1.2"]
+
+[UNKNOWN_DEVICE.ro]
+title = "Dispozitiv necunoscut în rețea"
+text = "Dispozitivul de la {ip} nu își arată nici producătorul, nici numele, dar are cel puțin o „ușă” deschisă spre rețea. Poate fi un aparat de-al tău sau unul pe care nu îl cunoști."
+steps = [
+  "Deschide lista dispozitivelor conectate (în pagina routerului sau în setările hotspot-ului de pe telefon) și caută adresa {ip}.",
+  "Oprește pe rând aparatele tale și scanează din nou, ca să afli care dintre ele este.",
+  "Verifică telefoanele: cele noi își ascund adresa Wi-Fi reală (adresa MAC), așa că nu se vede producătorul.",
+  "Dacă nu îl recunoști, schimbă parola Wi-Fi și reconectează doar aparatele tale.",
+]
+
+[UNKNOWN_DEVICE.en]
+title = "Unknown device on the network"
+text = "The device at {ip} shows neither its maker nor its name, but it has at least one \"door\" open to the network. It may be one of your gadgets, or one you don't know."
+steps = [
+  "Open the list of connected devices (in the router's page or in the hotspot settings on your phone) and look for the address {ip}.",
+  "Turn off your gadgets one at a time and scan again, to find out which one it is.",
+  "Check your phones: newer ones hide their real Wi-Fi address (MAC address), so the maker doesn't show.",
+  "If you don't recognise it, change the Wi-Fi password and reconnect only your own gadgets.",
+]
+
+[SSH_OPEN]
+references = ["CIS Controls v8.1 4.6", "CIS Controls v8.1 4.8"]
+
+[SSH_OPEN.ro]
+title = "Conectare de la distanță criptată (SSH), doar informativ"
+text = "Dispozitivul de la {ip} permite conectare de la distanță prin SSH, care este criptată și, de obicei, sigură. Îți spunem doar ca să știi că există și să te asiguri că o protejează o parolă bună."
+steps = [
+  "Dacă nu te conectezi niciodată de la distanță la acest dispozitiv, poți opri SSH din setările lui.",
+  "Dacă îl folosești, pune o parolă lungă sau, mai bine, o cheie de acces (cheie SSH) în loc de parolă.",
+  "Instalează din când în când actualizările sistemului.",
+]
+
+[SSH_OPEN.en]
+title = "Encrypted remote login (SSH), for your information"
+text = "The device at {ip} allows remote login over SSH, which is encrypted and usually safe. We mention it only so you know it's there and make sure a good password protects it."
+steps = [
+  "If you never log in to this device remotely, you can turn SSH off in its settings.",
+  "If you use it, set a long password or, better, an access key (SSH key) instead of a password.",
+  "Install the system updates from time to time.",
+]
