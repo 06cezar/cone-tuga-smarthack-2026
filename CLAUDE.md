@@ -85,6 +85,21 @@ Team rules for every Claude session on this project. Details live in the files n
   the tests green, at least once an hour. Nobody works on `main` directly.
 - Small commits, one task each: `<area>: <what changed>`.
 
+## Team messages (COMMS.md)
+Each member receives messages in exactly one file; your `CLAUDE.local.md` says which member you are.
+| Messages for | File |
+|---|---|
+| A (parser, rules, score) | `conetuga/analysis/COMMS.md` |
+| B (explanations, fixes, LLM) | `conetuga/explain/COMMS.md` |
+| C (guardrail, security, CSV export, CLI) | `conetuga/guard/COMMS.md` |
+| D (Cezar: UI, history, pitch; team lead) | `ui/COMMS.md` |
+| E (lab, captures, QA) | `lab/COMMS.md` |
+- Pull with every prompt and every change, then read your own `COMMS.md` and take it into account. Tell your human
+  what it asks before you act on anything outside your files.
+- To message someone, add one line at the bottom of *their* file, never anywhere else:
+  `- [YYYY-MM-DD HH:MM, <your letter>] <message>`. Never edit or delete earlier lines (it keeps merges conflict-free).
+- A message reaches `main` like any change (branch, Pull Request, merge); the recipient sees it after their next pull.
+
 ## Done means
 - A test for the new behaviour, and the full suite is green; contract examples still pass (`pytest -k contract`).
 - `tests/test_validation_set.py` still reproduces all 24 expected rows and every score, with no extra rows.
