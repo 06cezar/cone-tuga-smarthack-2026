@@ -1,0 +1,14 @@
+# secrets: the API key
+.env
+# Python environment and generated files
+.venv/
+__pycache__/
+.pytest_cache/
+.cache/
+logs/
+results/
+# scan history stays on this computer (NFR-02)
+.history/
+# each person's Claude Code settings and personal notes
+.claude/
+CLAUDE.local.md
