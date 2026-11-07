@@ -55,11 +55,21 @@ with its test.
 - Test: `tests/test_guard.py::test_contract_check_scope`
 
 ### explain · owner: B · used by: D (UI)
-- Call: `explain(finding: Finding, host: Host, lang: str) -> Explanation(text: str, steps: list[str], source: str)`.
-  The host gives the structured evidence (service, product, version of the finding's port) that the LLM check needs.
-- Example: HTTP_ADMIN_CLEARTEXT on 192.168.1.1:80 with `lang="ro"` gives at most 2 sentences, 1–5 steps, and
-  `source="template"` when there's no LLM.
+- Call: `explain(finding: Finding, host: Host, lang: str) -> Explanation(title: str, text: str, steps: list[str],
+  references: list[str], source: str)`.
+  - `lang` is `"ro"` or `"en"`; `source` is `"template"` (built-in text from `data/explanations.toml`) or `"llm"`.
+  - The finding's port is the `Port` in `host.ports` with `(port, proto) == (finding.port, finding.proto)`; it gives
+    the structured evidence (service, product, version) that the LLM check needs.
+  - The text holds only values from the finding and the host: `{ip}`, `{port}`, and for OUTDATED_SERVICE `{product}`
+    and `{version}` from that `Port`. Scan values are inserted as plain text, never read as a template.
+  - Depends on `Finding.proto`, added in PR #5 (`A-contract-fields`, still a draft): until it lands on `main`, callers
+    use this example as test data.
+- Example: `Finding(file="V1_home_basic.xml", ip="192.168.1.1", port=80, proto="tcp", code="HTTP_ADMIN_CLEARTEXT",
+  severity="medium", points=10, evidence=...)` with its host and `lang="ro"` gives a text of at most 2 sentences that
+  contains `192.168.1.1`, 1–5 steps, and `source="template"` when there's no LLM.
 - Errors: an unknown code or language raises `KeyError`; an LLM failure falls back to the template and never raises.
+  If no `Port` in `host.ports` matches `(finding.port, finding.proto)` for OUTDATED_SERVICE, `explain` raises
+  `LookupError`: that means analyse_file returned inconsistent data, a bug to fix, not a case to hide.
 - Test: `tests/test_explain.py::test_contract_explain`
 
 ### diff · owner: D · used by: the UI, change alerts (FR-13)
