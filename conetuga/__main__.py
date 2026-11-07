@@ -13,6 +13,7 @@ from conetuga.analysis import analyse_file
 from conetuga.guard.export import FINDINGS_FILE, SCORES_FILE, ExportError, export_results, scan_files
 from conetuga.guard.network import NetworkNotFound
 from conetuga.guard.scan import DEFAULT_MINUTES, DEFAULT_OUT, MIN_MINUTES, ScanError, ScanRefused, live_scan
+from conetuga.history import save_scan
 
 EXIT_OK = 0
 EXIT_ERROR = 2  # the command couldn't run; argparse uses the same code for a wrong command
@@ -129,6 +130,9 @@ def _scan(target: str | None, confirmed: bool, out: Path, minutes: int = DEFAULT
     for finding in result.findings:
         where = finding.ip if finding.port is None else f"{finding.ip}:{finding.port}"
         print(f"  {_printable(where)} {finding.code} ({finding.severity})")
+    # FR-10, every scan in the history: the stored result has masked MACs only, and it stays on this computer.
+    if save_scan(result, scan.xml.read_bytes()):
+        print("Salvat în istoric (deschide UI-ul să vezi înainte/după) / saved to the history (open the UI for before/after)")
     if not scan.timed_out:
         return EXIT_OK
     for device in scan.timed_out:

@@ -102,6 +102,8 @@ with its test.
 - Also, the local store (`.history/`, gitignored, NFR-02): `save_scan(result, content) -> bool` (False when the same
   file content is already saved, or the result has an error), `load_history() -> list[Record(saved_at: str, file: str,
   digest: str, result: FileResult)]` oldest first, `delete_history()` removes the folder and everything in it.
+  `python -m conetuga scan` calls `save_scan` after every live scan it analyses (FR-10: every scan), with the raw XML's
+  bytes as `content`; the stored result holds masked MACs only, and devices nmap gave up on keep `timed_out=True`.
 - Test: `tests/test_history.py::test_contract_diff`
 
 ### answer_question · owner: B · used by: D (UI)

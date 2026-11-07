@@ -109,3 +109,48 @@ def test_a_damaged_record_is_skipped(history_in_tmp):
     save_scan(scan("V1_home_basic.xml"), (SCANS / "V1_home_basic.xml").read_bytes())
     (history_in_tmp / "broken.json").write_text("{not json", encoding="utf-8")
     assert [r.file for r in load_history()] == ["V1_home_basic.xml"]
+
+
+def fake_live_scan(monkeypatch, scan_file: Path) -> None:
+    """`scan --confirm` on our hotspot with a fake nmap that copies `scan_file` to where nmap writes its XML."""
+    import shutil
+
+    import conetuga.guard.scan as scan
+    from conetuga.guard import Network
+
+    monkeypatch.setattr(scan, "detect_network",
+                        lambda: Network("wlp0s20f3", "172.20.10.13", "172.20.10.0/28", "172.20.10.1"))
+    monkeypatch.setattr(scan, "wifi_ssid", lambda interface: "RSH-ConeTuga")
+    monkeypatch.setattr(scan, "_find_nmap", lambda: "/usr/bin/nmap")
+    monkeypatch.setattr(scan, "top_tcp_ports", lambda nmap: [80])
+    monkeypatch.setattr(scan, "_is_admin", lambda: True)
+
+    def fake_nmap(command):
+        shutil.copyfile(scan_file, command[command.index("-oX") + 1])
+        return 0
+
+    monkeypatch.setattr(scan, "_run_nmap", fake_nmap)
+
+
+def test_live_scans_reach_the_history_and_compare(monkeypatch, tmp_path, capsys):
+    import conetuga.__main__ as cli
+
+    monkeypatch.chdir(tmp_path)  # the raw XML goes to results/ here, not into the repo
+    for name in ("V6a_before.xml", "V6b_after.xml"):
+        fake_live_scan(monkeypatch, SCANS / name)
+        assert cli.main(["scan", "--confirm"]) == 0
+    assert "saved to the history" in capsys.readouterr().out
+    records = load_history()
+    assert [r.result.score for r in records] == [60, 100]
+    change = diff(records[0].result, records[1].result)
+    assert len(change.resolved_findings) == 3
+
+
+def test_a_live_scan_stores_masked_macs_only(monkeypatch, tmp_path, history_in_tmp):
+    import conetuga.__main__ as cli
+
+    monkeypatch.chdir(tmp_path)
+    fake_live_scan(monkeypatch, SCANS / "V6a_before.xml")
+    cli.main(["scan", "--confirm"])
+    stored = "".join(p.read_text(encoding="utf-8") for p in history_in_tmp.iterdir())
+    assert "xx:xx:xx" in stored and "50:C7:BF:88" not in stored.upper()
