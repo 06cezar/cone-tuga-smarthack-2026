@@ -1,6 +1,6 @@
-defusedxml>=0.7
-psutil>=5.9
-streamlit>=1.40
-anthropic>=2.0
-python-dotenv>=1.0
-pytest>=8.0
+# Pinned to exact versions so the jury's live re-run installs exactly what we tested (the brief's re-run check).
+# No LLM package: ConeTuga needs no key (NFR-01).
+defusedxml==0.7.1
+psutil==7.2.2
+streamlit==1.67.0
+pytest==9.2.0
