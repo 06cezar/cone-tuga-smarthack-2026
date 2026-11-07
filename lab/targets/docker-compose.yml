@@ -1,0 +1,20 @@
+# Lab targets for setup A of the brief (page 5): real services with no data behind them, published on the ports of the
+# targets laptop. Run them only while that laptop is on our hotspot RSH-ConeTuga, and stop them when you leave.
+#   download once (on any Wi-Fi):  docker compose -f lab/targets/docker-compose.yml pull
+#   start:                         docker compose -f lab/targets/docker-compose.yml up -d
+#   stop:                          docker compose -f lab/targets/docker-compose.yml down
+name: conetuga-lab
+
+services:
+  redis:  # DB_EXPOSED on a non-standard port: the catalog decides by the service nmap sees, not by the port number
+    image: redis:7.2-alpine
+    ports: ["6380:6379"]
+
+  mosquitto:  # MQTT_EXPOSED: version 1.6 accepts anyone on 1883 by default (2.x listens only on the laptop itself)
+    image: eclipse-mosquitto:1.6
+    ports: ["1883:1883"]
+
+  admin-page:  # HTTP_ADMIN_CLEARTEXT: plain HTTP and a page titled "Admin Login", with no login behind it
+    image: nginx:1.27-alpine
+    ports: ["8080:80"]
+    volumes: ["./admin:/usr/share/nginx/html:ro"]
