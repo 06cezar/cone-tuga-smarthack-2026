@@ -42,8 +42,8 @@ TEXT = {
         "what_nmap_does": "Ce face nmap",
         "nmap_lines": [
             "`-sS -sU -sV` cu scriptul sigur `{script}` (titlurile paginilor de administrare)",
-            "cel mult {rate} pachete pe secundă",
-            "cele mai folosite {top} porturi TCP plus {extra}, și UDP {udp}",
+            "cel mult {rate} {rate_de}pachete pe secundă",
+            "cele mai folosite {top} {top_de}porturi TCP plus {extra}, și UDP {udp}",
             "fără acest laptop (`--exclude {ip}`), ca să nu apară ca dispozitiv necunoscut",
             "cel mult {minutes} minute pe dispozitiv (`--minutes`, minimum {min_minutes}); un dispozitiv neterminat e "
             "numit, pentru că rezultatele lui lipsesc",
@@ -116,7 +116,9 @@ def nmap_summary(lang: str, scanner_ip: str) -> list[str]:
     values = {
         "script": SAFE_SCRIPT,
         "rate": MAX_PACKETS_PER_SECOND,
+        "rate_de": _de(MAX_PACKETS_PER_SECOND),
         "top": f"{TOP_TCP_PORTS:,}".replace(",", "." if lang == "ro" else ","),
+        "top_de": _de(TOP_TCP_PORTS),
         "extra": ", ".join(str(port) for port in EXTRA_TCP_PORTS),
         "udp": ", ".join(str(port) for port in UDP_PORTS),
         "ip": scanner_ip,
@@ -133,7 +135,9 @@ def scan_command() -> str:
 
 def _show_command(text: dict) -> None:
     st.subheader(text["command"])
-    st.code(scan_command(), language="bash")
+    # Plain text: shell highlighting colours "--confirm" #00a4d4 on #f7f7f6 in the light theme, 2.69:1, under
+    # WCAG AA's 4.5:1 (E's FE-E2 audit).
+    st.code(scan_command(), language=None)
     st.markdown(text["windows_note"] if _on_windows() else text["linux_note"])
     st.markdown(text["after"])
 
@@ -145,6 +149,12 @@ def _show_details(text: dict, network, ssid: str, reason: str, lang: str) -> Non
             (text["guardrail"], _in_language(reason, lang))]
     st.markdown("\n".join(f"- **{label}:** {md(value)}" for label, value in rows))
     st.markdown(f"**{text['what_nmap_does']}:**\n" + "\n".join(f"- {line}" for line in nmap_summary(lang, network.ip)))
+
+
+def _de(count: int) -> str:
+    """Romanian puts "de" between a number of 20 or more and its noun ("100 de pachete"), except after 01 to 19
+    ("101 pachete"). Only the Romanian lines use it."""
+    return "de " if count >= 20 and (count % 100 == 0 or count % 100 >= 20) else ""
 
 
 def _in_language(message: str, lang: str) -> str:

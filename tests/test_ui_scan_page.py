@@ -106,3 +106,17 @@ def test_the_page_never_imports_a_way_to_run_a_scan():
     source = PAGE_FILE.read_text(encoding="utf-8")
     for forbidden in ("live_scan", "subprocess", "_run_nmap", "os.system", "Popen"):
         assert forbidden not in source, forbidden
+
+
+def test_the_command_is_plain_text_so_its_contrast_passes_wcag_aa(monkeypatch):
+    """E's FE-E2 audit: shell highlighting coloured "--confirm" at 2.69:1 in the light theme (WCAG AA needs 4.5:1)."""
+    on(monkeypatch, HOTSPOT, "RSH-ConeTuga")
+    assert show().code[0].language == "plaintext"
+
+
+def test_romanian_puts_de_after_numbers_of_twenty_or_more(monkeypatch):
+    """NFR-09, E's note on #57: "1.000 de porturi", "100 de pachete"."""
+    on(monkeypatch, HOTSPOT, "RSH-ConeTuga")
+    text = text_of(show(advanced=True))
+    assert "cele mai folosite 1.000 de porturi TCP" in text and "cel mult 100 de pachete pe secundă" in text
+    assert [page._de(count) for count in (5, 19, 20, 100, 101, 1000)] == ["", "", "de ", "de ", "", "de "]
