@@ -33,6 +33,12 @@ with its test.
       `computer`, `phone`, `server`, `unknown` (the `DEVICE_*` constants in `conetuga/analysis/devices.py`); B and D
       translate them. A label only: it never changes a finding or the score.
   - `Port(port: int, proto: str, service: str, product: str, version: str, ssl: bool, title: str)`, open ports only
+  - Every text read from the scan file (`service`, `product`, `version`, `title`, `hostname`, `vendor`, and the
+    `error` reason) has each MAC written inside it masked like `mac_masked` (`AA:BB:CC:xx:xx:xx`): with `:`, `-`,
+    mixed, or Cisco's `aabb.ccdd.eeff`. So a hostile banner can't carry a full MAC into a finding's evidence, an
+    explanation or the UI. Findings don't change ("vsftpd AA:BB:CC:11:22:33" is still vsftpd). Not masked: 12 hex
+    digits with no separator (a Docker container ID or a hash looks the same), and the file name, which is the
+    `file` column of the CSVs.
 - Input (real example): `V1_home_basic.xml` from the Validation Set.
 - Output: `findings == [Finding(file="V1_home_basic.xml", ip="192.168.1.1", port=80, proto="tcp",
   code="HTTP_ADMIN_CLEARTEXT", severity="medium", points=10, evidence=...)]`, `score == 90`, `error == ""`.
