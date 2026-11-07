@@ -76,7 +76,7 @@ def show_finding(finding, host, lang: str, advanced: bool) -> None:
     evidence in Advanced mode, and the CIS Controls / OWASP IoT references in both modes (the contract's choice)."""
     text = TEXT[lang]
     told = narrate(finding, host, lang, mode_of(advanced))
-    where = f" · {text['port']} {finding.port}/{finding.proto}" if finding.port is not None else ""
+    where = f" · {text['port']} {finding.port}/{md(finding.proto)}" if finding.port is not None else ""
     code = f" · `{finding.code}`" if advanced else ""  # the catalog code, ours (never scan text): safe in backticks
     st.markdown(f"#### {severity_label(finding.severity, lang)} · {md(told.title)}{where}{code}")
     st.markdown(f"{text[told.speaker]} {md(told.text)}")

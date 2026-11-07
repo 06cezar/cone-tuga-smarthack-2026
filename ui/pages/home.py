@@ -191,7 +191,7 @@ def show_diff(before, after, lang: str) -> None:
     st.markdown(f"### {arrow} {text['score']}: {change.score_before} → {change.score_after} ({delta:+d}, {trend})")
 
     alerts = [f"{text['new_device']}: {md(device_name(h, lang))} ({h.ip})" for h in change.new_devices]
-    alerts += [f"{text['opened_port']}: {p.port}/{p.proto} · {md(device_name(h, lang))} ({h.ip})"
+    alerts += [f"{text['opened_port']}: {p.port}/{md(p.proto)} · {md(device_name(h, lang))} ({h.ip})"
                for h, p in change.opened_ports]
     if alerts:
         st.warning(f"🚨 **{text['alert']}**\n\n" + "\n".join(f"- {a}" for a in alerts))
@@ -202,7 +202,7 @@ def show_diff(before, after, lang: str) -> None:
                                     f"{md(device_name(hosts_before[f.ip], lang))} ({f.ip})"
                                     for f in change.resolved_findings]),
         (f"➖ {text['removed_device']}", [f"{md(device_name(h, lang))} ({h.ip})" for h in change.removed_devices]),
-        (f"🔒 {text['closed_port']}", [f"{p.port}/{p.proto} · {md(device_name(h, lang))} ({h.ip})"
+        (f"🔒 {text['closed_port']}", [f"{p.port}/{md(p.proto)} · {md(device_name(h, lang))} ({h.ip})"
                                       for h, p in change.closed_ports]),
     ]
     shown = [(title, items) for title, items in sections if items]
