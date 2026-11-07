@@ -124,6 +124,18 @@ def test_a_device_without_findings_is_not_called_safe():
     assert answer.text == "The scan found no problem from the catalog at 192.168.1.35 (Phone)."
 
 
+def test_a_service_not_on_the_named_port_still_shows_the_ports_real_finding():
+    answer = answer_question("Am telnet pe portul 9100?", scan("V3_small_office.xml"), "ro")
+    assert answer.citations == [PRINTER]
+    assert "nu a găsit" not in answer.text
+
+
+def test_a_service_not_on_the_named_device_still_shows_the_devices_real_finding():
+    answer = answer_question("Is SSH on 192.168.1.10 a problem?", scan("V3_small_office.xml"), "en")
+    assert answer.citations == [PRINTER]
+    assert "no problem" not in answer.text
+
+
 def test_a_service_with_no_finding_in_the_scan():
     answer = answer_question("Is telnet open?", scan("V1_home_basic.xml"), "en")
     assert answer.text == PHRASES["en"]["no_problem_topic"] and answer.citations == []

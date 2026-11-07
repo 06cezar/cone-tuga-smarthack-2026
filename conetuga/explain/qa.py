@@ -156,12 +156,16 @@ def _answer_about(asked: Asked, result, lang: str) -> Answer:
 
     chosen_ips = {host.ip for host in hosts}
     chosen_places = {(host.ip, number) for host, number in places}
-    findings = [finding for finding in result.findings
-                if finding.ip in chosen_ips
-                and (not asked.ports or (finding.ip, finding.port) in chosen_places)
-                and (not asked.codes or finding.code in asked.codes)]
-    if findings:
-        return _found(findings, result, lang)
+    at_place = [finding for finding in result.findings
+                if finding.ip in chosen_ips and (not asked.ports or (finding.ip, finding.port) in chosen_places)]
+    of_asked_kind = [finding for finding in at_place if not asked.codes or finding.code in asked.codes]
+    if of_asked_kind:
+        return _found(of_asked_kind, result, lang)
+    names_a_place = bool(asked.ips or asked.device_types or asked.ports)
+    if at_place and names_a_place:
+        # The place has findings, just not of the kind asked about: show them, never "no problem" where there is one.
+        # When only a service is named there is no place, so "no problem from the catalog about this" is never false.
+        return _found(at_place, result, lang)
 
     phrases = PHRASES[lang]
     if asked.ports:
