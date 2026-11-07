@@ -9,7 +9,8 @@ What nmap does is fixed here and nowhere else (rules of engagement, conetuga/gua
   5353, version detection, and the "safe" http-title script, without which no page title is recorded;
 - at most 100 packets per second; nmap finds the live hosts first (ARP on our subnet) and scans ports only on them,
   which keeps a /24 under 5 minutes (NFR-07);
-- the scanner itself is left out: nmap lists it with no MAC, which would be a false UNKNOWN_DEVICE.
+- the scanner itself is left out: nmap lists it with no MAC, which would be a false UNKNOWN_DEVICE;
+- at most `--minutes` (5 or more) per device; a device nmap gives up on is named, since its findings are missing.
 No other script is named: the brief bans brute, exploit, dos, intrusive and vuln scripts. The version scripts that
 -sV runs by itself are part of the standard capture (`nmap -sS -sU -sV -oX`), so they stay."""
 import ctypes
@@ -37,6 +38,11 @@ PROGRESS_EVERY = "30s"  # nmap says how far it is, so a person doesn't take a 3-
 DEFAULT_OUT = Path("results")  # gitignored: nmap's raw XML holds real MACs and names (NFR-02)
 SCAN_FILE_NAME = "scan_%Y%m%d-%H%M%S.xml"  # one file per scan, in time order
 PORT_LIST_TIMEOUT_SECONDS = 30  # nmap prints its port list in a fraction of a second
+# How long nmap may spend on one device (--host-timeout), chosen with --minutes. 5 is the floor, NFR-07's "a /24 under
+# 5 minutes": our 2-device lab took 3.4 minutes, ~3 of them in version detection waiting on silent ports, so less
+# would drop ordinary devices. nmap skips a device that runs out of time, so the scan names every one it skipped.
+MIN_MINUTES = 5
+DEFAULT_MINUTES = MIN_MINUTES
 
 
 @dataclass(frozen=True)
@@ -47,6 +53,8 @@ class LiveScan:
     ssid: str
     scanned: str  # the range nmap scanned, exactly as the guardrail parsed it, e.g. "172.20.10.0/28"
     xml: Path
+    minutes: int  # nmap's time limit per device
+    timed_out: tuple[str, ...] = ()  # devices nmap gave up on: their ports and findings are missing from `xml`
 
 
 class ScanRefused(Exception):
@@ -57,9 +65,17 @@ class ScanError(Exception):
     """The scan couldn't run or finish (no nmap, no administrator rights, nmap failed). Romanian line, English line."""
 
 
-def live_scan(target: str | None, confirmed: bool, out: Path = DEFAULT_OUT) -> LiveScan:
-    """Scans `target` (None: the subnet we're connected to) and returns where nmap wrote its XML. Raises ScanRefused
-    unless the guardrail allows the target, NetworkNotFound with no network, and ScanError when nmap can't run."""
+def live_scan(target: str | None, confirmed: bool, out: Path = DEFAULT_OUT,
+              minutes: int = DEFAULT_MINUTES) -> LiveScan:
+    """Scans `target` (None: the subnet we're connected to), giving nmap at most `minutes` per device, and returns
+    where nmap wrote its XML. Raises ScanRefused unless the guardrail allows the target, NetworkNotFound with no
+    network, and ScanError when nmap can't run or `minutes` is under MIN_MINUTES."""
+    if minutes < MIN_MINUTES:
+        raise ScanError(
+            f"Scanarea are nevoie de cel puțin {MIN_MINUTES} minute pe dispozitiv "
+            f"(--minutes {MIN_MINUTES} sau mai mult).\n"
+            f"The scan needs at least {MIN_MINUTES} minutes per device (--minutes {MIN_MINUTES} or more)."
+        )
     network = detect_network()
     ssid = wifi_ssid(network.interface)
     target = network.subnet if target is None else target
@@ -76,20 +92,40 @@ def live_scan(target: str | None, confirmed: bool, out: Path = DEFAULT_OUT) -> L
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)  # created by us, not by nmap running as root, so we can delete it later
     xml = (out / datetime.now().strftime(SCAN_FILE_NAME)).resolve()
-    command = _with_admin_rights(nmap_command(nmap, scanned, network.ip, scan_ports(nmap), xml))
+    command = _with_admin_rights(nmap_command(nmap, scanned, network.ip, scan_ports(nmap), xml, minutes))
     if _run_nmap(command) != 0 or not xml.is_file():
         raise ScanError(
             "nmap nu a terminat scanarea; mesajul lui este mai sus.\n"
             "nmap didn't finish the scan; its message is above."
         )
-    return LiveScan(network=network, ssid=ssid, scanned=scanned, xml=xml)
+    return LiveScan(network=network, ssid=ssid, scanned=scanned, xml=xml, minutes=minutes,
+                    timed_out=timed_out_devices(xml))
 
 
-def nmap_command(nmap: str, scanned: str, scanner_ip: str, tcp_ports: list[int], xml: Path) -> list[str]:
+def nmap_command(nmap: str, scanned: str, scanner_ip: str, tcp_ports: list[int], xml: Path,
+                 minutes: int = DEFAULT_MINUTES) -> list[str]:
     """The one nmap command a live scan runs. `scanned` is the guardrail's parsed range, so it can't carry options."""
     ports = f"T:{_join(tcp_ports)},U:{_join(UDP_PORTS)}"
     return [nmap, "-sS", "-sU", "-sV", "--script", SAFE_SCRIPT, "--max-rate", str(MAX_PACKETS_PER_SECOND),
-            "-p", ports, "--exclude", scanner_ip, "--stats-every", PROGRESS_EVERY, "-oX", str(xml), scanned]
+            "-p", ports, "--exclude", scanner_ip, "--host-timeout", f"{minutes}m", "--stats-every", PROGRESS_EVERY,
+            "-oX", str(xml), scanned]
+
+
+def timed_out_devices(xml: Path) -> tuple[str, ...]:
+    """The addresses of the devices nmap gave up on (<host timedout="true">): it writes no port of theirs, so an
+    empty list of findings for them means "not finished", never "safe". An unreadable file names none here; the
+    analysis reports it as an error."""
+    try:
+        root = SafeET.parse(xml).getroot()
+    except Exception:  # truncated or hostile XML: analyse_file gives the clear error
+        return ()
+    devices = []
+    for host in root.iter("host"):
+        if host.get("timedout") == "true":
+            address = next((a.get("addr", "") for a in host.iterfind("address")
+                            if a.get("addrtype") in ("ipv4", "ipv6")), "")
+            devices.append(address or "?")
+    return tuple(devices)
 
 
 def scan_ports(nmap: str) -> list[int]:
