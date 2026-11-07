@@ -42,7 +42,10 @@ def save_scan(result: FileResult, content: bytes, now: datetime | None = None) -
     if path.exists():
         return False
     saved_at = (now or datetime.now()).isoformat(timespec="seconds")
-    record = {"saved_at": saved_at, "file": result.file, "digest": digest, "result": asdict(result)}
+    # Two scans saved within the same second (two quick live scans, a test) would tie on saved_at: the save order
+    # breaks the tie, so "oldest first" always means the order they were stored in.
+    order = len(list(history_dir().glob(f"*{RECORD_SUFFIX}"))) if history_dir().is_dir() else 0
+    record = {"saved_at": saved_at, "order": order, "file": result.file, "digest": digest, "result": asdict(result)}
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(record, ensure_ascii=False, indent=1), encoding="utf-8")
     return True
@@ -53,13 +56,14 @@ def load_history() -> list[Record]:
     folder = history_dir()
     if not folder.is_dir():
         return []
-    records = []
+    stored = []
     for path in folder.glob(f"*{RECORD_SUFFIX}"):
         try:
-            records.append(_record(json.loads(path.read_text(encoding="utf-8"))))
+            data = json.loads(path.read_text(encoding="utf-8"))
+            stored.append(((data["saved_at"], data.get("order", 0), data["file"]), _record(data)))
         except (OSError, ValueError, KeyError, TypeError):
             continue
-    return sorted(records, key=lambda r: (r.saved_at, r.file))
+    return [record for _, record in sorted(stored, key=lambda item: item[0])]
 
 
 def find_record(digest: str) -> Record | None:
