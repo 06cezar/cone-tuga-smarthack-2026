@@ -86,11 +86,18 @@ with its test.
   - Test: `tests/test_explain.py::test_contract_device_label`
 
 ### diff · owner: D · used by: the UI, change alerts (FR-13)
-- Call: `diff(before: FileResult, after: FileResult) -> Diff(new_devices, removed_devices, opened_ports, closed_ports,
-  resolved_findings, score_before, score_after)`
-- Example: `V6a_before.xml` → `V6b_after.xml` gives 3 resolved findings and a score going from 60 to 100, with no
-  new or removed devices.
+- Call: `diff(before: FileResult, after: FileResult) -> Diff(new_devices: list[Host], removed_devices: list[Host],
+  opened_ports: list[tuple[Host, Port]], closed_ports: list[tuple[Host, Port]], resolved_findings: list[Finding],
+  score_before: int, score_after: int)`, from `conetuga.history`. A port is `(port, proto)`; a finding is resolved when
+  its device, port and code are gone from `after`. `new_devices` and `opened_ports` are the change alerts (FR-13).
+- Example: `V6a_before.xml` → `V6b_after.xml` gives 3 resolved findings (HTTP_ADMIN_CLEARTEXT and UPNP_EXPOSED on
+  the router, TELNET_OPEN on the plug), a score going from 60 to 100, no new or removed devices, and one opened port
+  (443/tcp on the router).
 - Errors and edge cases: devices are matched by IP + hostname, never by MAC (the same device can show a different MAC).
+  A result with an `error` can't be compared: `diff` raises `ValueError`.
+- Also, the local store (`.history/`, gitignored, NFR-02): `save_scan(result, content) -> bool` (False when the same
+  file content is already saved, or the result has an error), `load_history() -> list[Record(saved_at: str, file: str,
+  digest: str, result: FileResult)]` oldest first, `delete_history()` removes the folder and everything in it.
 - Test: `tests/test_history.py::test_contract_diff`
 
 ## Template (copy it)
