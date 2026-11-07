@@ -7,7 +7,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG = tomllib.loads((ROOT / "data" / "catalog.toml").read_text(encoding="utf-8"))
-EXPLANATIONS = tomllib.loads((ROOT / "data" / "explanations.toml").read_text(encoding="utf-8"))
+DEVICE_TYPES_SECTION = "device_types"  # device labels, checked in tests/test_explain.py; every other table is a code
+EXPLANATIONS = {code: entry for code, entry in tomllib.loads((ROOT / "data" / "explanations.toml").read_text(
+    encoding="utf-8")).items() if code != DEVICE_TYPES_SECTION}
 RAW_EXPLANATIONS = (ROOT / "data" / "explanations.toml").read_text(encoding="utf-8")
 
 LANGUAGES = ("ro", "en")  # NFR-09: all user-facing text in Romanian and English

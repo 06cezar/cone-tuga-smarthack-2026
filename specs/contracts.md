@@ -63,12 +63,27 @@ with its test.
 - Test: `tests/test_guard.py::test_contract_check_scope`
 
 ### explain · owner: B · used by: D (UI)
-- Call: `explain(finding: Finding, host: Host, lang: str) -> Explanation(text: str, steps: list[str], source: str)`.
-  The host gives the structured evidence (service, product, version of the finding's port) that the LLM check needs.
-- Example: HTTP_ADMIN_CLEARTEXT on 192.168.1.1:80 with `lang="ro"` gives at most 2 sentences, 1–5 steps, and
-  `source="template"` when there's no LLM.
+- Call: `explain(finding: Finding, host: Host, lang: str) -> Explanation(title: str, text: str, steps: list[str],
+  references: list[str], source: str)`.
+  - `lang` is `"ro"` or `"en"`; `source` is `"template"` (built-in text from `data/explanations.toml`) or `"llm"`.
+  - The finding's port is the `Port` in `host.ports` with `(port, proto) == (finding.port, finding.proto)`; it gives
+    the structured evidence (service, product, version) that the LLM check needs.
+  - The text holds only values from the finding and the host: `{ip}`, `{port}`, and for OUTDATED_SERVICE `{product}`
+    and `{version}` from that `Port`. Scan values are inserted as plain text, never read as a template.
+- Example: `Finding(file="V1_home_basic.xml", ip="192.168.1.1", port=80, proto="tcp", code="HTTP_ADMIN_CLEARTEXT",
+  severity="medium", points=10, evidence=...)` with its host and `lang="ro"` gives a text of at most 2 sentences that
+  contains `192.168.1.1`, 1–5 steps, and `source="template"` when there's no LLM.
 - Errors: an unknown code or language raises `KeyError`; an LLM failure falls back to the template and never raises.
+  If no `Port` in `host.ports` matches `(finding.port, finding.proto)` for OUTDATED_SERVICE, `explain` raises
+  `LookupError`: that means analyse_file returned inconsistent data, a bug to fix, not a case to hide.
 - Test: `tests/test_explain.py::test_contract_explain`
+- Also: `device_label(device_type: str, lang: str) -> str`, the label people read for `Host.device_type`, from
+  `[device_types]` in `data/explanations.toml`. The types are the 10 values of `Host.device_type` in analyse_file
+  (`camera`, `printer`, `nas`, `router`, `tv`, `smart-home`, `computer`, `server`, `phone`, `unknown`).
+  - Example: `device_label("nas", "ro") == "Dispozitiv de stocare în rețea (NAS)"`,
+    `device_label("nas", "en") == "Network storage (NAS)"`.
+  - Errors: an unknown device type or language raises `KeyError`.
+  - Test: `tests/test_explain.py::test_contract_device_label`
 
 ### diff · owner: D · used by: the UI, change alerts (FR-13)
 - Call: `diff(before: FileResult, after: FileResult) -> Diff(new_devices, removed_devices, opened_ports, closed_ports,

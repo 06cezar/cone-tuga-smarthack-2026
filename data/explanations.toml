@@ -366,3 +366,17 @@ steps = [
   "If you use it, set a long password or, better, an access key (SSH key) instead of a password.",
   "Install the system updates from time to time.",
 ]
+
+# Labels people read for Host.device_type (specs/contracts.md, analyse_file). Keys are the DEVICE_* values in
+# conetuga/analysis/devices.py; device_label() in conetuga/explain/ reads them.
+[device_types]
+camera = { ro = "Cameră video", en = "Video camera" }
+printer = { ro = "Imprimantă", en = "Printer" }
+nas = { ro = "Dispozitiv de stocare în rețea (NAS)", en = "Network storage (NAS)" }
+router = { ro = "Router sau punct de acces Wi-Fi", en = "Router or Wi-Fi access point" }
+tv = { ro = "Televizor", en = "TV" }
+smart-home = { ro = "Aparat smart pentru casă", en = "Smart home device" }
+computer = { ro = "Calculator", en = "Computer" }
+server = { ro = "Server", en = "Server" }
+phone = { ro = "Telefon", en = "Phone" }
+unknown = { ro = "Dispozitiv necunoscut", en = "Unknown device" }
