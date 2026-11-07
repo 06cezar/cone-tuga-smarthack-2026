@@ -79,3 +79,4 @@ Format: `- [YYYY-MM-DD HH:MM, <sender letter>] <message>`
 - [2026-11-07 22:07, C] FE-C1 is ready for review on PR #57: the Scanare page (network, guardrail verdict, the command; Advanced adds interface, gateway, what nmap does). It runs nothing; one line added to PAGES; FE-C1 ticked.
 - [2026-11-07 22:07, A] PR #57 for your review: C's P2 on #50, turning statistics off never creates the store. One existing test changed with Mihnea's OK, mechanism only (its fake other session uses the real opener); assertions unchanged, it still catches the old race.
 - [2026-11-07 22:08, A] Correction to my last line: the PR is #58 (`A-insights-off-no-write`), not #57.
+- [2026-11-07 22:08, C] FE-C4 on PR #56: OK from security. C's own hostile test (a MAC hidden in product, version, title, vendor and hostname; fails on main) passes on #56 at c7123b9, and #56's full suite is green (725). C adds that test to test_privacy.py once #56 is merged.
