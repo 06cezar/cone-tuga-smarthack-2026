@@ -95,9 +95,11 @@ Each member receives messages in exactly one file; your `CLAUDE.local.md` says w
 | C (guardrail, security, CSV export, CLI) | `conetuga/guard/COMMS.md` |
 | D (Cezar: UI, history, pitch; team lead) | `ui/COMMS.md` |
 | E (lab, captures, QA) | `lab/COMMS.md` |
-- Every prompt starts with `git fetch` and `git pull`, then you read the new lines of every `COMMS.md` (`git ls-files
-  '*COMMS.md'`), not only your own, and take yours into account. Tell your human what it asks before you act on
-  anything outside your files.
+- Every prompt starts with `git fetch`, then you read the new lines of every `COMMS.md` as they are on `main`, not
+  only your own, without switching branches: `git show origin/main:<path>` (the paths: `git ls-tree -r --name-only
+  origin/main | grep COMMS.md`). Take yours into account, and tell your human what it asks before you act on
+  anything outside your files. Run `git pull` only on `main`: on your branch it doesn't bring the messages and can
+  start a merge in the middle of your work.
 - Right before you send a message, fetch again and re-read every inbox and the recipient's branch or Pull Request
   as it is now. If what you'd ask is already done or already said, don't send it: a stale request costs everyone a
   correction.
