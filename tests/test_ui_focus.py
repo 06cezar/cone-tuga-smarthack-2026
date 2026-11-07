@@ -29,3 +29,18 @@ def test_focused_links_buttons_and_expanders_get_an_outline():
 @pytest.mark.parametrize("background", BACKGROUNDS)
 def test_the_focus_outline_reads_on_both_themes(background):
     assert contrast(FOCUS_COLOUR, BACKGROUNDS[background]) >= MIN_FOCUS_CONTRAST
+
+
+def test_inline_code_is_lifted_to_16_px_too():
+    """Streamlit draws `inline code` at 12 px: the catalog codes Cone shows in backticks and the `nmap -oX` hint need the
+    same 16 px rule as the rest of the text (E's FE-E2 check of #71)."""
+    rule = PAGE_CSS.split("{", 1)[0]  # the selectors of the first rule, the 16 px one
+    assert ".stApp code" in rule
+
+
+def test_the_page_starts_higher_but_still_below_streamlits_header():
+    """Less room above the title keeps the headline and the score on a laptop's first screen with the picker box,
+    and the title never slides under Streamlit's 60 px header (3.75rem at 16 px)."""
+    from ui.style import MAIN_TOP_PADDING
+    assert f'[data-testid="stMainBlockContainer"] {{ padding-top: {MAIN_TOP_PADDING}; }}' in PAGE_CSS
+    assert float(MAIN_TOP_PADDING.removesuffix("rem")) > 3.75

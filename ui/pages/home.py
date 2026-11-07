@@ -21,6 +21,7 @@ from ui.cards import show_device  # noqa: E402
 from ui.insights_panel import SEEN_KEY  # noqa: E402
 from ui.report import html_report  # noqa: E402
 from ui.state import current, guide_of, remember_scan, show_guide  # noqa: E402
+from ui.style import PICKER_KEY  # noqa: E402
 from ui.view import device_name, devices_by_risk, headline, md, same_network, score_line  # noqa: E402
 
 # After "delete my history", the scan on screen is not saved again until the user picks another one.
@@ -34,6 +35,9 @@ EXAMPLE_FOLDERS = [REPO_ROOT / "tests" / "fixtures" / "validation" / "scans", RE
 TEXT = {
     "ro": {
         "title": "ConeTuga: cât de sigură e rețeaua ta?",
+        "start": "📂 Începe aici: alege o scanare",
+        "start_help": "Un exemplu din listă sau fișierul tău de la nmap (`nmap -oX`): rezultatul apare imediat "
+                      "dedesubt.",
         "pick": "Alege o scanare din exemple",
         "upload": "sau încarcă fișierul tău nmap XML",
         "unreadable": "Fișierul nu poate fi citit",
@@ -70,6 +74,8 @@ TEXT = {
     },
     "en": {
         "title": "ConeTuga: how safe is your network?",
+        "start": "📂 Start here: pick a scan",
+        "start_help": "An example from the list or your own nmap file (`nmap -oX`): the result appears right below.",
         "pick": "Pick an example scan",
         "upload": "or upload your own nmap XML file",
         "unreadable": "The file can't be read",
@@ -223,12 +229,18 @@ def render() -> None:
     text = TEXT[lang]
     st.title(text["title"])
 
+    # The page's main feature (Mihnea, 2026-11-08): choosing the scan, in a large box right under the title, styled by
+    # ui/style.py through its key. The widgets are the same as before; only their box and size changed.
     examples = example_scans()
     names = [p.name for p in examples]
-    left, right = st.columns(2)
-    picked = left.selectbox(text["pick"], names, index=names.index("V2_smart_home.xml")
-                            if "V2_smart_home.xml" in names else 0) if names else None
-    upload = right.file_uploader(text["upload"], type=None)
+    with st.container(key=PICKER_KEY):
+        st.markdown(f"### {text['start']}")
+        left, right = st.columns(2, gap="large")
+        picked = left.selectbox(text["pick"], names, index=names.index("V2_smart_home.xml")
+                                if "V2_smart_home.xml" in names else 0) if names else None
+        # The help sits behind the upload's "?" so the box stays short and the headline stays on the first screen of a
+        # 1366×768 laptop, in a browser window (E's review of #71).
+        upload = right.file_uploader(text["upload"], type=None, help=text["start_help"])
 
     if upload is not None:
         result, content = analyse_upload(upload), upload.getvalue()
