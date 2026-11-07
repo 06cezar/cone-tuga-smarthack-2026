@@ -358,7 +358,7 @@ steps = [
 
 [codes.UNKNOWN_DEVICE.ro]
 title = "Dispozitiv neidentificat, cu porturi deschise"
-text = "nmap nu a găsit un producător pentru el (din adresa MAC, dacă a văzut una) și nici un nume (hostname) în rețea, dar are porturi deschise. Poate fi un dispozitiv al tău cu adresă MAC privată (aleasă la întâmplare de telefoane și laptopuri, pentru intimitate) sau unul pe care nu îl cunoști."
+text = "nmap nu a găsit un producător pentru el (din adresa MAC, adresa hardware a cărei primă parte arată producătorul, dacă a văzut una) și nici un nume (hostname) în rețea, dar are porturi deschise. Poate fi un dispozitiv al tău cu adresă MAC privată (aleasă la întâmplare de telefoane și laptopuri, pentru intimitate) sau unul pe care nu îl cunoști."
 rule = "Fără producător după adresa MAC, fără nume și cu cel puțin un port deschis: dispozitiv care nu poate fi identificat."
 steps = [
   "Caută adresa IP în lista de dispozitive conectate din router, ca să afli ce dispozitiv este.",
@@ -369,7 +369,7 @@ steps = [
 
 [codes.UNKNOWN_DEVICE.en]
 title = "Unidentified device with open ports"
-text = "nmap found no maker for it (from the MAC address, if it saw one) and no hostname on the network, yet it has open ports. It may be one of your devices using a private MAC address (picked at random by phones and laptops, for privacy) or one you don't know."
+text = "nmap found no maker for it (from the MAC address, the hardware address whose first part identifies the maker, if it saw one) and no hostname on the network, yet it has open ports. It may be one of your devices using a private MAC address (picked at random by phones and laptops, for privacy) or one you don't know."
 rule = "No maker from the MAC address, no hostname and at least one open port: device that cannot be identified."
 steps = [
   "Look up the IP address in your router's list of connected devices to find out what the device is.",
