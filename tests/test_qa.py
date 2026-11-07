@@ -136,6 +136,20 @@ def test_a_service_not_on_the_named_device_still_shows_the_devices_real_finding(
     assert "no problem" not in answer.text
 
 
+@pytest.mark.parametrize(("question", "lang"), [
+    ("Is port 9100/udp open on my printer?", "en"),
+    ("Portul 9100/udp e deschis pe imprimantă?", "ro"),
+])
+def test_a_udp_port_is_not_answered_with_the_tcp_finding(question, lang):
+    answer = answer_question(question, scan("V3_small_office.xml"), lang)
+    assert answer.text == CANNOT[lang] and answer.citations == []
+
+
+@pytest.mark.parametrize("question", ["Is 9100/tcp open on my printer?", "Is port 9100 open?"])
+def test_tcp_or_no_protocol_still_finds_the_port(question):
+    assert answer_question(question, scan("V3_small_office.xml"), "en").citations == [PRINTER]
+
+
 def test_a_service_with_no_finding_in_the_scan():
     answer = answer_question("Is telnet open?", scan("V1_home_basic.xml"), "en")
     assert answer.text == PHRASES["en"]["no_problem_topic"] and answer.citations == []
