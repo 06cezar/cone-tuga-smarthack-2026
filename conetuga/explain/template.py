@@ -66,6 +66,17 @@ def device_label(device_type: str, lang: str) -> str:
     return DEVICE_LABELS[device_type][lang]
 
 
+def device_name(host, lang: str) -> str:
+    """How the UI names a device: "office-printer — Imprimantă", or only the label when the scan shows no hostname.
+
+    The same as ui.view.device_name (a test keeps the two equal), here so the Q&A can name devices as the page does
+    without conetuga/ importing ui/. The hostname is scan text and is not escaped here: the UI escapes it with md().
+    Raises KeyError for an unknown device type or language.
+    """
+    label = device_label(host.device_type, lang)
+    return f"{host.hostname} — {label}" if host.hostname else label
+
+
 def scan_values(finding, host, lang: str) -> dict[str, str]:
     """The values a template may use, all taken from the finding and its host (NFR-06: nothing invented), with the
     host's name hidden inside banner text (NFR-02)."""

@@ -246,3 +246,31 @@ def test_short_hostname_inside_a_longer_word_is_kept(tmp_path, lang):
     text = all_text(explain(finding, host, lang))
     assert "Synology NASdrive" in text
     assert HIDDEN_HOSTNAME[lang] not in text
+
+
+UI_SCANS = sorted(path for path in SCANS.glob("*.xml") if path.name != "V7_broken.xml") + sorted(
+    (ROOT / "lab" / "scans").glob("*.xml"))
+
+
+@pytest.mark.parametrize("lang", LANGUAGES)
+@pytest.mark.parametrize("path", UI_SCANS, ids=lambda path: path.name)
+def test_device_name_is_the_one_the_ui_shows(path, lang):
+    from conetuga.explain import device_name
+    from ui.view import device_name as ui_device_name
+
+    for host in analyse_file(path).hosts:
+        assert device_name(host, lang) == ui_device_name(host, lang), host.ip
+
+
+@pytest.mark.parametrize("lang", LANGUAGES)
+def test_device_name_without_hostname_is_the_label_alone(lang):
+    from conetuga.explain import device_name
+
+    assert device_name(SimpleNamespace(hostname="", device_type="printer"), lang) == device_label("printer", lang)
+
+
+def test_device_name_keeps_a_hostile_hostname_literal():
+    from conetuga.explain import device_name
+
+    host = SimpleNamespace(hostname="{ip}<script>", device_type="printer")
+    assert device_name(host, "en") == "{ip}<script> — Printer"
