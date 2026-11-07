@@ -13,9 +13,12 @@ EXPLANATIONS_FILE = Path(__file__).resolve().parents[2] / "data" / "explanations
 LANGUAGES = ("ro", "en")  # NFR-09: all user-facing text in Romanian and English
 SOURCE_TEMPLATE = "template"  # Explanation.source when the text comes from explanations.toml
 PRODUCT_CODE = "OUTDATED_SERVICE"  # the only code whose text names the product and version of its port
+DEVICE_TYPES_SECTION = "device_types"  # the one top-level table in explanations.toml that isn't a catalog code
 
 # Read once, at import: the file is small and never changes while the app runs.
-EXPLANATIONS = tomllib.loads(EXPLANATIONS_FILE.read_text(encoding="utf-8"))
+_FILE = tomllib.loads(EXPLANATIONS_FILE.read_text(encoding="utf-8"))
+DEVICE_LABELS = _FILE[DEVICE_TYPES_SECTION]
+EXPLANATIONS = {code: entry for code, entry in _FILE.items() if code != DEVICE_TYPES_SECTION}
 
 
 @dataclass(frozen=True)
@@ -45,6 +48,16 @@ def explain(finding, host, lang: str) -> Explanation:
         references=list(entry["references"]),
         source=SOURCE_TEMPLATE,
     )
+
+
+def device_label(device_type: str, lang: str) -> str:
+    """The label people read for a Host.device_type, such as "Imprimantă" for "printer".
+
+    Raises KeyError for an unknown device type or language.
+    """
+    if lang not in LANGUAGES:
+        raise KeyError(lang)
+    return DEVICE_LABELS[device_type][lang]
 
 
 def scan_values(finding, host) -> dict[str, str]:

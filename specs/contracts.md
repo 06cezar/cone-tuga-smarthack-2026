@@ -70,8 +70,6 @@ with its test.
     the structured evidence (service, product, version) that the LLM check needs.
   - The text holds only values from the finding and the host: `{ip}`, `{port}`, and for OUTDATED_SERVICE `{product}`
     and `{version}` from that `Port`. Scan values are inserted as plain text, never read as a template.
-  - Depends on `Finding.proto`, added in PR #5 (`A-contract-fields`, still a draft): until it lands on `main`, callers
-    use this example as test data.
 - Example: `Finding(file="V1_home_basic.xml", ip="192.168.1.1", port=80, proto="tcp", code="HTTP_ADMIN_CLEARTEXT",
   severity="medium", points=10, evidence=...)` with its host and `lang="ro"` gives a text of at most 2 sentences that
   contains `192.168.1.1`, 1–5 steps, and `source="template"` when there's no LLM.
@@ -79,6 +77,13 @@ with its test.
   If no `Port` in `host.ports` matches `(finding.port, finding.proto)` for OUTDATED_SERVICE, `explain` raises
   `LookupError`: that means analyse_file returned inconsistent data, a bug to fix, not a case to hide.
 - Test: `tests/test_explain.py::test_contract_explain`
+- Also: `device_label(device_type: str, lang: str) -> str`, the label people read for `Host.device_type`, from
+  `[device_types]` in `data/explanations.toml`. The types are the 10 values of `Host.device_type` in analyse_file
+  (`camera`, `printer`, `nas`, `router`, `tv`, `smart-home`, `computer`, `server`, `phone`, `unknown`).
+  - Example: `device_label("nas", "ro") == "Dispozitiv de stocare în rețea (NAS)"`,
+    `device_label("nas", "en") == "Network storage (NAS)"`.
+  - Errors: an unknown device type or language raises `KeyError`.
+  - Test: `tests/test_explain.py::test_contract_device_label`
 
 ### diff · owner: D · used by: the UI, change alerts (FR-13)
 - Call: `diff(before: FileResult, after: FileResult) -> Diff(new_devices, removed_devices, opened_ports, closed_ports,
