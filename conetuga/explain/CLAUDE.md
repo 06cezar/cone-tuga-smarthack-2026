@@ -1,10 +1,11 @@
-# Rules for conetuga/explain (stream B: explanations, fixes, optional LLM)
+# Rules for conetuga/explain (stream B: explanations, fixes, Q&A)
 
-- Every catalog code has built-in text in Romanian and English (`data/explanations.toml`), used when there's no LLM or
-  its answer fails the check.
+- Every catalog code has built-in text in Romanian and English (`data/explanations.toml`): it's what the user
+  reads for every finding.
 - An explanation is at most 2 sentences, with no unexplained technical term, at about a 12-year-old's reading level.
   Words like "port" or "Telnet" get a few plain words of explanation the first time.
 - Fixes are 1–5 ordered, concrete steps a non-expert can follow, most important first.
+- No LLM in this version (team decision, 2026-11-07): the next three rules apply only if one is added later.
 - The LLM only explains a finding that code already produced; it never adds, removes or re-rates findings.
 - A prompt gets only the evidence for that finding (code, IP, port, service, product, version), wrapped as untrusted
   data.
