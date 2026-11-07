@@ -24,7 +24,8 @@ Status lives here, not in CLAUDE.md. Milestones are the brief's; hours count fro
 - [ ] `export` for a folder: findings.csv and scores.csv (FR-15); MAC masking everywhere; gitleaks clean
 
 ## D · UI, history, pitch
-- [ ] UI with the most dangerous device and the first step on the first screen; score, devices, findings, fixes (FR-11)
+- [x] UI with the most dangerous device and the first step on the first screen; score, devices, findings, fixes (FR-11):
+  `ui/app.py`, `ui/view.py` (history comes with the next item)
 - [ ] History, diff, "delete my history", change alerts (FR-10, FR-13), visible by hour 16
 - [ ] Pitch (5–7 minutes, English, 2+ speakers) and the one-page technical summary
 
