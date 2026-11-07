@@ -38,6 +38,8 @@ test and this list together.
 - TCP and UDP on the same port giving the same code: one finding, the TCP one (`findings.csv` has no proto column,
   so two would be a duplicate row).
 - `http-proxy`, `http-alt`: not `http` (the catalog says "Service http").
+- Title keywords match as a part of the title, ignoring case: "Configuration" counts for "config"
+  (`_title_has_keyword` in rules.py).
 - OUTDATED_SERVICE: reported for every open port whose product and version are on the list, whether or not that
   service has a finding of its own, on the port that carries the service's own finding. For a one-per-device service
   that is the port its finding chose: old Samba on 139 and 445 gives one OUTDATED_SERVICE, on 445 (B's reading of "in

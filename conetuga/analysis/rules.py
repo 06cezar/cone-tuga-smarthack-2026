@@ -54,9 +54,17 @@ def _port_matches(rule: FindingRule, port: Port) -> bool:
         return False
     if rule.without_ssl and port.ssl:
         return False
-    if rule.title_keywords and not any(keyword in port.title.casefold() for keyword in rule.title_keywords):
+    if rule.title_keywords and not _title_has_keyword(port.title, rule.title_keywords):
         return False
     return True
+
+
+def _title_has_keyword(title: str, keywords: tuple[str, ...]) -> bool:
+    """The page title "contains" a catalog keyword: as a part of the text, ignoring case, so "Configuration" counts
+    for "config" and "LOGIN" for "login" (our reading of "contains"; open question for a mentor). The keywords come
+    from the catalog already case-folded."""
+    title = title.casefold()
+    return any(keyword in title for keyword in keywords)
 
 
 def _service_name(port: Port) -> str:
