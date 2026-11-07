@@ -3,7 +3,7 @@
 Status lives here, not in CLAUDE.md. Milestones are the brief's; hours count from the opening.
 
 ## A · parser, rules, score
-- [ ] Contract `analyse_file` agreed (hour 2)
+- [x] Contract `analyse_file` agreed (hour 2): B, C and D confirmed, with `proto` and `points` added
 - [ ] Parser for nmap XML: hosts, MAC + vendor, hostname, open ports, service, product, version, ssl, `http-title`
 - [ ] Rules from `data/catalog.toml` and the standard score
 - [ ] `tests/test_validation_set.py` green: 24/24 rows, no extra rows, every score (hour 10)
@@ -87,3 +87,5 @@ Status lives here, not in CLAUDE.md. Milestones are the brief's; hours count fro
 - Is the title keyword match case-insensitive?
 - Do `http-proxy` and `http-alt` count as `http`?
 - A valid nmap XML with no hosts: score 100 or ERROR?
+- The same port open on TCP and UDP with the same finding code: one row or two? (`findings.csv` has no protocol
+  column; A keeps one, the TCP one.)

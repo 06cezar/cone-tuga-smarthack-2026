@@ -31,3 +31,15 @@
   folder give byte-identical CSVs. UNKNOWN_DEVICE has no port: sort it as -1, because `None` can't be compared with
   an `int`.
 - The oracle is `tests/test_validation_set.py`: an extra row is as wrong as a missing one.
+
+## Our readings of open questions (each one is a single named constant or function, so a mentor's answer changes one place)
+The questions are in `IMPLEMENTATION_PLAN.md`, "Questions for humans"; when a mentor answers, update the code, its
+test and this list together.
+- TCP and UDP on the same port giving the same code: one finding, the TCP one (`findings.csv` has no proto column,
+  so two would be a duplicate row).
+- `http-proxy`, `http-alt`: not `http` (the catalog says "Service http").
+- OUTDATED_SERVICE: reported on every open port whose product and version are on the list, whether or not that
+  service has a finding of its own.
+- Old Samba open on both 139 and 445: OUTDATED_SERVICE on each of them (riskiest reading; the other is "445 only").
+- A host with no MAC address at all counts as "no MAC vendor".
+- A valid nmap XML with no hosts: score 100, not ERROR.
