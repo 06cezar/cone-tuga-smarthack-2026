@@ -1,0 +1,134 @@
+# The official finding catalog, transcribed from the brief (specs/00-brief.md, pages 8–10). Owner: stream A.
+# Change it only when the brief or the organizers change it; tests/test_catalog.py checks it against the brief.
+#
+# Rules from the brief: report a finding only for ports in state "open", and decide by the service name nmap reports,
+# not by the port number alone.
+
+[score]
+start = 100  # standard network score = max(0, start - sum of the points of all findings)
+
+[severity_points]  # what each severity costs
+high = 20
+medium = 10
+low = 5
+info = 0
+
+[[finding]]
+code = "TELNET_OPEN"
+severity = "high"
+services = ["telnet"]  # on any port
+meaning = "Remote login without encryption"
+
+[[finding]]
+code = "RDP_EXPOSED"
+severity = "high"
+services = ["ms-wbt-server"]
+meaning = "Remote desktop reachable"
+
+[[finding]]
+code = "VNC_EXPOSED"
+severity = "high"
+services = ["vnc"]
+meaning = "Remote screen sharing reachable"
+
+[[finding]]
+code = "DB_EXPOSED"
+severity = "high"
+services = ["mysql", "postgresql", "redis", "mongodb"]
+meaning = "Database reachable from the network"
+
+[[finding]]
+code = "CAMERA_STREAM_EXPOSED"
+severity = "high"
+services = ["rtsp"]
+meaning = "Video stream reachable"
+
+[[finding]]
+code = "OUTDATED_SERVICE"
+severity = "high"
+services = []  # any service whose product and version are on the [[outdated]] list below
+meaning = "Software version with known security problems"
+note = "reported in addition to the service's own finding, on the same port"
+
+[[finding]]
+code = "FTP_CLEARTEXT"
+severity = "medium"
+services = ["ftp"]
+meaning = "File transfer without encryption"
+
+[[finding]]
+code = "HTTP_ADMIN_CLEARTEXT"
+severity = "medium"
+services = ["http"]
+meaning = "Admin page over plain HTTP"
+without_ssl = true  # not when nmap reports tunnel="ssl"
+title_keywords = ["login", "admin", "config", "setup", "router", "settings"]  # the page title contains one of them
+
+[[finding]]
+code = "SMB_EXPOSED"
+severity = "medium"
+services = ["microsoft-ds", "netbios-ssn"]
+meaning = "Windows file sharing open"
+one_per_device = true
+preferred_ports = [445, 139]  # report on 445 if open, else on 139
+
+[[finding]]
+code = "MQTT_EXPOSED"
+severity = "medium"
+services = ["mqtt"]
+meaning = "IoT message broker reachable"
+
+[[finding]]
+code = "UPNP_EXPOSED"
+severity = "medium"
+services = ["upnp"]
+protocol = "udp"
+meaning = "Device can open router ports automatically"
+
+[[finding]]
+code = "SNMP_EXPOSED"
+severity = "medium"
+services = ["snmp"]
+protocol = "udp"
+meaning = "Device management protocol reachable"
+
+[[finding]]
+code = "PRINTER_RAW_EXPOSED"
+severity = "low"
+services = ["jetdirect"]
+meaning = "Anyone can send jobs to the printer"
+
+[[finding]]
+code = "UNKNOWN_DEVICE"
+severity = "low"
+services = []  # a rule about a device, not about a port
+meaning = "Device that cannot be identified"
+note = "no MAC vendor and no hostname, at least one open port; the port column stays empty"
+
+[[finding]]
+code = "SSH_OPEN"
+severity = "info"
+services = ["ssh"]
+meaning = "Encrypted remote login, shown for awareness"
+
+# The outdated list (brief, page 10). How a product name matches nmap's `product` field is our assumption, to confirm
+# with a mentor: a case-insensitive substring, with versions compared by their leading numbers ("7.2p2" counts as 7.2).
+[[outdated]]
+product = "vsftpd"
+equals = "2.3.4"
+
+[[outdated]]
+product = "OpenSSH"
+below = "7.4"
+
+[[outdated]]
+product = "Apache httpd"
+at_most = "2.2"  # 2.2.x or older
+
+[[outdated]]
+product = "Microsoft IIS"
+at_most = "7.5"
+
+[[outdated]]
+product = "Samba"
+at_most = "3"  # 3.x or older

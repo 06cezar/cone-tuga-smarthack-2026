@@ -1,0 +1,6 @@
+defusedxml>=0.7
+psutil>=5.9
+streamlit>=1.40
+anthropic>=2.0
+python-dotenv>=1.0
+pytest>=8.0

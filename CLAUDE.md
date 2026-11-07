@@ -1,0 +1,91 @@
+<!--
+  MAINTAINER NOTES. Block-level HTML comments are stripped before Claude reads the file, so they cost no context.
+  - One person (Cezar) edits this file during the event. Under 200 lines; concrete, checkable rules, with the reason
+    when it isn't obvious. Status goes in IMPLEMENTATION_PLAN.md, never here.
+  - Folder rules live next to the code: conetuga/analysis, conetuga/explain, conetuga/guard, conetuga/history, ui, lab
+    and tests each have a short CLAUDE.md that loads only when Claude works there.
+  - Each person's stream goes in their own CLAUDE.local.md (gitignored); see docs/team-setup.md.
+  - Add a Learnings line when Claude makes the same mistake twice; delete stale lines.
+-->
+# CLAUDE.md: ConeTuga
+
+Team rules for every Claude session on this project. Details live in the files named below: read them when a task touches them.
+
+## The task (R Systems Hackathon 2026, "Secure Networks, Simply Explained")
+- Build: a tool that scans a network we own (our phone hotspot), finds devices and open services, applies the official
+  finding catalog, computes the standard score, explains each finding to a non-expert in Romanian and English, gives
+  1–5 fixes, and keeps a before/after history.
+- Judged on: Test Set accuracy 30% (an extra finding costs as much as a correct one), ease of use 20%, explanations 15%,
+  pitch 15% (in English), security 10% (5 live yes/no checks), innovation 10%. A missing Must caps technical execution at 50%.
+- Brief (the contract): `specs/00-brief.md` · Contracts: `specs/contracts.md` · Catalog: `data/catalog.toml` ·
+  Tasks: `IMPLEMENTATION_PLAN.md` · Pitch claims: `PITCH.md`
+- Stack: Python 3.13, `defusedxml`, Streamlit for the UI, nmap for live scans; the Anthropic SDK only for optional
+  explanations.
+
+## Commands (Windows; in Git Bash use forward slashes)
+- Setup: `py -3.13 -m venv .venv`, then `.venv\Scripts\python -m pip install -r requirements.txt`
+- Tests: `.venv\Scripts\python -m pytest -q`. They must pass before every commit. Contracts only: `-k contract`.
+- Secrets: `gitleaks detect` must report no leaks before every push (the jury checks this live).
+- Keep the repo in a short path (e.g. `C:\Users\<you>\Desktop\ConeTuga`): past ~260 characters, pip can't unpack packages.
+
+## Principles (never break; each maps to a brief requirement and becomes a pitch claim with a test)
+- Code decides: findings, severities and scores come only from `data/catalog.toml` and our rules, never from an LLM,
+  and the same file always gives the same result (NFR-05). Why: 30% of the grade is an exact answer key.
+- The model only explains, from scan evidence; code checks every AI sentence against that evidence (no invented ports,
+  CVEs, versions or phone numbers, NFR-06). After two failed checks, or with no LLM, the built-in text answers.
+- All outside text is hostile: scan files are parsed with `defusedxml` and size limits; banners, page titles and
+  hostnames are wrapped before any prompt and escaped in the UI and reports (NFR-03).
+- Privacy: MAC addresses are masked in all output; hostnames and history stay on the computer; one-click
+  "delete my history" (NFR-02).
+- Secrets only in environment variables (`.env`, gitignored); never in code, tests or fixtures (NFR-01).
+- Scope: the tool refuses targets outside the allowlist (default: the connected subnet) and every public IP; a live
+  scan needs `--confirm` (FR-02). Claude never runs a live network scan: a person runs it, on our hotspot only.
+- Never edit or delete a test, a spec or an expected-results fixture to make something pass. No stubs, no TODOs.
+
+## How to write code (the default, unless the task says otherwise)
+- Simplicity beats complexity: plain functions and dataclasses; no class hierarchies or plugin systems "for later".
+- Readable beats clever: names that say what a thing is, one job per function, a docstring that says why.
+- No magic numbers: catalog values live in `data/catalog.toml`; any other fixed value is a named constant with a comment.
+- Grow in small steps: the CLI first, the UI second (the brief says so). Every step leaves the tests green.
+- It runs on Windows and Linux: `pathlib` for paths, `encoding="utf-8"` on every `open` (Windows defaults to cp1252
+  and breaks "ș/ț"), CSVs written with `newline=""` and `lineterminator="\n"` so both systems give identical bytes.
+  OS-specific code lives only in `conetuga/guard/` (network detection), with a test for each branch.
+- Touch only what the task needs. Standard library first; a new package only if it saves hours and installs on Windows.
+- Code, names, comments and commit messages in English; user-facing text in Romanian and English; talk to us in Romanian.
+
+## How to work with us
+- One task at a time. Read the spec and the files the task names; don't explore the whole repo.
+- Before a task that touches more than one file, give the plan in 3 lines: files, test, how we'll know it works.
+- Contract first: before you build anything another stream calls, write or update its entry in `specs/contracts.md`
+  (the call, one real example, the errors) and wait for our OK. Callers use the contract's example as test data until
+  the feature lands. A contract changes only when its users agree, in one commit with its test.
+- Ask before you change another stream's files, add a package, or change an existing test.
+- When a task is done, say in at most 3 sentences what changed (`file:line`), why, and what breaks without it.
+  We must be able to explain every part to the jury ourselves.
+- Report honestly: paste the failing output; never say "done" without running the tests.
+- Commit or push only when we ask.
+
+## Team and files (avoids merge conflicts)
+| Stream | Owner | Files |
+|---|---|---|
+| A parser, rules, score | <name> | `conetuga/analysis/`, `data/catalog.toml` |
+| B explanations, fixes, LLM | <name> | `conetuga/explain/`, `data/explanations.toml` |
+| C guardrail, security, CSV export | <name> | `conetuga/guard/` |
+| D UI, history, pitch | Cezar | `ui/`, `conetuga/history/`, `PITCH.md`, `docs/` |
+| E lab, captures, QA | <name> | `lab/`, `tests/fixtures/` |
+- Branch from an up-to-date `main`, named `<stream>-<topic>` (e.g. `A-smb-rule`); merge through a Pull Request with
+  the tests green, at least once an hour. Nobody works on `main` directly.
+- Small commits, one task each: `<area>: <what changed>`.
+
+## Done means
+- A test for the new behaviour, and the full suite is green; contract examples still pass (`pytest -k contract`).
+- `tests/test_validation_set.py` still reproduces all 24 expected rows and every score, with no extra rows.
+- It runs from the CLI on a scan file without network access, and the UI shows the same result.
+- If it backs something we'll say on stage, `PITCH.md` has a row: claim → file → test.
+
+## Time (brief hours; the organizers confirm the clock times at the opening)
+- Hour 0–3: lab on the hotspot, first scans, contracts. Hour 3–16: build; compare with the Validation Set often.
+- Hour 16: mentor check (Validation Set reproduced, standard CSVs written). Hour 16–20: explanations, UI, pitch.
+- Hour 20: secret Test Set. Hour 20–21: run and upload; no code changes after the upload. Tag `final` by hour 22.
+
+## Learnings (verified, one line each; add one when something bites twice, delete stale ones)
