@@ -1,6 +1,8 @@
 #!/bin/sh
 # One-command setup on Linux (NFR-10): creates .venv, installs the requirements, runs the tests.
+# Prefers Python 3.13; any python3 from 3.11 up works (the tests need tomllib).
 set -e
-python3 -m venv .venv
+PY=$(command -v python3.13 || command -v python3)
+"$PY" -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 .venv/bin/python -m pytest -q

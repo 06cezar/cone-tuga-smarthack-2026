@@ -24,7 +24,7 @@ Status lives here, not in CLAUDE.md. Milestones are the brief's; hours count fro
 - [ ] Pitch (5–7 minutes, English, 2+ speakers) and the one-page technical summary
 
 ## E · lab and QA
-- [ ] Hotspot `RSH-<team number>`, 3+ targets, 5+ catalog codes, three scans saved (hour 3)
+- [ ] Hotspot `RSH-<team name>` (ours: `RSH-ConeTuga`), 3+ targets, 5+ catalog codes, three scans saved (hour 3)
 - [ ] Before/after pair: fix 2+ findings and rescan
 - [ ] Validation Set XML copied into `tests/fixtures/validation/`; rehearse the 7 live checks
 - [ ] Lab scans used as fixtures: a test checks that our before/after pair shows the score improving

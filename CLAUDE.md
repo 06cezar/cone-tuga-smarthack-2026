@@ -17,7 +17,8 @@ Team rules for every Claude session on this project. Details live in the files n
   1–5 fixes, and keeps a before/after history.
 - Judged on: Test Set accuracy 30% (an extra finding costs as much as a correct one), ease of use 20%, explanations 15%,
   pitch 15% (in English), security 10% (5 live yes/no checks), innovation 10%. A missing Must caps technical execution at 50%.
-- Brief (the contract): `specs/00-brief.md` · Contracts: `specs/contracts.md` · Catalog: `data/catalog.toml` ·
+- Brief (the contract): `specs/00-brief.md`, with the organizers' later updates in `specs/01-organizer-updates.md`
+  (they win where they differ) · Contracts: `specs/contracts.md` · Catalog: `data/catalog.toml` ·
   Tasks: `IMPLEMENTATION_PLAN.md` · Pitch claims: `PITCH.md`
 - Deliverables: the Test Set upload, the `final` tag, a README with one-command setup, our lab scans and the Validation
   Set as test fixtures, a one-page technical summary, the pitch. The full checklist is in `IMPLEMENTATION_PLAN.md`.
