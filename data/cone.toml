@@ -1,0 +1,400 @@
+# What Cone 🐇 says in Advanced mode, for every catalog code, in Romanian and English. Owner: stream B.
+# Used by conetuga/explain/narrate.py; the contract is "narrate" in specs/contracts.md. Simple mode (Tuga 🐢) keeps
+# using data/explanations.toml.
+#
+# These texts hold NO value from the scan and NO placeholder: no IP, port number, version or product name of this
+# network, because the same text must be true for every scan (nmap decides by service name, so a port number written
+# here could be wrong). Values from the scan appear only in the evidence lines, which code builds from [labels].
+#
+# Format:
+#   [codes.<CODE>.ro] / [codes.<CODE>.en]:
+#     title = short technical label
+#     text  = at most 2 sentences; names the technical terms and explains each in a few words (NFR-09)
+#     rule  = what the catalog rule means, translated
+#     steps = 1-5 precise steps, most important first; no maker's menu paths, no commands that only work on some
+#             systems; the last one, where it makes sense, is to check again with a scan
+#   [labels.ro] / [labels.en]: the start of each evidence line, saying in plain words what the line is (NFR-09),
+#     and the words for severities and points
+# Romanian uses ș and ț with a comma below.
+
+[labels.ro]
+port = "Port și protocol (ușa numerotată prin care răspunde programul și felul legăturii, TCP sau UDP)"
+service = "Serviciu (numele pe care nmap l-a dat programului care răspunde)"
+product = "Program și versiune (cum s-a prezentat programul când nmap l-a întrebat)"
+rule = "Regula din catalog (codul problemei și ce înseamnă)"
+severity = "Severitate (cât de gravă e problema și câte puncte scade din scor)"
+points = "puncte"
+severity_high = "mare"
+severity_medium = "medie"
+severity_low = "mică"
+severity_info = "informativ"
+ip = "Adresă IP (adresa dispozitivului în rețea)"
+no_vendor = "Fără producător după adresa MAC (adresa de fabrică a plăcii de rețea)"
+no_name = "Fără nume în rețea (hostname)"
+open_ports = "Porturi deschise (câte uși răspund pe dispozitiv)"
+private_mac = "Adresă MAC privată (local administrată), cum folosesc telefoanele și laptopurile pentru intimitate"
+
+[labels.en]
+port = "Port and protocol (the numbered door the program answers on, and the kind of connection, TCP or UDP)"
+service = "Service (the name nmap gave the program that answers)"
+product = "Program and version (how the program introduced itself when nmap asked)"
+rule = "Catalog rule (the problem's code and what it means)"
+severity = "Severity (how serious the problem is and how many points it takes off the score)"
+points = "points"
+severity_high = "high"
+severity_medium = "medium"
+severity_low = "low"
+severity_info = "informational"
+ip = "IP address (the device's address on the network)"
+no_vendor = "No maker from the MAC address (the network card's factory address)"
+no_name = "No name on the network (hostname)"
+open_ports = "Open ports (how many doors answer on the device)"
+private_mac = "Private (locally administered) MAC address, as phones and laptops use for privacy"
+
+[codes.TELNET_OPEN.ro]
+title = "Serviciu Telnet deschis (consolă de la distanță necriptată)"
+text = "nmap a găsit un serviciu Telnet, o linie de comandă la distanță (shell) care trimite numele, parola și fiecare comandă necriptate prin rețea. Cine poate capta traficul din rețea (sniffing, citirea pachetelor pe drum) poate afla datele de autentificare și controla complet dispozitivul."
+rule = "Un serviciu Telnet e deschis, pe orice port: autentificare de la distanță fără criptare."
+steps = [
+  "Dezactivează serviciul Telnet din configurarea dispozitivului sau din setările firmware-ului (programul intern al dispozitivului).",
+  "Dacă ai nevoie de administrare de la distanță, folosește SSH (conectare criptată), cu autentificare prin cheie sau cu o parolă lungă și unică.",
+  "Schimbă orice parolă folosită vreodată prin Telnet: poate fi deja capturată.",
+  "Dacă nu poți opri Telnet, blochează-i portul în firewall (paravanul de protecție) sau mută dispozitivul într-un segment de rețea separat (VLAN).",
+  "Verifică din nou cu o scanare că serviciul a dispărut.",
+]
+
+[codes.TELNET_OPEN.en]
+title = "Telnet service open (unencrypted remote shell)"
+text = "nmap found a Telnet service, a remote command line (shell) that sends the username, the password and every command unencrypted over the network. Anyone who can capture traffic on the network (sniffing, reading packets in transit) can take the credentials and fully control the device."
+rule = "A Telnet service is open, on any port: remote login without encryption."
+steps = [
+  "Disable the Telnet service in the device's configuration or in its firmware settings (the device's internal software).",
+  "If you need remote administration, use SSH (encrypted login) with key-based authentication or a long, unique password.",
+  "Change any password that was ever used over Telnet: it may already have been captured.",
+  "If Telnet can't be turned off, block its port in the firewall (the protective barrier) or move the device to a separate network segment (VLAN).",
+  "Check again with a scan that the service is gone.",
+]
+
+[codes.RDP_EXPOSED.ro]
+title = "Remote Desktop (RDP) accesibil din rețea"
+text = "nmap a găsit Remote Desktop Protocol (RDP, serviciul Windows de ecran și tastatură la distanță, numit de nmap ms-wbt-server) pe acest dispozitiv. Un RDP expus e o țintă frecventă pentru ghicirea parolelor (brute force) și pentru vulnerabilitățile de execuție de cod de la distanță din Windows neactualizat."
+rule = "Serviciul ms-wbt-server (Remote Desktop) e deschis: desktop la distanță accesibil."
+steps = [
+  "Dacă nimeni nu are nevoie de acces la distanță la acest calculator, oprește Remote Desktop din setările sistemului.",
+  "Dacă e nevoie de el, cere Network Level Authentication (autentificare înainte de deschiderea sesiunii) și parole puternice, unice, pentru fiecare cont care se poate conecta.",
+  "Instalează toate actualizările de securitate Windows în așteptare.",
+  "Permite RDP doar de la calculatoarele care au nevoie, din firewall-ul calculatorului, sau folosește-l printr-un VPN (un tunel criptat), nu direct în rețea.",
+  "Verifică din nou cu o scanare.",
+]
+
+[codes.RDP_EXPOSED.en]
+title = "Remote Desktop (RDP) reachable from the network"
+text = "nmap found the Remote Desktop Protocol (RDP, the Windows remote screen and keyboard service, which nmap calls ms-wbt-server) on this device. Exposed RDP is a frequent target of password guessing (brute force) and of remote code execution flaws in unpatched Windows."
+rule = "The ms-wbt-server service (Remote Desktop) is open: remote desktop reachable."
+steps = [
+  "If nobody needs remote access to this computer, turn Remote Desktop off in the system settings.",
+  "If it is needed, require Network Level Authentication (login before the session starts) and strong, unique passwords for every account allowed to connect.",
+  "Install all pending Windows security updates.",
+  "Allow RDP only from the computers that need it, with the computer's firewall, or use it through a VPN (an encrypted tunnel) instead of directly on the network.",
+  "Check again with a scan.",
+]
+
+[codes.VNC_EXPOSED.ro]
+title = "Partajare de ecran VNC accesibilă"
+text = "nmap a găsit un server VNC, care împarte ecranul, tastatura și mouse-ul cu oricine se conectează. Multe instalări VNC au o parolă scurtă sau deloc și trimit sesiunea necriptată, așa că poate fi urmărită sau preluată."
+rule = "Un serviciu VNC e deschis: partajare de ecran la distanță accesibilă."
+steps = [
+  "Oprește serverul VNC dacă nu e folosit.",
+  "Dacă e nevoie de el, pune o parolă puternică și activează criptarea în serverul VNC, sau trece-l printr-un tunel SSH ori VPN.",
+  "Limitează din firewall-ul calculatorului care calculatoare se pot conecta.",
+  "Actualizează programul VNC la ultima versiune.",
+  "Verifică din nou cu o scanare.",
+]
+
+[codes.VNC_EXPOSED.en]
+title = "VNC screen sharing reachable"
+text = "nmap found a VNC server, which shares the screen, keyboard and mouse with whoever connects. Many VNC setups have a short password or none and send the session unencrypted, so it can be watched or taken over."
+rule = "A VNC service is open: remote screen sharing reachable."
+steps = [
+  "Turn the VNC server off if it isn't used.",
+  "If it is needed, set a strong password and turn on encryption in the VNC server, or run it through an SSH or VPN tunnel.",
+  "Limit which computers may connect, with the computer's firewall.",
+  "Update the VNC software to its latest version.",
+  "Check again with a scan.",
+]
+
+[codes.DB_EXPOSED.ro]
+title = "Server de baze de date accesibil din rețea"
+text = "nmap a găsit un server de baze de date (MySQL, PostgreSQL, Redis sau MongoDB) care acceptă conexiuni din rețea, nu doar de pe același calculator (localhost). Bazele de date cu autentificare implicită sau lipsă pot fi citite, modificate sau șterse de la distanță, iar unele pot fi făcute chiar să ruleze comenzi."
+rule = "Un serviciu MySQL, PostgreSQL, Redis sau MongoDB e deschis: bază de date accesibilă din rețea."
+steps = [
+  "Dacă baza de date e folosită doar de programe de pe același calculator, fă-o să asculte doar pe localhost (adresa de ascultare, „bind address”, din configurarea ei).",
+  "Activează autentificarea și înlocuiește orice parolă implicită sau goală cu una lungă și unică.",
+  "Permite conexiuni din rețea doar de la serverele de aplicații care au nevoie, din firewall.",
+  "Actualizează serverul de baze de date la o versiune întreținută.",
+  "Verifică din nou cu o scanare.",
+]
+
+[codes.DB_EXPOSED.en]
+title = "Database server reachable from the network"
+text = "nmap found a database server (MySQL, PostgreSQL, Redis or MongoDB) that accepts connections from the network, not only from the same machine (localhost). Databases with default or missing authentication can be read, changed or wiped remotely, and some can even be made to run commands."
+rule = "A MySQL, PostgreSQL, Redis or MongoDB service is open: database reachable from the network."
+steps = [
+  "If only programs on the same machine use the database, make it listen on localhost only (the bind address in its configuration).",
+  "Turn on authentication and replace any default or empty password with a long, unique one.",
+  "Allow network connections only from the application servers that need them, with the firewall.",
+  "Update the database server to a maintained version.",
+  "Check again with a scan.",
+]
+
+[codes.CAMERA_STREAM_EXPOSED.ro]
+title = "Flux video al camerei (RTSP) accesibil"
+text = "nmap a găsit un serviciu RTSP (Real Time Streaming Protocol, folosit de camerele IP ca să trimită video în direct) pe acest dispozitiv. Multe camere oferă fluxul cu datele de autentificare din fabrică sau fără ele, așa că oricine din rețea îl poate urmări."
+rule = "Un serviciu RTSP e deschis: flux video accesibil."
+steps = [
+  "Pune o parolă puternică și unică pentru cameră și pentru fluxul ei video, în locul celei din fabrică.",
+  "Dezactivează RTSP dacă te uiți la cameră doar prin aplicația ei.",
+  "Actualizează firmware-ul camerei (programul ei intern).",
+  "Mută camerele într-un segment de rețea separat (VLAN sau rețeaua pentru oaspeți), care nu poate ajunge la calculatoarele tale.",
+  "Verifică din nou cu o scanare.",
+]
+
+[codes.CAMERA_STREAM_EXPOSED.en]
+title = "Camera video stream (RTSP) reachable"
+text = "nmap found an RTSP service (Real Time Streaming Protocol, which IP cameras use to send live video) on this device. Many cameras serve the stream with factory credentials or none, so anyone on the network can watch it."
+rule = "An RTSP service is open: video stream reachable."
+steps = [
+  "Set a strong, unique password for the camera and its video stream, replacing the factory one.",
+  "Turn RTSP off if you only watch the camera through its own app.",
+  "Update the camera's firmware (its internal software).",
+  "Move cameras to a separate network segment (a VLAN or the guest network) that can't reach your computers.",
+  "Check again with a scan.",
+]
+
+[codes.OUTDATED_SERVICE.ro]
+title = "Versiune de program învechită, cu vulnerabilități cunoscute"
+text = "Produsul și versiunea citite de nmap din banner-ul serviciului (textul cu care un serviciu se prezintă) sunt pe lista de versiuni învechite a catalogului. Pentru astfel de versiuni există vulnerabilități cunoscute public (CVE-uri, catalogul public al defectelor de securitate), des cu atacuri gata făcute (exploit-uri)."
+rule = "Produsul și versiunea sunt pe lista de versiuni învechite a catalogului: versiune de program cu probleme de securitate cunoscute."
+steps = [
+  "Actualizează programul la cea mai nouă versiune întreținută de producător.",
+  "Dacă nu există actualizare, înlocuiește-l cu un program întreținut sau elimină-l.",
+  "Până atunci, oprește serviciul sau permite-i portul doar de la calculatoare de încredere, din firewall.",
+  "Verifică din nou cu o scanare că versiunea raportată nu mai e învechită.",
+]
+
+[codes.OUTDATED_SERVICE.en]
+title = "Outdated software version with known vulnerabilities"
+text = "The product and version nmap read from the service's banner (the text a service announces about itself) are on the catalog's list of outdated releases. Publicly known vulnerabilities (CVEs, the public catalog of security flaws) exist for such versions, often with ready-made attacks (exploits)."
+rule = "The product and version are on the catalog's outdated list: software version with known security problems."
+steps = [
+  "Update the software to the newest version its maker still maintains.",
+  "If no update exists, replace it with maintained software or remove it.",
+  "Until then, stop the service or allow its port only from trusted computers, with the firewall.",
+  "Check again with a scan that the reported version is no longer outdated.",
+]
+
+[codes.FTP_CLEARTEXT.ro]
+title = "Transfer de fișiere FTP fără criptare"
+text = "nmap a găsit un serviciu FTP (File Transfer Protocol), care trimite numele de utilizator, parola și fișierele în clar. Oricine captează traficul din rețea le poate citi, iar unele servere FTP permit și autentificare anonimă."
+rule = "Un serviciu FTP e deschis: transfer de fișiere fără criptare."
+steps = [
+  "Oprește serverul FTP dacă nu e folosit.",
+  "Folosește în schimb SFTP (transfer de fișiere prin SSH) sau FTPS (FTP prin TLS, un strat de criptare).",
+  "Dezactivează autentificarea anonimă și schimbă orice parolă folosită prin FTP.",
+  "Verifică din nou cu o scanare.",
+]
+
+[codes.FTP_CLEARTEXT.en]
+title = "FTP file transfer without encryption"
+text = "nmap found an FTP service (File Transfer Protocol), which sends the username, the password and the files in clear text. Anyone capturing traffic on the network can read them, and some FTP servers also allow anonymous login."
+rule = "An FTP service is open: file transfer without encryption."
+steps = [
+  "Turn the FTP server off if it isn't used.",
+  "Use SFTP (file transfer over SSH) or FTPS (FTP over TLS, an encryption layer) instead.",
+  "Turn off anonymous login and change any password that was used over FTP.",
+  "Check again with a scan.",
+]
+
+[codes.HTTP_ADMIN_CLEARTEXT.ro]
+title = "Pagină de administrare prin HTTP necriptat"
+text = "nmap a găsit un serviciu web fără TLS (criptarea din spatele HTTPS), al cărui titlu de pagină arată ca o pagină de autentificare sau de administrare. Datele de autentificare scrise acolo trec prin rețea în clar și pot fi capturate."
+rule = "Un serviciu http fără SSL, cu titlul paginii conținând login, admin, config, setup, router sau settings: pagină de administrare prin HTTP simplu."
+steps = [
+  "Activează HTTPS pentru interfața de administrare și oprește accesul prin HTTP simplu, dacă dispozitivul permite.",
+  "Schimbă parola de administrator cu una lungă și unică, după ce ai activat HTTPS.",
+  "Limitează accesul de administrare la conexiunea prin cablu sau la anumite calculatoare, dacă dispozitivul are această opțiune.",
+  "Actualizează firmware-ul dispozitivului: versiunile noi adaugă des HTTPS.",
+  "Verifică din nou cu o scanare.",
+]
+
+[codes.HTTP_ADMIN_CLEARTEXT.en]
+title = "Admin page over unencrypted HTTP"
+text = "nmap found a web service without TLS (the encryption behind HTTPS) whose page title looks like a login or admin page. Credentials typed there cross the network in clear text and can be captured."
+rule = "An http service without SSL whose page title contains login, admin, config, setup, router or settings: admin page over plain HTTP."
+steps = [
+  "Turn on HTTPS for the admin interface and turn off plain HTTP access, if the device allows it.",
+  "Change the admin password to a long, unique one, after HTTPS is on.",
+  "Limit admin access to wired connections or to specific computers, if the device offers that option.",
+  "Update the device's firmware: newer versions often add HTTPS.",
+  "Check again with a scan.",
+]
+
+[codes.SMB_EXPOSED.ro]
+title = "Partajare de fișiere SMB accesibilă"
+text = "nmap a găsit SMB (Server Message Block, protocolul de partajare de fișiere din Windows și Samba) pe acest dispozitiv. Partajările cu permisiuni slabe pot expune fișierele, iar versiunile vechi de SMB au defecte folosite de programele rău-intenționate care se răspândesc singure (viermi)."
+rule = "Serviciul microsoft-ds sau netbios-ssn (SMB) e deschis: partajare de fișiere Windows deschisă."
+steps = [
+  "Oprește partajarea de fișiere dacă dispozitivul nu trebuie să împartă foldere.",
+  "Dezactivează SMBv1, cea mai veche versiune a protocolului.",
+  "Cere parolă pentru fiecare partajare și dă fiecăreia doar accesul strict necesar.",
+  "Instalează ultimele actualizări de securitate pentru Windows sau Samba.",
+  "Verifică din nou cu o scanare.",
+]
+
+[codes.SMB_EXPOSED.en]
+title = "SMB file sharing reachable"
+text = "nmap found SMB (Server Message Block, the file-sharing protocol of Windows and Samba) on this device. Shares with weak permissions leak files, and old SMB versions have flaws used by self-spreading malware (worms)."
+rule = "The microsoft-ds or netbios-ssn service (SMB) is open: Windows file sharing open."
+steps = [
+  "Turn file sharing off if this device doesn't need to share folders.",
+  "Turn off SMBv1, the oldest version of the protocol.",
+  "Require a password for every share and give each one only the access it needs.",
+  "Install the latest security updates for Windows or Samba.",
+  "Check again with a scan.",
+]
+
+[codes.MQTT_EXPOSED.ro]
+title = "Broker de mesaje MQTT accesibil"
+text = "nmap a găsit un broker MQTT (serverul care transmite mesaje de tip publicare/abonare între dispozitivele smart din casă). Fără autentificare și fără TLS, oricine din rețea poate citi toate subiectele (topics) și poate publica comenzi false către dispozitive."
+rule = "Un serviciu MQTT e deschis: broker de mesaje IoT accesibil."
+steps = [
+  "Oprește accesul anonim în broker și dă fiecărui dispozitiv propriul nume de utilizator și propria parolă.",
+  "Activează TLS (criptarea) pentru conexiunile la broker.",
+  "Folosește liste de control al accesului (reguli care spun ce client poate citi sau scrie fiecare subiect).",
+  "Permite conexiuni doar de la dispozitivele smart din casă, din firewall.",
+  "Verifică din nou cu o scanare.",
+]
+
+[codes.MQTT_EXPOSED.en]
+title = "MQTT message broker reachable"
+text = "nmap found an MQTT broker (the server that relays publish/subscribe messages between smart home devices). Without authentication and TLS, anyone on the network can read every topic and publish fake commands to the devices."
+rule = "An MQTT service is open: IoT message broker reachable."
+steps = [
+  "Turn off anonymous access in the broker and give every device its own username and password.",
+  "Turn on TLS (encryption) for connections to the broker.",
+  "Use access control lists (rules that say which client may read or write which topic).",
+  "Allow connections only from your smart home devices, with the firewall.",
+  "Check again with a scan.",
+]
+
+[codes.UPNP_EXPOSED.ro]
+title = "Serviciu UPnP care răspunde în rețea"
+text = "nmap a găsit UPnP (Universal Plug and Play), care lasă dispozitivele să se descopere între ele și să ceară routerului, fără parolă, redirecționări de porturi (căi de la internet la un dispozitiv). Un program rău-intenționat de pe orice dispozitiv îl poate folosi ca să expună servicii pe internet, iar unele implementări UPnP au și ele defecte."
+rule = "Un serviciu UPnP e deschis: dispozitivul poate deschide automat porturi în router."
+steps = [
+  "Dezactivează UPnP din setările routerului, dacă niciun dispozitiv de care depinzi nu are nevoie de el.",
+  "Verifică lista de redirecționări de porturi (port forwarding) a routerului și șterge orice regulă pe care nu o recunoști.",
+  "Actualizează firmware-ul routerului și al dispozitivului care răspunde la UPnP.",
+  "Verifică din nou cu o scanare.",
+]
+
+[codes.UPNP_EXPOSED.en]
+title = "UPnP service answering on the network"
+text = "nmap found UPnP (Universal Plug and Play), which lets devices find each other and ask the router, with no password, for port forwards (paths from the internet to a device). Malware on any device can use it to expose services to the internet, and some UPnP implementations have flaws of their own."
+rule = "A UPnP service is open: device can open router ports automatically."
+steps = [
+  "Turn UPnP off in the router's settings, unless a device you rely on really needs it.",
+  "Check the router's port forwarding list and delete any rule you don't recognise.",
+  "Update the firmware of the router and of the device that answers UPnP.",
+  "Check again with a scan.",
+]
+
+[codes.SNMP_EXPOSED.ro]
+title = "Serviciu de administrare SNMP accesibil"
+text = "nmap a găsit SNMP (Simple Network Management Protocol, folosit ca să citești și să schimbi de la distanță setările unui dispozitiv). Versiunile SNMPv1 și SNMPv2c protejează accesul doar cu un community string trimis în clar (o parolă comună), lăsat des cel din fabrică."
+rule = "Un serviciu SNMP e deschis: protocol de administrare a dispozitivului accesibil."
+steps = [
+  "Oprește SNMP dacă nimic din rețea nu colectează date de la acest dispozitiv.",
+  "Dacă e nevoie de el, treci la SNMPv3, care adaugă autentificare pe utilizator și criptare.",
+  "Înlocuiește orice community string din fabrică cu unul lung, aleatoriu, și setează-l doar pentru citire.",
+  "Permite SNMP doar de la calculatorul de monitorizare, din firewall.",
+  "Verifică din nou cu o scanare.",
+]
+
+[codes.SNMP_EXPOSED.en]
+title = "SNMP management service reachable"
+text = "nmap found SNMP (Simple Network Management Protocol, used to read and change a device's settings remotely). SNMPv1 and SNMPv2c protect access only with a community string sent in clear text (a shared password), often left at the factory value."
+rule = "An SNMP service is open: device management protocol reachable."
+steps = [
+  "Turn SNMP off if nothing on your network collects data from this device.",
+  "If it is needed, switch to SNMPv3, which adds per-user authentication and encryption.",
+  "Replace any factory community string with a long, random one and make it read-only.",
+  "Allow SNMP only from the monitoring computer, with the firewall.",
+  "Check again with a scan.",
+]
+
+[codes.PRINTER_RAW_EXPOSED.ro]
+title = "Port de tipărire directă (JetDirect) accesibil"
+text = "nmap a găsit un serviciu de tipărire directă (JetDirect, numit și RAW sau AppSocket), care tipărește orice date primește, fără autentificare. Oricine din rețea poate trimite lucrări de tipărire sau comenzi în limbajul de control al imprimantei (PJL, care poate citi sau schimba setări)."
+rule = "Serviciul jetdirect e deschis: oricine poate trimite lucrări la imprimantă."
+steps = [
+  "Oprește tipărirea directă (JetDirect, RAW sau AppSocket) din setările imprimantei, dacă calculatoarele tale tipăresc altfel, de exemplu prin IPP.",
+  "Pune o parolă de administrator pe pagina web a imprimantei, ca setările să nu poată fi schimbate.",
+  "Permite tipărirea doar de la calculatoarele tale, din lista de acces a imprimantei (filtru IP), dacă are una.",
+  "Actualizează firmware-ul imprimantei.",
+  "Verifică din nou cu o scanare.",
+]
+
+[codes.PRINTER_RAW_EXPOSED.en]
+title = "Raw printing service (JetDirect) reachable"
+text = "nmap found a raw printing service (JetDirect, also called RAW or AppSocket), which prints whatever data it receives, with no authentication. Anyone on the network can send print jobs or commands in the printer's control language (PJL, which can read or change settings)."
+rule = "The jetdirect service is open: anyone can send jobs to the printer."
+steps = [
+  "Turn raw printing (JetDirect, RAW or AppSocket) off in the printer's settings, if your computers print another way, such as IPP.",
+  "Set an administrator password on the printer's web page, so its settings can't be changed.",
+  "Allow printing only from your computers, with the printer's access list (IP filter), if it has one.",
+  "Update the printer's firmware.",
+  "Check again with a scan.",
+]
+
+[codes.UNKNOWN_DEVICE.ro]
+title = "Dispozitiv neidentificat, cu porturi deschise"
+text = "nmap nu a găsit un producător pentru el (din adresa MAC, adresa hardware a cărei primă parte arată producătorul, dacă a văzut una) și nici un nume (hostname) în rețea, dar are porturi deschise. Poate fi un dispozitiv al tău cu adresă MAC privată (aleasă la întâmplare de telefoane și laptopuri, pentru intimitate) sau unul pe care nu îl cunoști."
+rule = "Fără producător după adresa MAC, fără nume și cu cel puțin un port deschis: dispozitiv care nu poate fi identificat."
+steps = [
+  "Caută adresa IP în lista de dispozitive conectate din router, ca să afli ce dispozitiv este.",
+  "Dacă nu îl recunoști, blochează-l din router și schimbă parola rețelei Wi-Fi.",
+  "Dacă e al tău, notează ce este: cu adresă MAC privată, va rămâne fără nume și în scanările viitoare.",
+  "Verifică din nou cu o scanare dacă dispozitivul mai apare.",
+]
+
+[codes.UNKNOWN_DEVICE.en]
+title = "Unidentified device with open ports"
+text = "nmap found no maker for it (from the MAC address, the hardware address whose first part identifies the maker, if it saw one) and no hostname on the network, yet it has open ports. It may be one of your devices using a private MAC address (picked at random by phones and laptops, for privacy) or one you don't know."
+rule = "No maker from the MAC address, no hostname and at least one open port: device that cannot be identified."
+steps = [
+  "Look up the IP address in your router's list of connected devices to find out what the device is.",
+  "If you don't recognise it, block it in the router and change the Wi-Fi password.",
+  "If it is yours, note what it is: with a private MAC address it will stay unnamed in future scans too.",
+  "Check again with a scan whether the device is still there.",
+]
+
+[codes.SSH_OPEN.ro]
+title = "Conectare de la distanță SSH (informativ)"
+text = "nmap a găsit un serviciu SSH (Secure Shell, o linie de comandă la distanță criptată), metoda potrivită de a administra un dispozitiv de la distanță. E afișat doar informativ, pentru că riscul lui depinde de puterea parolei și de actualizarea programului."
+rule = "Un serviciu SSH e deschis: conectare criptată de la distanță, afișată informativ."
+steps = [
+  "Dacă nu te conectezi niciodată de la distanță la acest dispozitiv, oprește SSH.",
+  "Dacă îl folosești, preferă autentificarea cu cheie și oprește autentificarea cu parolă, sau folosește o parolă lungă și unică.",
+  "Ține programul SSH actualizat.",
+]
+
+[codes.SSH_OPEN.en]
+title = "SSH remote login (informational)"
+text = "nmap found an SSH service (Secure Shell, an encrypted remote command line), the right way to administer a device remotely. It is listed for awareness only, since its risk depends on how strong the password is and on keeping the software updated."
+rule = "An SSH service is open: encrypted remote login, shown for awareness."
+steps = [
+  "If you never log in to this device remotely, turn SSH off.",
+  "If you use it, prefer key-based authentication and turn off password login, or use a long, unique password.",
+  "Keep the SSH software updated.",
+]

@@ -4,6 +4,7 @@ This is what the user reads for every finding: there is no LLM in this version (
 specs/contracts.md, section explain). Finding and Host come from stream A; only their attributes are used here, so
 this module doesn't import conetuga.analysis.
 """
+import re
 import string
 import tomllib
 from dataclasses import dataclass
@@ -14,6 +15,11 @@ LANGUAGES = ("ro", "en")  # NFR-09: all user-facing text in Romanian and English
 SOURCE_TEMPLATE = "template"  # Explanation.source when the text comes from explanations.toml
 PRODUCT_CODE = "OUTDATED_SERVICE"  # the only code whose text names the product and version of its port
 DEVICE_TYPES_SECTION = "device_types"  # the one top-level table in explanations.toml that isn't a catalog code
+# What a host's own name becomes when a scan value (a banner) contains it (NFR-02: no hostname in the output).
+# Here and not in explanations.toml, whose top-level tables are catalog codes plus [device_types].
+HIDDEN_HOSTNAME = {"ro": "nume ascuns", "en": "hidden name"}
+# A character that would make a match only part of a longer word: a letter, a digit or "-" (as in "desk-01").
+WORD_CHARACTER = r"[^\W_]|-"
 
 # Read once, at import: the file is small and never changes while the app runs.
 _FILE = tomllib.loads(EXPLANATIONS_FILE.read_text(encoding="utf-8"))
@@ -40,7 +46,7 @@ def explain(finding, host, lang: str) -> Explanation:
     if lang not in LANGUAGES:
         raise KeyError(lang)
     block = entry[lang]
-    values = scan_values(finding, host)
+    values = scan_values(finding, host, lang)
     return Explanation(
         title=fill(block["title"], values),
         text=fill(block["text"], values),
@@ -60,14 +66,40 @@ def device_label(device_type: str, lang: str) -> str:
     return DEVICE_LABELS[device_type][lang]
 
 
-def scan_values(finding, host) -> dict[str, str]:
-    """The values a template may use, all taken from the finding and its host (NFR-06: nothing invented)."""
+def scan_values(finding, host, lang: str) -> dict[str, str]:
+    """The values a template may use, all taken from the finding and its host (NFR-06: nothing invented), with the
+    host's name hidden inside banner text (NFR-02)."""
     values = {"ip": finding.ip, "port": "" if finding.port is None else str(finding.port)}
     if finding.code == PRODUCT_CODE:
         port = finding_port(finding, host)
-        values["product"] = port.product
-        values["version"] = port.version
+        values["product"] = hide_hostname(port.product, host, lang)
+        values["version"] = hide_hostname(port.version, host, lang)
     return values
+
+
+def hide_hostname(value: str, host, lang: str) -> str:
+    """The scan value with host.hostname replaced by "nume ascuns" / "hidden name", ignoring case.
+
+    A banner is hostile text and may carry the device's own name. nmap's name comes from reverse DNS ("desk-01.lan"),
+    while a banner (SMB on Windows) often says only the short name ("DESK-01"), so both are hidden: the full name
+    first, then its part before the first dot. Only a whole name is replaced, never a part of a longer word: hostname
+    "nas.home" leaves "Synology NASdrive" as it is. An empty hostname changes nothing. Raises KeyError for an unknown
+    language.
+    """
+    label = HIDDEN_HOSTNAME[lang]
+    for name in host_names(host.hostname):
+        whole_name = re.compile(rf"(?<!{WORD_CHARACTER}){re.escape(name)}(?!{WORD_CHARACTER})", re.IGNORECASE)
+        value = whole_name.sub(lambda _match: label, value)
+    return value
+
+
+def host_names(hostname: str) -> list[str]:
+    """The forms of a host's name to hide, longest first: "desk-01.lan" gives ["desk-01.lan", "desk-01"]."""
+    names = [hostname] if hostname else []
+    short_name = hostname.split(".", 1)[0]
+    if short_name and short_name != hostname:
+        names.append(short_name)
+    return names
 
 
 def finding_port(finding, host):
