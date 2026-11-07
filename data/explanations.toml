@@ -1,5 +1,5 @@
 # Built-in explanations and fixes for every catalog code, in Romanian and English. Owner: stream B.
-# Used when there's no LLM, or when an LLM answer fails the grounding check (conetuga/explain/CLAUDE.md).
+# The text the user reads for every finding: there is no LLM in this version (team decision, 2026-11-07).
 #
 # Format, per code:
 #   references = CIS Controls v8.1 safeguards and OWASP IoT Top 10 (2018) items (bonus signal in the brief)

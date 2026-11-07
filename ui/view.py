@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 from conetuga.analysis import FileResult, Finding, Host
 from conetuga.explain import Explanation, device_label, explain
+from conetuga.history import diff
 
 LANGUAGES = ("ro", "en")
 
@@ -105,6 +106,22 @@ def score_line(score: int, lang: str) -> tuple[str, str, str]:
 def severity_label(severity: str, lang: str) -> str:
     """Icon and words for a severity, e.g. "⛔ Risc mare": colour is never the only signal."""
     return f"{SEVERITY_ICON[severity]} {TEXT[lang][f'severity_{severity}']}"
+
+
+def same_network(earlier: FileResult, current: FileResult) -> bool:
+    """Whether the history may compare the two scans on its own: they share at least one device, and every device of
+    one of them is also in the other (devices were only added or only removed between them), by the key `diff`
+    matches devices on (IP + hostname).
+
+    A scan file can't prove which network it is, so this is a deliberately narrow rule, not a guess at "the same
+    network": one shared router (V1 and V2), or a device that left while another arrived, isn't enough. In those
+    cases the page compares nothing by itself and lets the person pick any earlier scan, so the rule can neither
+    invent a "new device" alert nor hide one (a review of #35 found a 50% threshold did both)."""
+    if earlier.error or earlier.score is None:
+        return False
+    change = diff(earlier, current)
+    shared = len(current.hosts) - len(change.new_devices)
+    return shared > 0 and (not change.new_devices or not change.removed_devices)
 
 
 def md(text: str) -> str:

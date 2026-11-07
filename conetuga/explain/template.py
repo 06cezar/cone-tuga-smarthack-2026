@@ -1,7 +1,7 @@
 """Built-in explanations: the text from data/explanations.toml, filled in with values from the scan.
 
-This is what the user reads when there's no LLM, or when an LLM answer fails the grounding check
-(specs/contracts.md, section explain). Finding and Host come from stream A; only their attributes are used here, so
+This is what the user reads for every finding: there is no LLM in this version (team decision, 2026-11-07;
+specs/contracts.md, section explain). Finding and Host come from stream A; only their attributes are used here, so
 this module doesn't import conetuga.analysis.
 """
 import string

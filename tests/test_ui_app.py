@@ -64,16 +64,29 @@ def test_history_shows_before_and_after_with_the_change_alert():
     assert "443/tcp" in text  # the router's newly opened port is flagged (FR-13)
 
 
-def test_history_never_compares_two_unrelated_networks():
+def nothing_compared(app) -> bool:
+    """No comparison on screen: no "compare with" box, or one with nothing picked."""
+    return all(box.value is None for box in app.selectbox[1:]) and "Rezolvate" not in all_text(app)
+
+
+def test_history_never_compares_two_unrelated_networks_on_its_own():
     """C's review (17:37): V2 then V3 showed "🚨 ceva nou în rețea", 4 new devices and "Rezolvate (5)", all false."""
     app = run(scan="V2_smart_home.xml")
     app.selectbox[0].set_value("V3_small_office.xml").run()
     assert not app.exception
-    text = all_text(app)
     assert not app.warning
-    assert len(app.selectbox) == 1  # only the scan picker: no "compare with" box
-    assert "40 → 45" not in text and "Rezolvate" not in text
-    assert "Nicio scanare mai veche din istoric nu are dispozitivele acestei rețele" in text
+    assert nothing_compared(app)
+    assert "40 → 45" not in all_text(app)
+    assert "Nicio scanare mai veche nu are aceleași dispozitive ca aceasta" in all_text(app)
+
+
+def test_the_person_can_still_compare_with_any_earlier_scan():
+    """Nothing is hidden: the "compare with" box lists every earlier scan, and picking one shows its before/after."""
+    app = run(scan="V2_smart_home.xml")
+    app.selectbox[0].set_value("V3_small_office.xml").run()
+    app.selectbox[1].set_value(0).run()  # the only earlier scan, V2
+    assert not app.exception
+    assert "40 → 45" in all_text(app)
 
 
 def test_one_shared_router_does_not_make_two_homes_the_same_network():
@@ -84,7 +97,7 @@ def test_one_shared_router_does_not_make_two_homes_the_same_network():
     app.selectbox[0].set_value("V1_home_basic.xml").run()
     assert not app.exception
     assert not app.warning
-    assert len(app.selectbox) == 1  # only the scan picker: no "compare with" box
+    assert nothing_compared(app)
 
 
 def test_history_shows_our_lab_before_and_after():
@@ -100,15 +113,14 @@ def test_history_shows_our_lab_before_and_after():
 
 def test_a_jury_file_opened_after_our_lab_is_the_first_scan_of_its_network():
     """The hands-on check: with our lab in the history, the jury's file must not be compared with it. The history
-    orders scans saved in the same second by file name, so this checks what matters (no comparison offered, no alert),
-    not which of the two "first scan" sentences shows."""
+    orders scans saved in the same second by file name, so this checks what matters (no comparison, no alert), not
+    which sentence shows."""
     app = run(scan="scan_01.xml")
     app.selectbox[0].set_value("scan_03.xml").run()
     app.selectbox[0].set_value("V1_home_basic.xml").run()
     assert not app.exception
     assert not app.warning
-    assert len(app.selectbox) == 1  # only the scan picker: no "compare with" box
-    assert "Rezolvate" not in all_text(app)
+    assert nothing_compared(app)
 
 
 def test_delete_my_history_leaves_nothing(history_in_tmp):

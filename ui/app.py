@@ -5,6 +5,7 @@ the history compares the scan with an earlier one. Everything shown comes from a
 (specs/contracts.md); scan text is escaped with view.md before display."""
 import sys
 import tempfile
+from datetime import date
 from pathlib import Path
 
 import streamlit as st
@@ -15,16 +16,13 @@ sys.path.insert(0, str(REPO_ROOT))  # `streamlit run ui/app.py` puts only ui/ on
 from conetuga.analysis import analyse_file  # noqa: E402
 from conetuga.explain import explain  # noqa: E402
 from conetuga.history import delete_history, diff, digest_of, load_history, save_scan  # noqa: E402
-from ui.view import device_name, devices_by_risk, headline, md, score_line, severity_label  # noqa: E402
+from ui.report import html_report  # noqa: E402
+from ui.view import device_name, devices_by_risk, headline, md, same_network, score_line, severity_label  # noqa: E402
 
 # After "delete my history", the scan on screen is not saved again until the user picks another one.
 SKIP_SAVE_KEY = "history_skip_digest"
 DELETED_KEY = "history_just_deleted"
 TIME_OF_DAY = slice(11, 16)  # "HH:MM" inside an ISO timestamp "2026-11-07T16:40:12"
-# Two scans show the same network when at least this share of the larger scan's devices is in both. One shared device
-# is not enough: V1 and V2 both have the router 192.168.1.1 "router.lan" and are different homes. A real before/after
-# keeps most devices (V6a/V6b and our lab keep all of them; a home that gains one device keeps 3 of 4).
-SAME_NETWORK_MIN_SHARE = 0.5
 
 # NFR-08 asks for text of at least 16 px; Streamlit draws widget labels, radio options, buttons and expander titles at
 # 14 px. max(1rem, 1em) lifts small text to 16 px and leaves headings as large as they are. A fixed style, with no scan
@@ -60,8 +58,9 @@ TEXT = {
         "history_where": "Fiecare scanare analizată e păstrată doar pe acest calculator.",
         "history_empty": "Istoricul e gol.",
         "first_scan": "Aceasta e prima scanare din istoric. Repară ceva, scanează din nou și vezi aici diferența.",
-        "first_of_network": "Nicio scanare mai veche din istoric nu are dispozitivele acestei rețele, deci nu avem cu "
-                            "ce compara. Repară ceva, scanează din nou și vezi aici diferența.",
+        "no_match": "Nicio scanare mai veche nu are aceleași dispozitive ca aceasta (doar cu unele adăugate sau "
+                    "scoase), deci nu comparăm singuri. Dacă e aceeași rețea, alege scanarea mai jos.",
+        "pick_compare": "Alege o scanare",
         "compare_with": "Compară cu scanarea de la",
         "better": "mai bine",
         "worse": "mai rău",
@@ -75,6 +74,7 @@ TEXT = {
         "nothing_changed": "Nicio schimbare față de scanarea aleasă.",
         "delete": "🗑️ Șterge istoricul meu",
         "deleted": "Istoricul a fost șters de pe acest calculator.",
+        "report": "📄 Descarcă raportul (o pagină, pentru furnizorul IT sau asigurator)",
     },
     "en": {
         "title": "ConeTuga: how safe is your network?",
@@ -99,8 +99,9 @@ TEXT = {
         "history_where": "Every analysed scan is kept only on this computer.",
         "history_empty": "The history is empty.",
         "first_scan": "This is the first scan in the history. Fix something, scan again, and see the difference here.",
-        "first_of_network": "No earlier scan in the history has this network's devices, so there is nothing to compare "
-                            "with. Fix something, scan again, and see the difference here.",
+        "no_match": "No earlier scan has the same devices as this one (only with some added or removed), so we don't "
+                    "compare on our own. If it is the same network, pick that scan below.",
+        "pick_compare": "Pick a scan",
         "compare_with": "Compare with the scan from",
         "better": "better",
         "worse": "worse",
@@ -114,6 +115,7 @@ TEXT = {
         "nothing_changed": "Nothing changed compared with the chosen scan.",
         "delete": "🗑️ Delete my history",
         "deleted": "Your history was deleted from this computer.",
+        "report": "📄 Download the report (one page, for your IT supplier or insurer)",
     },
 }
 
@@ -133,20 +135,10 @@ def analyse_upload(upload):
         return analyse_file(path)
 
 
-def same_network(earlier, current) -> bool:
-    """True when the two scans share at least SAME_NETWORK_MIN_SHARE of the larger scan's devices, by the key `diff`
-    matches devices on (IP + hostname): only then is a before/after meaningful. Comparing unrelated networks (V2 then
-    V3, or our lab then a jury's file) showed false "new device" alerts and "resolved" findings (C's review, 17:37)."""
-    if earlier.error or earlier.score is None:
-        return False
-    shared = len(current.hosts) - len(diff(earlier, current).new_devices)
-    larger = max(len(earlier.hosts), len(current.hosts))
-    return shared > 0 and shared >= SAME_NETWORK_MIN_SHARE * larger
-
-
-def show_history(result, content: bytes, lang: str) -> None:
-    """FR-10 and FR-13: store this scan, show the score trend of its network, compare with an earlier scan of the same
-    network, and offer to delete."""
+def show_history(result, content: bytes, lang: str):
+    """FR-10 and FR-13: store this scan, show the score trend of its network, compare it on its own only with an
+    earlier scan that `same_network` accepts (the person may pick any other), and offer to delete. Returns the earlier
+    scan shown in the comparison (None when there is none), so the report compares with the same one."""
     text = TEXT[lang]
     st.subheader(text["history"])
     digest = digest_of(content)
@@ -157,7 +149,7 @@ def show_history(result, content: bytes, lang: str) -> None:
     records = load_history()
     if not records:
         st.markdown(text["history_empty"])
-        return
+        return None
     st.markdown(text["history_where"])
     st.markdown("\n".join(f"- {r.saved_at[TIME_OF_DAY]} · {md(r.file)} · {score_line(r.result.score, lang)[0]} "
                           f"{r.result.score}/100" for r in records))
@@ -166,21 +158,27 @@ def show_history(result, content: bytes, lang: str) -> None:
         st.line_chart({text["score"]: [r.result.score for r in this_network]})
 
     current = next((i for i, r in enumerate(records) if r.digest == digest), len(records))
-    earlier = [r for r in records[:current] if same_network(r.result, result)]
-    if not records[:current]:
+    earlier = records[:current]
+    compared = None
+    if not earlier:
         st.markdown(text["first_scan"])
-    elif not earlier:
-        st.markdown(text["first_of_network"])
     else:
-        choice = st.selectbox(text["compare_with"], range(len(earlier)), index=len(earlier) - 1,
+        matches = [i for i, r in enumerate(earlier) if same_network(r.result, result)]
+        if not matches:
+            st.markdown(text["no_match"])
+        choice = st.selectbox(text["compare_with"], range(len(earlier)), index=matches[-1] if matches else None,
+                              placeholder=text["pick_compare"],
                               format_func=lambda i: f"{earlier[i].saved_at[TIME_OF_DAY]} · {earlier[i].file}")
-        show_diff(earlier[choice].result, result, lang)
+        if choice is not None:
+            compared = earlier[choice].result
+            show_diff(compared, result, lang)
 
     if st.button(text["delete"]):
         delete_history()
         st.session_state[SKIP_SAVE_KEY] = digest
         st.session_state[DELETED_KEY] = True
         st.rerun()
+    return compared
 
 
 def show_diff(before, after, lang: str) -> None:
@@ -272,7 +270,9 @@ def main() -> None:
     for i, device in enumerate(devices):
         show_device(device, lang, expanded=i == 0)
 
-    show_history(result, content, lang)
+    compared = show_history(result, content, lang)
+    st.download_button(text["report"], html_report(result, lang, before=compared, date=date.today().isoformat()),
+                       file_name=f"conetuga-{Path(result.file).stem}.html", mime="text/html")
 
 
 main()
