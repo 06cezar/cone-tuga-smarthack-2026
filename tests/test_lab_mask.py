@@ -94,6 +94,28 @@ def test_masked_copy_drops_names_nmap_writes_outside_hostnames(tmp_path):
     assert analyse_file(masked).findings == analyse_file(SCANS / raw.name).findings
 
 
+def with_hosthints(text: str) -> str:
+    """V1 as nmap 7.94 writes it: a <hosthint> (ARP discovery, with the full MAC) before each host, like our scan_01."""
+    hints = ('<hosthint><status state="up" reason="arp-response" reason_ttl="0"/>'
+             '<address addr="192.168.1.1" addrtype="ipv4"/>'
+             '<address addr="50:C7:BF:39:0C:8C" addrtype="mac" vendor="TP-Link"/><hostnames>\n</hostnames></hosthint>\n')
+    text, added = re.subn(r"(<host[ >])", lambda m: hints + m.group(1), text, count=1)
+    assert added == 1
+    return text
+
+
+def test_masked_copy_drops_nmap_hosthints_with_the_full_mac(tmp_path):
+    """A's 16:28: on scan_01 the leak check refused the copy, because each <hosthint> repeated the full MAC."""
+    raw = tmp_path / "raw" / "V1_home_basic.xml"
+    raw.parent.mkdir()
+    raw.write_text(with_hosthints((SCANS / raw.name).read_text(encoding="utf-8")), encoding="utf-8")
+    masked = masked_copy(raw, tmp_path)
+    text = masked.read_text(encoding="utf-8").upper()
+    assert "50:C7:BF:39:0C:8C" not in text
+    assert "HOSTHINT" not in text
+    assert analyse_file(masked).findings == analyse_file(SCANS / raw.name).findings
+
+
 def test_copy_that_still_names_a_device_is_refused_and_nothing_is_written(tmp_path):
     """The last check (D's request): an original hostname left anywhere, here in a page title, deletes the copy."""
     raw = tmp_path / "raw" / "V1_home_basic.xml"
