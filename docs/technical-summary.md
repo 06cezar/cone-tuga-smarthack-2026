@@ -23,6 +23,12 @@
   `export()` writes `findings.csv` and `scores.csv`, one `ERROR` row per unreadable file.
 - `conetuga/history`: local `.history/` (gitignored), one record per scan file; `diff()` gives new/removed devices,
   opened/closed ports, resolved findings, score trend; one button deletes it all.
+- `conetuga/ledger` (findings log): every finding `analyse` or `scan` detects is a SQLite row in `.history/`, deleted
+  with "Șterge istoricul meu". Every 10 rows, the SHA-256 of the batch and of the batch before it goes into a
+  write-once Solidity contract (`contracts/`, owner-only, through Foundry's `cast`); `ledger verify` recomputes the
+  hashes and names any changed, deleted, swapped or cleared batch. Only those hashes leave the computer, and only
+  when a person sets the three `CONETUGA_CHAIN_*` variables; the demo uses a local Anvil, Sepolia needs a
+  testnet-only key.
 - `ui/` (Streamlit): "Cel mai periculos: <device>. Fă asta întâi: <step>" first, then the traffic-light score, devices
   by risk with explanations, and the history with change alerts. Scan text is escaped.
 - Calls between streams are fixed in `specs/contracts.md`, each with an example and a test. CI runs every test on Linux
@@ -41,6 +47,8 @@ scores 100; no MAC means "no vendor"; one row when TCP and UDP give the same cod
   bare port 21 is called ftp from nmap's port table (our phone).
 - The device type is a label guessed from services, vendor and hostname, never a finding.
 - History matches devices by IP + hostname: a new DHCP address shows as a removed and a new device.
+- The findings log protects a row once its batch of 10 is full (up to 9 rows wait), and a deleted history needs a
+  new contract (`ledger deploy`).
 
 ## LLM use
 No model decides anything: findings, severities and scores come only from code and the catalog, so the same file

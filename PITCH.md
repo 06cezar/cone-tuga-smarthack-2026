@@ -17,6 +17,7 @@ minutes, in English, with at least two speakers (juniors and seniors both speak)
 | "In our own lab, two fixes took the score from 0 to 70, and the history shows them resolved, with no false alarm." | `lab/scans/`, `conetuga/history/diff.py` | `tests/test_lab_scans.py::test_history_shows_the_fixes_as_resolved_with_no_change_alert` |
 | "Ask in plain words: the answer comes only from the scan, cites the finding it relies on, and says when the scan can't answer." | `conetuga/explain/qa.py` | `tests/test_qa.py::test_contract_answer_question`, `::test_what_the_scan_does_not_show_gets_the_fixed_sentence`, `::test_a_device_without_findings_is_not_called_safe` |
 | "One click gives a one-page report for your IT supplier, with the before/after." | `ui/report.py` | `tests/test_ui_report.py` |
+| "Our findings log is tamper-evident: change, delete, swap or clear a row and `ledger verify` names the batch; the CSVs never change." | `conetuga/ledger/`, `contracts/src/FindingsLedger.sol` | `tests/test_ledger.py::test_any_change_to_an_anchored_row_is_found`, `::test_two_rows_swapped_are_found`, `::test_a_cleared_log_is_found`, `::test_analyse_logs_every_finding_and_its_csv_is_unchanged` |
 
 Planned claims, to move into the table once their test passes: none for now. (The old "the AI can't invent a port:
 code checks every sentence" is gone: we use no LLM, so there is nothing to check; say "retrieval-based", not "AI".)
