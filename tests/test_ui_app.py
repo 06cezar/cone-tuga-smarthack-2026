@@ -76,6 +76,17 @@ def test_history_never_compares_two_unrelated_networks():
     assert "Nicio scanare mai veche din istoric nu are dispozitivele acestei rețele" in text
 
 
+def test_one_shared_router_does_not_make_two_homes_the_same_network():
+    """V1 and V2 both have 192.168.1.1 "router.lan" and nothing else in common; CI caught V1 being compared with the
+    V2 the page opens by default, with a false alert."""
+    app = run(scan="V1_home_basic.xml")
+    app.selectbox[0].set_value("V2_smart_home.xml").run()
+    app.selectbox[0].set_value("V1_home_basic.xml").run()
+    assert not app.exception
+    assert not app.warning
+    assert len(app.selectbox) == 1  # only the scan picker: no "compare with" box
+
+
 def test_history_shows_our_lab_before_and_after():
     """Live check 6: our hotspot lab, scan_01 then scan_03."""
     app = run(scan="scan_01.xml")

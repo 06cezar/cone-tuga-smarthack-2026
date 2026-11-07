@@ -21,6 +21,10 @@ from ui.view import device_name, devices_by_risk, headline, md, score_line, seve
 SKIP_SAVE_KEY = "history_skip_digest"
 DELETED_KEY = "history_just_deleted"
 TIME_OF_DAY = slice(11, 16)  # "HH:MM" inside an ISO timestamp "2026-11-07T16:40:12"
+# Two scans show the same network when at least this share of the larger scan's devices is in both. One shared device
+# is not enough: V1 and V2 both have the router 192.168.1.1 "router.lan" and are different homes. A real before/after
+# keeps most devices (V6a/V6b and our lab keep all of them; a home that gains one device keeps 3 of 4).
+SAME_NETWORK_MIN_SHARE = 0.5
 
 # NFR-08 asks for text of at least 16 px; Streamlit draws widget labels, radio options, buttons and expander titles at
 # 14 px. max(1rem, 1em) lifts small text to 16 px and leaves headings as large as they are. A fixed style, with no scan
@@ -130,12 +134,14 @@ def analyse_upload(upload):
 
 
 def same_network(earlier, current) -> bool:
-    """True when the two scans share at least one device, by the key `diff` matches devices on (IP + hostname): only
-    then is a before/after meaningful. Two unrelated networks (V2 then V3, or our lab then a jury's file) share none,
-    and comparing them showed false "new device" alerts and "resolved" findings (C's review, 17:37)."""
+    """True when the two scans share at least SAME_NETWORK_MIN_SHARE of the larger scan's devices, by the key `diff`
+    matches devices on (IP + hostname): only then is a before/after meaningful. Comparing unrelated networks (V2 then
+    V3, or our lab then a jury's file) showed false "new device" alerts and "resolved" findings (C's review, 17:37)."""
     if earlier.error or earlier.score is None:
         return False
-    return len(diff(earlier, current).new_devices) < len(current.hosts)
+    shared = len(current.hosts) - len(diff(earlier, current).new_devices)
+    larger = max(len(earlier.hosts), len(current.hosts))
+    return shared > 0 and shared >= SAME_NETWORK_MIN_SHARE * larger
 
 
 def show_history(result, content: bytes, lang: str) -> None:
