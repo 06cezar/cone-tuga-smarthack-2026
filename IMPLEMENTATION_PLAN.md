@@ -26,7 +26,8 @@ Status lives here, not in CLAUDE.md. Milestones are the brief's; hours count fro
 ## D · UI, history, pitch
 - [x] UI with the most dangerous device and the first step on the first screen; score, devices, findings, fixes (FR-11):
   `ui/app.py`, `ui/view.py` (history comes with the next item)
-- [ ] History, diff, "delete my history", change alerts (FR-10, FR-13), visible by hour 16
+- [x] History, diff, "delete my history", change alerts (FR-10, FR-13), visible by hour 16: `conetuga/history/`,
+  shown under the devices in `ui/app.py`
 - [ ] Pitch (5–7 minutes, English, 2+ speakers) and the one-page technical summary
 
 ## E · lab and QA

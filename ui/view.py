@@ -118,9 +118,13 @@ def _device_view(host: Host, findings: list[Finding], lang: str) -> DeviceView:
     own = [f for f in findings if f.ip == host.ip]
     ordered = sorted(own, key=lambda f: -f.points)  # stable: equal points keep analyse_file's order
     views = [FindingView(f, explain(f, host, lang)) for f in ordered]
+    return DeviceView(host=host, name=device_name(host, lang), risk=sum(f.points for f in own), findings=views)
+
+
+def device_name(host: Host, lang: str) -> str:
+    """"ipcam — Cameră video", or only the device-type label when the scan shows no hostname (not escaped)."""
     label = device_label(host.device_type, lang)
-    name = f"{host.hostname} — {label}" if host.hostname else label
-    return DeviceView(host=host, name=name, risk=sum(f.points for f in own), findings=views)
+    return f"{host.hostname} — {label}" if host.hostname else label
 
 
 def _ip_order(ip: str) -> tuple[int, int]:
