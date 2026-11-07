@@ -6,7 +6,9 @@ __pycache__/
 .pytest_cache/
 .cache/
 logs/
-results/
+results/*
+# except the Validation Set run for the mentor check (04:00, Discord), shared with the team
+!results/mentor-check/
 # the organizers' original files (PDF, zip); the Validation Set goes into tests/fixtures/validation/scans/
 rsystems-docs/
 # scan history stays on this computer (NFR-02)
