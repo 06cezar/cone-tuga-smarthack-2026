@@ -7,8 +7,8 @@ Status lives here, not in CLAUDE.md. Milestones are the brief's; hours count fro
 - [x] Parser for nmap XML: hosts, MAC + vendor, hostname, open ports, service, product, version, ssl, `http-title`
 - [x] Rules from `data/catalog.toml` and the standard score
 - [x] `tests/test_validation_set.py` green: 24/24 rows, no extra rows, every score (hour 10)
-- [ ] Once `analyse_file` lands, the Validation Set test fails instead of skipping when the function is missing
-  (a test change: the team agrees first)
+- [x] A missing `analyse_file` can't pass unnoticed: the full suite stops with errors, because
+  `tests/test_analysis.py` and `tests/test_rules.py` import it (checked by A and D), so no test change is needed
 
 ## B · explanations and fixes
 - [ ] Built-in RO/EN text and 1–5 steps for every catalog code (hour 12)

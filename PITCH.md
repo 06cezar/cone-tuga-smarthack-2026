@@ -6,9 +6,9 @@ minutes, in English, with at least two speakers (juniors and seniors both speak)
 
 | Claim | File | Test |
 |---|---|---|
+| "We reproduce the Validation Set: 24 of 24 rows, no extra rows, every score." | `conetuga/analysis/` | `tests/test_validation_set.py` |
 
 Planned claims, to move into the table once their test passes:
-- "We reproduce the Validation Set: 24 of 24 rows, no extra rows, every score."
 - "The tool refuses public IPs and anything outside our hotspot."
 - "A broken file shows a clear error, and the other files still run."
 - "Same file, same result, every time: the AI never decides a finding."
@@ -16,7 +16,7 @@ Planned claims, to move into the table once their test passes:
 - "MAC addresses are masked everywhere."
 
 ## Numbers for the demo
-- Validation Set: _/24 rows, _ extra rows, _/8 scores.
+- Validation Set: 24/24 rows, 0 extra rows, 8/8 scores.
 - Our lab: score before _ → after _.
 
 ## Trade-offs (what we chose, and what we gave up for it)
