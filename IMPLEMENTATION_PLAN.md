@@ -16,7 +16,7 @@ Status lives here, not in CLAUDE.md. Milestones are the brief's; hours count fro
 - [ ] Q&A assistant from scan evidence only (FR-12, Should)
 
 ## C · guardrail, security, export
-- [ ] Network detection (FR-01) and `check_scope` (FR-02): public IPs, out-of-scope ranges, hostnames and any network
+- [x] Network detection (FR-01) and `check_scope` (FR-02): public IPs, out-of-scope ranges, hostnames and any network
   other than `RSH-ConeTuga` refused (hour 14)
 - [ ] CLI `conetuga/__main__.py`: `analyse` and `scan`
 - [ ] Live scan with `--confirm`, rate-limited, writing nmap XML (FR-04)
