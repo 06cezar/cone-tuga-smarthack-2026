@@ -1,7 +1,7 @@
 """Acasă: the first page. It answers "Which device is the most dangerous, and what should I do first?" (ui/CLAUDE.md),
-then shows every device, the Q&A box, the history and the report. Everything shown comes from analyse_file, explain,
-answer_question and the history (specs/contracts.md); scan text is escaped with view.md before display. In Simple mode
-Tuga 🐢 speaks; in Advanced mode Cone 🐇 adds what nmap saw and the references."""
+then shows every device (Dispozitive, FE-D3, adds filters and order), the Q&A box, the history and the report.
+Everything shown comes from analyse_file, narrate, answer_question and the history (specs/contracts.md); scan text is
+escaped with view.md before display. In Simple mode Tuga 🐢 speaks; in Advanced mode Cone 🐇 adds what nmap saw."""
 import sys
 import tempfile
 from datetime import date
@@ -16,9 +16,10 @@ from conetuga.analysis import analyse_file  # noqa: E402
 from conetuga.explain import answer_question, explain  # noqa: E402
 from conetuga.explain.qa import MAX_QUESTION_CHARS  # noqa: E402
 from conetuga.history import delete_history, diff, digest_of, load_history, save_scan  # noqa: E402
+from ui.cards import show_device  # noqa: E402
 from ui.report import html_report  # noqa: E402
-from ui.state import current  # noqa: E402
-from ui.view import device_name, devices_by_risk, headline, md, same_network, score_line, severity_label  # noqa: E402
+from ui.state import current, remember_scan  # noqa: E402
+from ui.view import device_name, devices_by_risk, headline, md, same_network, score_line  # noqa: E402
 
 # After "delete my history", the scan on screen is not saved again until the user picks another one.
 SKIP_SAVE_KEY = "history_skip_digest"
@@ -35,17 +36,8 @@ TEXT = {
         "unreadable": "Fișierul nu poate fi citit",
         "score": "Scor standard",
         "devices": "Dispozitivele, de la cel mai periculos",
-        "risk": "risc",
-        "points": "puncte",
-        "type": "Tip",
-        "vendor": "Producător",
-        "hostname": "Nume în rețea",
-        "mac": "MAC (mascat)",
-        "unknown": "necunoscut",
-        "no_findings": "Nicio problemă găsită pe acest dispozitiv.",
-        "steps": "Ce să faci",
-        "port": "port",
-        "references": "Referințe",
+        "filters_elsewhere": "Pentru filtre (după risc sau tip) și altă ordine: pagina **Dispozitive** din meniul din "
+                             "stânga.",
         "no_scan": "Alege sau încarcă o scanare ca să începi.",
         "history": "Istoric: înainte și după",
         "history_where": "Fiecare scanare analizată e păstrată doar pe acest calculator.",
@@ -72,11 +64,6 @@ TEXT = {
         "ask_label": "De exemplu: „Ce repar întâi?” sau „E periculos portul 9100 al imprimantei?”",
         "ask_source": "Răspunsul vine doar din această scanare, cu problemele pe care se sprijină.",
         "ask_invalid": "Scrie o întrebare de cel mult {limit} de caractere.",
-        "tuga": "🐢 **Tuga:**",
-        "cone": "🐇 **Cone:**",
-        "evidence": "Ce a văzut nmap (dovada)",
-        "not_checked": "Neverificat: nmap a renunțat la acest dispozitiv înainte să-i verifice porturile, deci nu știm dacă "
-                       "e sigur. Scanează din nou cu mai mult timp (--minutes).",
     },
     "en": {
         "title": "ConeTuga: how safe is your network?",
@@ -85,17 +72,8 @@ TEXT = {
         "unreadable": "The file can't be read",
         "score": "Standard score",
         "devices": "Your devices, most dangerous first",
-        "risk": "risk",
-        "points": "points",
-        "type": "Type",
-        "vendor": "Maker",
-        "hostname": "Network name",
-        "mac": "MAC (masked)",
-        "unknown": "unknown",
-        "no_findings": "No problems found on this device.",
-        "steps": "What to do",
-        "port": "port",
-        "references": "References",
+        "filters_elsewhere": "For filters (by risk or type) and another order: the **Devices** page in the menu on the "
+                             "left.",
         "no_scan": "Pick or upload a scan to start.",
         "history": "History: before and after",
         "history_where": "Every analysed scan is kept only on this computer.",
@@ -122,11 +100,6 @@ TEXT = {
         "ask_label": "For example: \"What do I fix first?\" or \"Is my printer's port 9100 dangerous?\"",
         "ask_source": "The answer comes only from this scan, with the findings it relies on.",
         "ask_invalid": "Write a question of at most {limit} characters.",
-        "tuga": "🐢 **Tuga:**",
-        "cone": "🐇 **Cone:**",
-        "evidence": "What nmap saw (the evidence)",
-        "not_checked": "Not checked: nmap gave up on this device before checking its ports, so we don't know whether it "
-                       "is safe. Scan again with more time (--minutes).",
     },
 }
 
@@ -218,7 +191,7 @@ def show_diff(before, after, lang: str) -> None:
     st.markdown(f"### {arrow} {text['score']}: {change.score_before} → {change.score_after} ({delta:+d}, {trend})")
 
     alerts = [f"{text['new_device']}: {md(device_name(h, lang))} ({h.ip})" for h in change.new_devices]
-    alerts += [f"{text['opened_port']}: {p.port}/{p.proto} · {md(device_name(h, lang))} ({h.ip})"
+    alerts += [f"{text['opened_port']}: {p.port}/{md(p.proto)} · {md(device_name(h, lang))} ({h.ip})"
                for h, p in change.opened_ports]
     if alerts:
         st.warning(f"🚨 **{text['alert']}**\n\n" + "\n".join(f"- {a}" for a in alerts))
@@ -229,7 +202,7 @@ def show_diff(before, after, lang: str) -> None:
                                     f"{md(device_name(hosts_before[f.ip], lang))} ({f.ip})"
                                     for f in change.resolved_findings]),
         (f"➖ {text['removed_device']}", [f"{md(device_name(h, lang))} ({h.ip})" for h in change.removed_devices]),
-        (f"🔒 {text['closed_port']}", [f"{p.port}/{p.proto} · {md(device_name(h, lang))} ({h.ip})"
+        (f"🔒 {text['closed_port']}", [f"{p.port}/{md(p.proto)} · {md(device_name(h, lang))} ({h.ip})"
                                       for h, p in change.closed_ports]),
     ]
     shown = [(title, items) for title, items in sections if items]
@@ -237,37 +210,6 @@ def show_diff(before, after, lang: str) -> None:
         st.markdown(text["nothing_changed"])
     for title, items in shown:
         st.markdown(f"**{title} ({len(items)})**\n" + "\n".join(f"- {item}" for item in items))
-
-
-def show_device(device, lang: str, expanded: bool, advanced: bool = False) -> None:
-    """One device card. Simple mode (Tuga): what it is, what it means, what to do. Advanced mode (Cone) adds what nmap
-    saw on the port and the CIS Controls / OWASP IoT references."""
-    text = TEXT[lang]
-    host = device.host
-    label = f"{md(device.name)} · {host.ip} · {text['risk']} {device.risk} {text['points']}"
-    with st.expander(label, expanded=expanded):
-        st.markdown(
-            f"**{text['hostname']}:** {md(host.hostname) or text['unknown']} · "
-            f"**{text['vendor']}:** {md(host.vendor) or text['unknown']} · "
-            f"**{text['mac']}:** {md(host.mac_masked) or text['unknown']}"
-        )
-        if getattr(host, "timed_out", False):
-            st.warning(f"⏳ {text['not_checked']}")
-        elif not device.findings:
-            st.markdown(text["no_findings"])
-        guide = text["cone"] if advanced else text["tuga"]
-        for view in device.findings:
-            finding, explanation = view.finding, view.explanation
-            where = f" · {text['port']} {finding.port}/{finding.proto}" if finding.port is not None else ""
-            st.markdown(f"#### {severity_label(finding.severity, lang)} · {md(explanation.title)}{where}")
-            st.markdown(f"{guide} {md(explanation.text)}")
-            st.markdown(f"**{text['steps']}:**\n" + "\n".join(f"{i}. {md(step)}"
-                                                           for i, step in enumerate(explanation.steps, start=1)))
-            if advanced:
-                st.markdown(f"**{text['evidence']}:** `{finding.code}` · {md(finding.evidence)} · "
-                            f"{finding.points} {text['points']}")
-                if explanation.references:
-                    st.markdown(f"*{text['references']}: {md(', '.join(explanation.references))}*")
 
 
 def render() -> None:
@@ -293,6 +235,7 @@ def render() -> None:
         st.info(text["no_scan"])
         return
 
+    remember_scan(result)  # the other pages (Dispozitive) show this same scan, a broken one included
     if result.error:
         st.error(f"⛔ {text['unreadable']}: {md(result.error)}")
         return
@@ -303,6 +246,8 @@ def render() -> None:
     st.markdown(f"### {icon} {text['score']}: {result.score}/100 · {colour}. {sentence}")
 
     st.subheader(text["devices"])
+    if devices:
+        st.markdown(text["filters_elsewhere"])
     for i, device in enumerate(devices):
         show_device(device, lang, expanded=i == 0, advanced=advanced)
 
