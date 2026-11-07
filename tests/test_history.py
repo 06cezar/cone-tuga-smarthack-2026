@@ -154,3 +154,10 @@ def test_a_live_scan_stores_masked_macs_only(monkeypatch, tmp_path, history_in_t
     cli.main(["scan", "--confirm"])
     stored = "".join(p.read_text(encoding="utf-8") for p in history_in_tmp.iterdir())
     assert "xx:xx:xx" in stored and "50:C7:BF:88" not in stored.upper()
+
+
+def test_scans_saved_in_the_same_second_keep_their_order():
+    same_second = datetime(2026, 11, 7, 20, 40, 0)
+    for name in ("V6b_after.xml", "V6a_before.xml", "V1_home_basic.xml"):  # not in name order on purpose
+        save_scan(scan(name), (SCANS / name).read_bytes(), now=same_second)
+    assert [r.file for r in load_history()] == ["V6b_after.xml", "V6a_before.xml", "V1_home_basic.xml"]
