@@ -35,6 +35,8 @@
 ## Our readings of open questions (each one is a single named constant or function, so a mentor's answer changes one place)
 The questions are in `IMPLEMENTATION_PLAN.md`, "Questions for humans"; when a mentor answers, update the code, its
 test and this list together.
+Mentors, Nov 7 (`specs/01-organizer-updates.md`): Samba only on 445, a host with no MAC is UNKNOWN_DEVICE, TCP+UDP
+gives one row (TCP), and the rest "is okay as assumed": every reading below is confirmed, so the code stays as it is.
 - TCP and UDP on the same port giving the same code: one finding, the TCP one (`findings.csv` has no proto column,
   so two would be a duplicate row).
 - `http-proxy`, `http-alt`: not `http` (the catalog says "Service http").
