@@ -49,3 +49,5 @@ test and this list together.
   outdated ("3.X" is old Samba, "3.X - 4.X" is not reported, "7.X" is not "OpenSSH below 7.4").
 - A host with no MAC address at all counts as "no MAC vendor".
 - A valid nmap XML with no hosts: score 100, not ERROR.
+- A service name nmap's version scripts rewrote (`mqtt-subscribe` turns "mqtt" into "mosquitto version 1.6.15")
+  is taken as written, with no alias in `SERVICE_ALIASES`. Only live scans meet it; the standard files say "mqtt".
