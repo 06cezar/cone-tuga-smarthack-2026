@@ -11,7 +11,7 @@ import streamlit as st
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))  # `streamlit run ui/app.py` puts only ui/ on the path
 
-from ui.pages import about, home, scan  # noqa: E402
+from ui.pages import about, devices, home, scan  # noqa: E402
 from ui.state import sidebar_settings  # noqa: E402
 
 # NFR-08 asks for text of at least 16 px; Streamlit draws widget labels, radio options, buttons and expander titles at
@@ -24,6 +24,7 @@ MIN_TEXT_CSS = """<style>
 # (module, Romanian title, English title, icon, URL path); the first one is the page that opens by default.
 PAGES = [
     (home, "Acasă", "Home", "🏠", "acasa"),
+    (devices, "Dispozitive", "Devices", "💻", "dispozitive"),
     (scan, "Scanare", "Scan", "📡", "scanare"),
     (about, "Despre", "About", "ℹ️", "despre"),
 ]
