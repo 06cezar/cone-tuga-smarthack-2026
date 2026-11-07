@@ -13,6 +13,8 @@ from types import SimpleNamespace
 import pytest
 
 from conetuga.explain import device_label, explain
+from conetuga.explain.template import HIDDEN_HOSTNAME, hide_hostname
+from nmap_xml import host as xml_host, port as xml_port, write_scan
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG = tomllib.loads((ROOT / "data" / "catalog.toml").read_text(encoding="utf-8"))
@@ -168,3 +170,80 @@ def test_device_labels_cover_exactly_the_analysis_device_types():
     analysis_types = {value for name, value in vars(devices).items()
                       if name.startswith("DEVICE_") and isinstance(value, str)}  # DEVICE_RULES is a tuple, not a type
     assert analysis_types == set(EXPLANATIONS_DEVICE_TYPES)
+
+
+HOSTILE_MAC = "AA:BB:CC:11:22:33"
+
+
+def outdated_on(tmp_path, product: str, version: str, hostname: str):
+    """The OUTDATED_SERVICE finding and its host, from a scan written in tmp_path (vsftpd 2.3.4 is on the list)."""
+    path = write_scan(tmp_path, xml_host("10.0.0.5", xml_port(21, "ftp", product=product, version=version),
+                                         hostname=hostname))
+    result = analyse_file(path)
+    finding = next(f for f in result.findings if f.code == "OUTDATED_SERVICE")
+    return finding, next(h for h in result.hosts if h.ip == finding.ip)
+
+
+@pytest.mark.parametrize("lang", LANGUAGES)
+def test_hostname_inside_product_and_version_is_hidden(tmp_path, lang):
+    finding, host = outdated_on(tmp_path, "vsftpd on DESK-01", "2.3.4 desk-01", hostname="desk-01")
+    text = all_text(explain(finding, host, lang))
+    assert "desk-01" not in text.casefold()
+    assert HIDDEN_HOSTNAME[lang] in text
+
+
+@pytest.mark.parametrize("lang", LANGUAGES)
+def test_hostname_inside_a_longer_word_is_kept(tmp_path, lang):
+    finding, host = outdated_on(tmp_path, "vsftpd Synology NASdrive", "2.3.4", hostname="nas")
+    text = all_text(explain(finding, host, lang))
+    assert "Synology NASdrive" in text
+    assert HIDDEN_HOSTNAME[lang] not in text
+
+
+@pytest.mark.parametrize("hostname, value, expected", [
+    ("nas", "NAS box", "hidden name box"),
+    ("nas", "Synology NASdrive", "Synology NASdrive"),
+    ("nas", "my-nas", "my-nas"),
+    ("nas", "nas2", "nas2"),
+    ("desk-01", "vsftpd on Desk-01.", "vsftpd on hidden name."),
+    ("a.b", "aXb a.b", "aXb hidden name"),  # the hostname is matched as text, never as a pattern
+    ("", "vsftpd", "vsftpd"),
+    ("desk-01.lan", "vsftpd on DESK-01", "vsftpd on hidden name"),  # banners carry the short name
+    ("desk-01.lan", "2.3.4 desk-01.lan", "2.3.4 hidden name"),  # the full name first, so no ".lan" is left
+    ("nas.home", "Synology NASdrive", "Synology NASdrive"),
+    (".lan", "x.lan .lan", "x.lan hidden name"),  # no empty short name
+])
+def test_hide_hostname_replaces_only_the_whole_name(hostname, value, expected):
+    assert hide_hostname(value, SimpleNamespace(hostname=hostname), "en") == expected
+
+
+@pytest.mark.xfail(strict=True, reason="masked by A's parser, PR #56")
+@pytest.mark.parametrize("lang", LANGUAGES)
+def test_mac_inside_product_never_reaches_the_explanation(tmp_path, lang):
+    finding, host = outdated_on(tmp_path, f"vsftpd device {HOSTILE_MAC}", "2.3.4", hostname="")
+    assert HOSTILE_MAC not in all_text(explain(finding, host, lang)).upper()
+
+
+@pytest.mark.parametrize("lang", LANGUAGES)
+def test_short_hostname_inside_product_is_hidden(tmp_path, lang):
+    finding, host = outdated_on(tmp_path, "vsftpd on DESK-01", "2.3.4", hostname="desk-01.lan")
+    text = all_text(explain(finding, host, lang))
+    assert "desk-01" not in text.casefold()
+    assert HIDDEN_HOSTNAME[lang] in text
+
+
+@pytest.mark.parametrize("lang", LANGUAGES)
+def test_full_hostname_inside_version_is_hidden_with_no_domain_left(tmp_path, lang):
+    finding, host = outdated_on(tmp_path, "vsftpd", "2.3.4 desk-01.lan", hostname="desk-01.lan")
+    text = all_text(explain(finding, host, lang))
+    assert "desk-01" not in text.casefold()
+    assert f"{HIDDEN_HOSTNAME[lang]}.lan" not in text
+    assert HIDDEN_HOSTNAME[lang] in text
+
+
+@pytest.mark.parametrize("lang", LANGUAGES)
+def test_short_hostname_inside_a_longer_word_is_kept(tmp_path, lang):
+    finding, host = outdated_on(tmp_path, "vsftpd Synology NASdrive", "2.3.4", hostname="nas.home")
+    text = all_text(explain(finding, host, lang))
+    assert "Synology NASdrive" in text
+    assert HIDDEN_HOSTNAME[lang] not in text

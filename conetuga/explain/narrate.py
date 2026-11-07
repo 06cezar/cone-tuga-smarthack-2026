@@ -10,7 +10,8 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
-from conetuga.explain.template import EXPLANATIONS, LANGUAGES, SOURCE_TEMPLATE, explain, fill, finding_port
+from conetuga.explain.template import (EXPLANATIONS, LANGUAGES, SOURCE_TEMPLATE, explain, fill, finding_port,
+                                       hide_hostname)
 
 CONE_FILE = Path(__file__).resolve().parents[2] / "data" / "cone.toml"
 MODES = ("simple", "advanced")  # the UI passes "advanced" if current().advanced else "simple" (ui/state.py)
@@ -63,7 +64,8 @@ def narrate(finding, host, lang: str, mode: str) -> Narration:
 
 
 def evidence(finding, host, lang: str) -> list[str]:
-    """Cone's evidence lines: what nmap saw and the catalog rule that fired. Never a hostname, a MAC or a page title."""
+    """Cone's evidence lines: what nmap saw and the catalog rule that fired. Never a hostname, a MAC or a page title:
+    the host's name is hidden inside banner text with explain()'s own hide_hostname()."""
     labels = LABELS[lang]
     if finding.port is None:  # UNKNOWN_DEVICE: a rule about a device, not a port
         lines = [line(labels["ip"], host.ip), labels["no_vendor"], labels["no_name"],
@@ -74,8 +76,8 @@ def evidence(finding, host, lang: str) -> list[str]:
         port = finding_port(finding, host)
         lines = [line(labels["port"], f"{port.port}/{port.proto}")]
         if port.service:
-            lines.append(line(labels["service"], port.service))
-        program = " ".join(part for part in (port.product, port.version) if part)
+            lines.append(line(labels["service"], hide_hostname(port.service, host, lang)))
+        program = " ".join(hide_hostname(part, host, lang) for part in (port.product, port.version) if part)
         if program:
             lines.append(line(labels["product"], program))
     lines.append(line(labels["rule"], f"{finding.code} — {CONE[finding.code][lang]['rule']}"))

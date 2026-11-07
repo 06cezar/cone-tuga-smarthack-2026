@@ -13,41 +13,42 @@
 #     rule  = what the catalog rule means, translated
 #     steps = 1-5 precise steps, most important first; no maker's menu paths, no commands that only work on some
 #             systems; the last one, where it makes sense, is to check again with a scan
-#   [labels.ro] / [labels.en]: the start of each evidence line, and the words for severities and points
+#   [labels.ro] / [labels.en]: the start of each evidence line, saying in plain words what the line is (NFR-09),
+#     and the words for severities and points
 # Romanian uses ș and ț with a comma below.
 
 [labels.ro]
-port = "Port și protocol"
-service = "Serviciu (după nmap)"
-product = "Program și versiune (după nmap)"
-rule = "Regula din catalog"
-severity = "Severitate"
+port = "Port și protocol (ușa numerotată prin care răspunde programul și felul legăturii, TCP sau UDP)"
+service = "Serviciu (numele pe care nmap l-a dat programului care răspunde)"
+product = "Program și versiune (cum s-a prezentat programul când nmap l-a întrebat)"
+rule = "Regula din catalog (codul problemei și ce înseamnă)"
+severity = "Severitate (cât de gravă e problema și câte puncte scade din scor)"
 points = "puncte"
 severity_high = "mare"
 severity_medium = "medie"
 severity_low = "mică"
 severity_info = "informativ"
-ip = "Adresă IP"
-no_vendor = "Fără producător după adresa MAC"
-no_name = "Fără nume (hostname)"
-open_ports = "Porturi deschise"
+ip = "Adresă IP (adresa dispozitivului în rețea)"
+no_vendor = "Fără producător după adresa MAC (adresa de fabrică a plăcii de rețea)"
+no_name = "Fără nume în rețea (hostname)"
+open_ports = "Porturi deschise (câte uși răspund pe dispozitiv)"
 private_mac = "Adresă MAC privată (local administrată), cum folosesc telefoanele și laptopurile pentru intimitate"
 
 [labels.en]
-port = "Port and protocol"
-service = "Service (per nmap)"
-product = "Program and version (per nmap)"
-rule = "Catalog rule"
-severity = "Severity"
+port = "Port and protocol (the numbered door the program answers on, and the kind of connection, TCP or UDP)"
+service = "Service (the name nmap gave the program that answers)"
+product = "Program and version (how the program introduced itself when nmap asked)"
+rule = "Catalog rule (the problem's code and what it means)"
+severity = "Severity (how serious the problem is and how many points it takes off the score)"
 points = "points"
 severity_high = "high"
 severity_medium = "medium"
 severity_low = "low"
 severity_info = "informational"
-ip = "IP address"
-no_vendor = "No maker from the MAC address"
-no_name = "No name (hostname)"
-open_ports = "Open ports"
+ip = "IP address (the device's address on the network)"
+no_vendor = "No maker from the MAC address (the network card's factory address)"
+no_name = "No name on the network (hostname)"
+open_ports = "Open ports (how many doors answer on the device)"
 private_mac = "Private (locally administered) MAC address, as phones and laptops use for privacy"
 
 [codes.TELNET_OPEN.ro]

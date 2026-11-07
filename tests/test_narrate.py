@@ -11,6 +11,8 @@ import pytest
 from conetuga.analysis import analyse_file
 from conetuga.explain import explain, narrate
 from conetuga.explain.narrate import CONE, CONE_FILE, LABELS, MODES
+from conetuga.explain.template import HIDDEN_HOSTNAME
+from nmap_xml import host as xml_host, port as xml_port, write_scan
 
 ROOT = Path(__file__).resolve().parents[1]
 SCANS = ROOT / "tests" / "fixtures" / "validation" / "scans"
@@ -144,7 +146,7 @@ def test_simple_is_explain_word_for_word(path, lang):
 
 def test_outdated_service_evidence_names_the_product_and_version():
     finding, host = finding_on(analyse_file(LAB_SCAN), "OUTDATED_SERVICE")
-    assert "Program and version (per nmap): vsftpd 2.3.4" in narrate(finding, host, "en", "advanced").evidence
+    assert f"{LABELS['en']['product']}: vsftpd 2.3.4" in narrate(finding, host, "en", "advanced").evidence
 
 
 def test_hostile_product_and_version_stay_literal_in_the_evidence():
@@ -210,3 +212,48 @@ def test_advanced_without_the_findings_port_raises_lookup_error():
     finding, host = finding_on(analyse_file(SCANS / "V3_small_office.xml"), "PRINTER_RAW_EXPOSED")
     with pytest.raises(LookupError):
         narrate(finding, replace(host, ports=[]), "en", "advanced")
+
+
+HOSTILE_MAC = "AA:BB:CC:11:22:33"
+
+
+def outdated_on(tmp_path, product: str, version: str, hostname: str):
+    """The OUTDATED_SERVICE finding and its host, from a scan written in tmp_path (vsftpd 2.3.4 is on the list)."""
+    path = write_scan(tmp_path, xml_host("10.0.0.5", xml_port(21, "ftp", product=product, version=version),
+                                         hostname=hostname))
+    return finding_on(analyse_file(path), "OUTDATED_SERVICE")
+
+
+@pytest.mark.parametrize("mode", MODES)
+@pytest.mark.parametrize("lang", LANGUAGES)
+def test_hostname_inside_product_and_version_is_hidden_in_every_mode(tmp_path, lang, mode):
+    finding, host = outdated_on(tmp_path, "vsftpd on DESK-01", "2.3.4 desk-01", hostname="desk-01")
+    text = all_text(narrate(finding, host, lang, mode))
+    assert "desk-01" not in text.casefold()
+    assert HIDDEN_HOSTNAME[lang] in text
+
+
+def test_hostname_in_the_evidence_is_replaced_by_the_label(tmp_path):
+    finding, host = outdated_on(tmp_path, "vsftpd on DESK-01", "2.3.4 desk-01", hostname="desk-01")
+    evidence = narrate(finding, host, "en", "advanced").evidence
+    assert f"{LABELS['en']['product']}: vsftpd on hidden name 2.3.4 hidden name" in evidence
+
+
+def test_hostname_inside_a_longer_word_is_kept_in_the_evidence(tmp_path):
+    finding, host = outdated_on(tmp_path, "vsftpd Synology NASdrive", "2.3.4", hostname="nas")
+    evidence = narrate(finding, host, "ro", "advanced").evidence
+    assert f"{LABELS['ro']['product']}: vsftpd Synology NASdrive 2.3.4" in evidence
+
+
+@pytest.mark.xfail(strict=True, reason="masked by A's parser, PR #56")
+@pytest.mark.parametrize("mode", MODES)
+@pytest.mark.parametrize("lang", LANGUAGES)
+def test_mac_inside_product_never_reaches_the_narration(tmp_path, lang, mode):
+    finding, host = outdated_on(tmp_path, f"device {HOSTILE_MAC} vsftpd", "2.3.4", hostname="")
+    assert HOSTILE_MAC not in all_text(narrate(finding, host, lang, mode)).upper()
+
+
+def test_short_and_full_hostname_are_hidden_in_the_evidence(tmp_path):
+    finding, host = outdated_on(tmp_path, "vsftpd on DESK-01", "2.3.4 desk-01.lan", hostname="desk-01.lan")
+    evidence = narrate(finding, host, "en", "advanced").evidence
+    assert f"{LABELS['en']['product']}: vsftpd on hidden name 2.3.4 hidden name" in evidence
