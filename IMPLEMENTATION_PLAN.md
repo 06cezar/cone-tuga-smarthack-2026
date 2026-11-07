@@ -37,6 +37,50 @@ Status lives here, not in CLAUDE.md. Milestones are the brief's; hours count fro
 - [ ] Rehearse the 7 live checks
 - [x] Lab scans used as fixtures: a test checks that our before/after pair shows the score improving
 
+## Front end (design: `docs/frontend-plan.md`; branches `<stream>-fe-<topic>`; tick your own lines)
+Order: the contracts first (FE-A1, FE-B1, FE-B3), D's shell (FE-D1) next, then the pages in parallel. A page in
+`ui/pages/` that isn't D's starts with one line in `ui/COMMS.md`. Every page: RO/EN, Simple (Tuga) and Advanced
+(Cone), both themes, scan text escaped, an AppTest.
+
+**D**
+- [ ] FE-D1 `ui/state.py` (scan, language, mode, theme in one place) and `st.navigation` with the pages below; the
+  sidebar holds the language, the "Avansat / Advanced" toggle and the light/dark toggle
+- [ ] FE-D2 Acasă: pick or upload a scan; the headline said by the current guide; the traffic-light score
+- [ ] FE-D3 Dispozitive: devices by risk, each finding through `narrate`; "neverificat" for `Host.timed_out`
+- [ ] FE-D4 Istoric (today's history, report button) and Despre (how it works, safety, privacy, the rules we keep)
+- [ ] FE-D5 Light and dark theme: one set of colour tokens per theme, both WCAG AA (NFR-08)
+- [ ] FE-D6 Review every front-end PR; the page AppTests (both languages, both modes) stay green
+
+**B**
+- [ ] FE-B1 Contract `narrate(finding, host, lang, mode) -> Narration(speaker, text, steps, references, source)`
+- [ ] FE-B2 Tuga's and Cone's texts for the 15 codes, RO/EN, in `data/`; `narrate` with tests (Cone explains each
+  technical word, NFR-09)
+- [ ] FE-B3 Contract `wiki_entries(lang, mode)`
+- [ ] FE-B4 Wiki amenințări: one entry per code plus port, encryption, firewall, MAC, UPnP; page `ui/pages/wiki.py`
+- [ ] FE-B5 `conetuga/explain/assistant.py`: `reply(messages, result, lang, mode) -> Answer` through
+  `answer_question`; page `ui/pages/ask.py` with a chat box (the future agent plugs in here, NFR-06)
+- [ ] FE-B6 The Q&A names devices as the UI does (`ui.view.device_name`)
+
+**A**
+- [ ] FE-A1 Contract `conetuga/insights`: `record(result)`, `top_codes(n) -> list[(code, count)]`
+- [ ] FE-A2 Local store in `.history/`: code counts only (no IP, MAC, hostname, file name), opt-in, cleared by
+  "Șterge istoricul meu" (NFR-02)
+- [ ] FE-A3 "Cele mai comune probleme" panel on the Wiki page, with B
+- [ ] FE-A4 Data for the Dispozitive page in `ui/view.py`: filter by risk and type, sort
+
+**C**
+- [ ] FE-C1 Scan page `ui/pages/scan.py`: the detected network (FR-01) and the exact `scan --confirm` command; it runs
+  nothing (NFR-04)
+- [ ] FE-C2 NFR-07: a /24 live scan under 5 minutes, or the limitation written down
+- [ ] FE-C3 `tests/test_privacy.py` over every page, both modes, both themes
+- [ ] FE-C4 Security review of every front-end PR (escaping, uploads, no secret)
+
+**E**
+- [ ] FE-E1 Original SVG drawings of Tuga 🐢 and Cone 🐇 in `ui/assets/`, small, with alt text, never shown alone
+- [ ] FE-E2 Accessibility pass on every page in both themes: 16 px, AA contrast, keyboard, icon + label
+- [ ] FE-E3 Tuga's Romanian texts tested with a non-technical person; findings to B, the result to PITCH.md (D)
+- [ ] FE-E4 Rehearse the demo on the new UI; update `docs/jury-demo.md` with the new steps
+
 ## Deliverables (the brief's checklist)
 - [ ] Rules-of-engagement form signed by every team member (hour 0)
 - [ ] Test Set results uploaded by hour 21: `findings.csv`, `scores.csv` and a UI screenshot. Commit a copy of exactly
