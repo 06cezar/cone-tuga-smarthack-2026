@@ -134,3 +134,29 @@ def test_hosthint_alone_is_not_a_host(tmp_path):
     """A hint with no <host> after it (e.g. a host that went away before its port scan) reports nothing."""
     result = analyse_file(write_raw(tmp_path, HOSTHINT))
     assert (result.error, result.hosts, result.findings, result.score) == ("", [], [], 100)
+
+
+def timed_out_host(attribute: str, ports_xml: str = "") -> str:
+    return (f'<host {attribute}><status state="up" reason="arp-response"/><address addr="10.0.0.7" addrtype="ipv4"/>'
+            f'<address addr="AA:BB:CC:11:22:33" addrtype="mac" vendor="Acme"/><hostnames><hostname name="box"/>'
+            f'</hostnames><ports>{ports_xml}</ports></host>\n')
+
+
+def test_a_device_nmap_gave_up_on_is_marked_not_checked(tmp_path):
+    """--host-timeout: nmap writes the device with no ports. It has no findings because it wasn't checked, and the
+    result says so, so nobody reads "no findings" as "safe"."""
+    result = analyse_file(write_raw(tmp_path, timed_out_host('timedout="true"')))
+    assert [(h.ip, h.timed_out, h.ports) for h in result.hosts] == [("10.0.0.7", True, [])]
+    assert (result.findings, result.score) == ([], 100)
+
+
+def test_a_device_nmap_finished_is_not_marked(tmp_path):
+    result = analyse_file(write_raw(tmp_path, timed_out_host('timedout="false"') + host("10.0.0.8", port(23, "telnet"))))
+    assert [h.timed_out for h in result.hosts] == [False, False]
+
+
+def test_ports_nmap_wrote_before_giving_up_still_count(tmp_path):
+    """If nmap wrote some ports of a device before its time ran out, the catalog still applies to them."""
+    telnet = '<port protocol="tcp" portid="23"><state state="open"/><service name="telnet"/></port>'
+    result = analyse_file(write_raw(tmp_path, timed_out_host('timedout="true"', telnet)))
+    assert result.hosts[0].timed_out and [(f.port, f.code) for f in result.findings] == [(23, "TELNET_OPEN")]
