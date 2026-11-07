@@ -13,14 +13,15 @@ minutes, in English, with at least two speakers (juniors and seniors both speak)
 | "The tool refuses public IPs and anything outside our hotspot." | `conetuga/guard/scope.py` | `tests/test_guard.py::test_contract_check_scope`, `::test_venue_network_is_refused_while_we_are_on_our_hotspot`, `::test_every_target_is_refused_on_the_venue_wifi` |
 | "A broken file shows a clear error, and the other files still run." | `conetuga/guard/export.py` | `tests/test_export.py::test_broken_file_gets_an_error_row_and_the_export_goes_on`, `::test_a_crash_in_the_analysis_becomes_an_error_row`, `tests/test_cli.py::test_analyse_writes_both_files_and_says_what_happened_to_each` |
 | "A live scan runs only on our hotspot, with --confirm, at most 100 packets per second, and only nmap gets administrator rights." | `conetuga/guard/scan.py` | `tests/test_scan.py::test_nothing_reaches_nmap_without_the_guardrails_yes`, `::test_rate_is_at_most_100_packets_per_second`, `::test_without_root_on_linux_only_nmap_runs_through_sudo` |
+| "MAC addresses are masked everywhere." | `conetuga/analysis/parser.py`, `lab/mask_scan.py` | `tests/test_privacy.py::test_no_raw_mac_on_the_web_page`, `::test_no_raw_mac_in_findings_or_scores_csv`, `::test_no_raw_mac_in_the_history_on_disk` |
 
 Planned claims, to move into the table once their test passes:
 - "The AI can't invent a port or a CVE: code checks every sentence."
-- "MAC addresses are masked everywhere."
 
 ## Numbers for the demo
 - Validation Set: 24/24 rows, 0 extra rows, 8/8 scores.
-- Our lab: score before _ → after _.
+- Our lab (`lab/scans/`, analysed by our own tool): score 0 → 50 → 70. Fix 1 (telnet and FTP off) and fix 2 (Redis
+  off) resolved 4 findings and added none. In the UI: pick `scan_01.xml`, then `scan_03.xml`.
 
 ## Trade-offs (what we chose, and what we gave up for it)
 
