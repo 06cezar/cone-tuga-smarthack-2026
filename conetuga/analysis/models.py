@@ -27,6 +27,9 @@ class Host:
     hostname: str  # the first hostname nmap reported, "" when none
     device_type: str  # our best guess, see devices.py
     ports: list[Port] = field(default_factory=list)  # open ports only
+    # nmap gave up on this device (<host timedout="true">): its ports are missing, so "no findings" means "not
+    # checked", never "safe". It changes no finding and no score.
+    timed_out: bool = False
 
 
 @dataclass(frozen=True)

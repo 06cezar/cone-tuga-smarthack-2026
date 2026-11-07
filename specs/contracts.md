@@ -24,7 +24,11 @@ with its test.
       when the same number is open on both. UNKNOWN_DEVICE has `port=None` and `proto=""`.
     - `points` is the catalog's points for `severity` (`data/catalog.toml`, `[severity_points]`), so the UI ranks by
       risk without computing anything; `score == max(0, 100 - sum(f.points for f in findings))`.
-  - `Host(ip: str, mac_masked: str, vendor: str, hostname: str, device_type: str, ports: list[Port])`
+  - `Host(ip: str, mac_masked: str, vendor: str, hostname: str, device_type: str, ports: list[Port],
+    timed_out: bool = False)`
+    - `timed_out` is True when nmap gave up on the device (`<host timedout="true">`, e.g. a live scan's
+      `--host-timeout`): nmap writes none of its ports, so it has no findings because it wasn't checked, not
+      because it's safe. The UI and the CLI say so next to it; findings and the score don't change.
     - `device_type` is one of `camera`, `printer`, `nas`, `router` (also access points), `tv`, `smart-home`,
       `computer`, `phone`, `server`, `unknown` (the `DEVICE_*` constants in `conetuga/analysis/devices.py`); B and D
       translate them. A label only: it never changes a finding or the score.

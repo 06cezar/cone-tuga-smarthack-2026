@@ -19,6 +19,7 @@ MAX_SCAN_BYTES = 20 * 1024 * 1024
 NMAP_ROOT_TAG = "nmaprun"
 OPEN_STATE = "open"  # "open|filtered", "filtered" and "closed" are not open (brief: "only for ports in state open")
 UP_STATE = "up"
+NMAP_TRUE = "true"  # how nmap writes a true boolean attribute (nmap.dtd, %attr_bool: "true" or "false")
 IP_ADDRESS_TYPES = ("ipv4", "ipv6")  # in order of preference when a host has both
 MAC_PATTERN = re.compile(r"^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$")
 MAC_VISIBLE_BYTES = 3  # the vendor part (OUI) stays visible; the device part is hidden (NFR-02)
@@ -86,6 +87,7 @@ def _parse_host(element: Element) -> Host | None:
         hostname=hostname,
         device_type=guess_device_type(vendor=vendor, hostname=hostname, mac=mac, ports=ports),
         ports=ports,
+        timed_out=element.get("timedout") == NMAP_TRUE,
     )
 
 
