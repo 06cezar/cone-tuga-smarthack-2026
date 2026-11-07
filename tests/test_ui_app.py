@@ -168,3 +168,31 @@ def test_a_hostile_question_is_never_shown_back():
 def test_an_empty_question_shows_no_answer():
     app = ask("V3_small_office.xml", "   ")
     assert not app.exception and not app.info
+
+
+def test_simple_mode_is_the_default_and_tuga_speaks():
+    app = run(scan="V2_smart_home.xml")
+    assert not app.exception
+    assert app.toggle[0].value is False
+    text = all_text(app)
+    assert "🐢 **Tuga:**" in text and "🐇 **Cone:**" not in text
+    assert "PRINTER_RAW_EXPOSED" not in text and "CAMERA_STREAM_EXPOSED" not in text  # no catalog codes for Tuga
+
+
+def test_advanced_mode_lets_cone_show_the_evidence_and_references():
+    app = run(scan="V2_smart_home.xml")
+    app.toggle[0].set_value(True).run()
+    assert not app.exception
+    text = all_text(app)
+    assert "🐇 **Cone:**" in text and "🐢 **Tuga:**" not in text
+    assert "CAMERA_STREAM_EXPOSED" in text and "OWASP IoT" in text
+    assert "Cel mai periculos" in first_heading(app)  # the headline stays the same in both modes
+
+
+def test_the_about_page_explains_the_guides_in_both_languages():
+    for language, words in (("Română", "Cei doi ghizi"), ("English", "The two guides")):
+        script = (f"import streamlit as st\nst.session_state['language_choice'] = {language!r}\n"
+                  "from ui.pages import about\nabout.render()")
+        app = AppTest.from_string(script, default_timeout=TIMEOUT_SECONDS).run()
+        assert not app.exception
+        assert words in " ".join(m.value for m in app.markdown)
