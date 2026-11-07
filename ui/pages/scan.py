@@ -93,7 +93,7 @@ def render() -> None:
     except NetworkNotFound as exc:
         st.warning(f"⛔ {text['no_network']}")
         if settings.advanced:
-            st.caption(md(_in_language(str(exc), settings.lang)))
+            st.markdown(md(_in_language(str(exc), settings.lang)))  # not st.caption: 3.88:1 on light (FE-E2)
         _show_command(text)
         return
     ssid = wifi_ssid(network.interface)
