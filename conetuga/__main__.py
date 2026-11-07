@@ -130,8 +130,18 @@ def _scan(target: str | None, confirmed: bool, out: Path, minutes: int = DEFAULT
     for finding in result.findings:
         where = finding.ip if finding.port is None else f"{finding.ip}:{finding.port}"
         print(f"  {_printable(where)} {finding.code} ({finding.severity})")
-    # FR-10, every scan in the history: the stored result has masked MACs only, and it stays on this computer.
-    if save_scan(result, scan.xml.read_bytes()):
+    # FR-10, every scan in the history: the stored result has masked MACs only, and it stays on this computer. A
+    # history that can't be written (a full disk, no permission) is only a warning: the scan's result and the
+    # warnings about devices nmap gave up on still follow.
+    try:
+        saved = save_scan(result, scan.xml.read_bytes())
+    except OSError as exc:
+        saved = False
+        _print_message(f"Scanarea nu a putut fi salvată în istoric ({exc.strerror or exc}); rezultatul de mai sus "
+                       "rămâne valabil.\n"
+                       f"The scan couldn't be saved to the history ({exc.strerror or exc}); the result above still "
+                       "stands.")
+    if saved:
         print("Salvat în istoric (deschide UI-ul să vezi înainte/după) / saved to the history (open the UI for before/after)")
     if not scan.timed_out:
         return EXIT_OK
