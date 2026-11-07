@@ -15,6 +15,9 @@ from ui.view import md
 ROMANIAN_DE_FROM = 20  # the Romanian rule for "de" after a number, see how_many_times
 TOP_N = 5  # how many problems the panel lists: enough to see a pattern, short enough to read at a glance
 SWITCH_KEY = "insights_switch"
+# The session's set of scans already counted (the insights contract's `seen`): Acasă adds to it through record()
+# and empties it with "Șterge istoricul meu". It lives only in this session, never on disk.
+SEEN_KEY = "insights_seen"
 SAVE_FAILED_KEY = "insights_save_failed"
 WARNING_ICON = "⚠️"  # with the words, never alone (NFR-08); Streamlit draws it from `icon=`, not from the text
 

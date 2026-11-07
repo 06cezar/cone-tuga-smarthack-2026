@@ -16,7 +16,9 @@ from conetuga.analysis import analyse_file  # noqa: E402
 from conetuga.explain import answer_question, explain  # noqa: E402
 from conetuga.explain.qa import MAX_QUESTION_CHARS  # noqa: E402
 from conetuga.history import delete_history, diff, digest_of, load_history, save_scan  # noqa: E402
+from conetuga.insights import record  # noqa: E402
 from ui.cards import show_device  # noqa: E402
+from ui.insights_panel import SEEN_KEY  # noqa: E402
 from ui.report import html_report  # noqa: E402
 from ui.state import current, remember_scan  # noqa: E402
 from ui.view import device_name, devices_by_risk, headline, md, same_network, score_line  # noqa: E402
@@ -176,6 +178,7 @@ def show_history(result, content: bytes, lang: str):
 
     if st.button(text["delete"]):
         delete_history()
+        st.session_state.get(SEEN_KEY, set()).clear()  # so a scan opened after opting in again counts again
         st.session_state[SKIP_SAVE_KEY] = digest
         st.session_state[DELETED_KEY] = True
         st.rerun()
@@ -239,6 +242,9 @@ def render() -> None:
     if result.error:
         st.error(f"⛔ {text['unreadable']}: {md(result.error)}")
         return
+    # The opt-in statistics (FE-A3): a readable scan counts once per session, and only if the person turned them on
+    # (record checks that itself, inside its write).
+    record(result, digest_of(content), st.session_state.setdefault(SEEN_KEY, set()))
 
     devices = devices_by_risk(result, lang)
     st.markdown(f"## {md(headline(devices, lang))}")
