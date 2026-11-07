@@ -73,7 +73,7 @@ def render_common_problems(titles: dict[str, str], lang: str) -> None:
     """Draws the panel: a heading, what the statistics keep, the opt-in switch, and the list (or why there is none)."""
     text = TEXT[lang]
     st.subheader(text["heading"])
-    st.caption(text["about"])
+    st.markdown(text["about"])  # not st.caption: its grey is 3.88:1 on the light theme, under WCAG AA (FE-E2)
     state = status()
     if state == STATUS_UNAVAILABLE:
         st.warning(text["unavailable"], icon=WARNING_ICON)

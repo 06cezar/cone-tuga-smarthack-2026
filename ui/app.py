@@ -11,7 +11,7 @@ import streamlit as st
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))  # `streamlit run ui/app.py` puts only ui/ on the path
 
-from ui.pages import about, devices, home, scan  # noqa: E402
+from ui.pages import about, devices, home, scan, wiki  # noqa: E402
 from ui.state import sidebar_settings  # noqa: E402
 from ui.style import PAGE_CSS  # noqa: E402  (16 px text and a visible keyboard focus, NFR-08)
 
@@ -20,6 +20,7 @@ from ui.style import PAGE_CSS  # noqa: E402  (16 px text and a visible keyboard 
 PAGES = [
     (home, "Acasă", "Home", "🏠", "acasa"),
     (devices, "Dispozitive", "Devices", "💻", "dispozitive"),
+    (wiki, "Wiki amenințări", "Threat wiki", "📚", "wiki"),
     (scan, "Scanare", "Scan", "📡", "scanare"),
     (about, "Despre", "About", "ℹ️", "despre"),
 ]
