@@ -94,6 +94,48 @@ def test_whole_internet_range_is_refused():
         assert not scope(target).allowed, target
 
 
+def test_range_with_reserved_ends_is_refused_as_public_not_as_the_carrier():
+    """D's review: 0.0.0.0/0 starts and ends on reserved addresses and holds the carrier's range, but what makes it
+    out of bounds is the internet inside it."""
+    for target in ["0.0.0.0/0", "0.0.0.0/1", "::/0", "10.0.0.0/7"]:
+        decision = scope(target)
+        assert not decision.allowed, target
+        assert "adrese publice" in decision.reason and "contains public internet addresses" in decision.reason, target
+        assert "carrier" not in decision.reason, target
+
+
+def test_range_around_the_carrier_range_is_refused_as_public():
+    for target in ["100.0.0.0/8", "100.64.0.0/9"]:
+        decision = scope(target)
+        assert not decision.allowed and "public internet addresses" in decision.reason, target
+
+
+def test_multicast_is_refused_as_multicast_not_as_public():
+    """D's review: 224.0.0.1 isn't a public address, it isn't a device at all; 239.255.255.250 is where SSDP talks."""
+    for target in ["224.0.0.1", "239.255.255.250", "224.0.0.0/4", "224.0.0.0/3", "ff02::1"]:
+        decision = scope(target)
+        assert not decision.allowed, target
+        assert "multicast" in decision.reason and "public" not in decision.reason, target
+
+
+def test_multicast_is_refused_even_by_a_wrong_allowlist():
+    assert not scope("224.0.0.1", allowlist=("0.0.0.0/0",)).allowed
+
+
+def test_ipv4_written_as_ipv6_is_refused_even_by_a_wrong_allowlist():
+    """"::ffff:8.8.8.8" reaches 8.8.8.8, yet Python calls the block it sits in reserved."""
+    for target in ["::ffff:8.8.8.8", "::ffff:172.20.10.3", "::ffff:100.64.0.1", "::ffff:0:0/96"]:
+        decision = scope(target, allowlist=("::/0",))
+        assert not decision.allowed and "IPv4" in decision.reason, target
+
+
+def test_reserved_addresses_are_refused_as_outside_our_network_not_as_public():
+    for target in ["240.0.0.1", "255.255.255.255", "0.0.0.0"]:
+        decision = scope(target)
+        assert not decision.allowed, target
+        assert "public" not in decision.reason and "outside the allowed network" in decision.reason, target
+
+
 def test_domain_name_is_refused_without_a_dns_lookup(monkeypatch):
     def no_dns(*args, **kwargs):
         raise AssertionError("the guardrail must never look up a name")

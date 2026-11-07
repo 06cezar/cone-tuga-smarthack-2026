@@ -16,6 +16,10 @@ HOTSPOT_SSID = "RSH-ConeTuga"
 # so the public-IP check alone would let it through; the rules of engagement forbid the operator's network.
 CARRIER_SHARED_RANGE = ipaddress.ip_network("100.64.0.0/10")
 
+# IPv4 addresses written as IPv6: "::ffff:8.8.8.8" reaches 8.8.8.8. Python calls this block reserved but each address
+# in it public or not by its IPv4 self, so the public check can't see inside it: such targets are refused as written.
+IPV4_MAPPED_RANGE = ipaddress.ip_network("::ffff:0:0/96")
+
 Target = ipaddress.IPv4Network | ipaddress.IPv6Network
 
 
@@ -29,7 +33,9 @@ class ScopeDecision:
 
 def check_scope(target: str, allowlist: list[str], confirmed: bool, ssid: str) -> ScopeDecision:
     """May a live scan touch `target`? The checks run in this order, and the first one that fails gives the reason:
-    written as numbers, not public, not the carrier's range, on our hotspot, inside the allowlist, `--confirm` given.
+    written as numbers, holds no public address, not the carrier's range, not IPv4 written as IPv6, not multicast, on
+    our hotspot, inside the allowlist, `--confirm` given. Reserved addresses (0.0.0.0, 240.0.0.0/4...) aren't public:
+    the allowlist refuses them.
 
     `allowlist` holds IP ranges such as "172.20.10.0/28" (the default is the connected subnet, see network.py); an
     entry that isn't a range can't allow anything. `ssid` is the Wi-Fi network of the interface we would scan
@@ -43,15 +49,39 @@ def check_scope(target: str, allowlist: list[str], confirmed: bool, ssid: str) -
             "domain names are never looked up.",
         )
     shown = _display(network)
-    if _is_public(network):
+    if _contains_public(network):
+        if network.num_addresses == 1:
+            return _refuse(
+                f"{shown} este o adresă publică de pe internet: scanăm doar rețeaua noastră de laborator.",
+                f"{shown} is a public internet address: we only scan our own lab network.",
+            )
         return _refuse(
-            f"{shown} este o adresă publică de pe internet: scanăm doar rețeaua noastră de laborator.",
-            f"{shown} is a public internet address: we only scan our own lab network.",
+            f"{shown} conține adrese publice de pe internet: scanăm doar rețeaua noastră de laborator.",
+            f"{shown} contains public internet addresses: we only scan our own lab network.",
         )
+    # A range that overlaps the carrier's and passed the check above lies inside it: any larger range holds public
+    # addresses, such as 100.0.0.0/10 next to it.
     if network.version == CARRIER_SHARED_RANGE.version and network.overlaps(CARRIER_SHARED_RANGE):
         return _refuse(
             f"{shown} aparține rețelei operatorului mobil ({CARRIER_SHARED_RANGE}), nu nouă.",
             f"{shown} belongs to the mobile carrier's network ({CARRIER_SHARED_RANGE}), not to us.",
+        )
+    if network.version == IPV4_MAPPED_RANGE.version and network.overlaps(IPV4_MAPPED_RANGE):
+        return _refuse(
+            f"{shown} este o adresă IPv4 scrisă în formă IPv6: scrie-o ca IPv4 (de ex. 172.20.10.5).",
+            f"{shown} is an IPv4 address written as IPv6: write it as IPv4 (e.g. 172.20.10.5).",
+        )
+    # A multicast address reaches every device that listens, not one of ours, whatever the allowlist says. A range
+    # that holds some and passed the checks above starts or ends inside the multicast block, so its ends tell.
+    if network.network_address.is_multicast or network.broadcast_address.is_multicast:
+        if network.num_addresses == 1:
+            return _refuse(
+                f"{shown} este o adresă de grup (multicast), nu un dispozitiv: scanăm doar dispozitivele noastre.",
+                f"{shown} is a group (multicast) address, not a device: we only scan our own devices.",
+            )
+        return _refuse(
+            f"{shown} conține adrese de grup (multicast), nu dispozitive: scanăm doar dispozitivele noastre.",
+            f"{shown} contains group (multicast) addresses, not devices: we only scan our own devices.",
         )
     if ssid != HOTSPOT_SSID:
         current = repr(ssid) if ssid else "niciuna"
@@ -97,11 +127,21 @@ def _display(network: Target) -> str:
     return str(network)
 
 
-def _is_public(network: Target) -> bool:
-    """True when the range starts or ends on a public address. The allowlist is the real fence (a huge range such as
-    0.0.0.0/0 starts and ends on reserved addresses and is refused there); this check gives the clear reason the
-    jury expects for a public IP, and still holds if the allowlist were ever wrong."""
-    return network.network_address.is_global or network.broadcast_address.is_global
+def _contains_public(network: Target) -> bool:
+    """True when at least one address of the range is a public internet address, so 0.0.0.0/0 is refused as public
+    even though its first and last addresses are reserved. Python's `ipaddress` tells whether a whole range lies
+    inside one non-public block (private, loopback, link-local, reserved...); multicast addresses and the carrier's
+    range aren't internet hosts either. A range inside none of them is split in two halves until each part is, or is
+    one address: at most 32 levels for IPv4 and 128 for IPv6, and only along the edges of those blocks.
+
+    The allowlist alone would refuse such ranges too; this check gives the reason the jury expects, and still holds
+    if the allowlist were ever wrong."""
+    inside_carrier = network.version == CARRIER_SHARED_RANGE.version and network.subnet_of(CARRIER_SHARED_RANGE)
+    if network.is_private or network.is_multicast or inside_carrier:
+        return False
+    if network.num_addresses == 1:
+        return True
+    return any(_contains_public(half) for half in network.subnets(prefixlen_diff=1))
 
 
 def _refuse(romanian: str, english: str) -> ScopeDecision:
