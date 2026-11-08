@@ -1,5 +1,5 @@
 """The settings every page shares, in one place: the language, the mode (Simple with Tuga 🐢, Advanced with
-Cone 🐇) and large text. ui/app.py draws them in the sidebar on every page; a page reads them with `current()` and never keeps its own
+Cone 🐇). ui/app.py draws them in the top bar on every page; a page reads them with `current()` and never keeps its own
 copy, so switching the language or the mode changes every page at once. The scan picked on Acasă is shared the same
 way (`remember_scan`, `current_scan`), so every page shows the same scan."""
 from dataclasses import dataclass
@@ -7,33 +7,32 @@ from dataclasses import dataclass
 import streamlit as st
 
 from ui.assets import guide_picture
-from ui.style import LARGE_TEXT_CSS
+from ui.theme import LANG_KEY, MODE_KEY
 
 LANGUAGES = {"Română": "ro", "English": "en"}  # shown name -> the code every contract takes
 LANGUAGE_KEY = "language_choice"
 ADVANCED_KEY = "advanced_mode"
-LARGE_TEXT_KEY = "large_text"
 SCAN_KEY = "scan_result"  # the scan picked on Acasă, shared with the other pages
 DEFAULT_LANGUAGE = "Română"  # the brief's users are Romanian; English is one click away
-SIDEBAR_PICTURE_PX = 48  # the guide's picture in the sidebar: an icon beside one line of text
+SHORT_NAMES = {"Română": "RO", "English": "EN"}  # what the RO | EN switch shows
+TOPBAR_PICTURE_PX = 34  # the current guide in the top bar: an icon beside one line of text
+TOPBAR_GUIDE_WIDTHS = (1, 6)  # its picture : its sentence
 GUIDE_NAMES = {"tuga": "🐢 **Tuga**", "cone": "🐇 **Cone**"}  # the same in both languages
 
 TEXT = {
     "ro": {
-        "advanced": "Avansat (Cone 🐇)",
+        "advanced": "🐇 Cone (Avansat)",
+        "tuga_side": "🐢 Tuga (Simplu)",
         "advanced_help": "Pornit: Cone arată detaliile tehnice (porturi, dovezi, referințe). Oprit: Tuga explică simplu.",
         "simple_guide": "🐢 **Tuga** îți explică pe înțeles.",
         "advanced_guide": "🐇 **Cone** îți arată și detaliile tehnice.",
-        "large_text": "🔍 Scris mare",
-        "large_text_help": "Pornit: toată pagina e mai mare, ușor de citit și de la distanță. Oprit: mărimea obișnuită.",
     },
     "en": {
-        "advanced": "Advanced (Cone 🐇)",
+        "advanced": "🐇 Cone (Advanced)",
+        "tuga_side": "🐢 Tuga (Simple)",
         "advanced_help": "On: Cone shows the technical details (ports, evidence, references). Off: Tuga explains simply.",
         "simple_guide": "🐢 **Tuga** explains it in plain words.",
         "advanced_guide": "🐇 **Cone** also shows the technical details.",
-        "large_text": "🔍 Large text",
-        "large_text_help": "On: the whole page is larger, easy to read even from a distance. Off: the usual size.",
     },
 }
 
@@ -42,24 +41,27 @@ TEXT = {
 class Settings:
     lang: str  # "ro" or "en"
     advanced: bool  # False: Simple mode with Tuga (the default); True: Advanced mode with Cone
-    large_text: bool = False  # on: the whole page larger; off: the usual size (the default, ui/style.py says why)
 
 
-def sidebar_settings() -> Settings:
-    """Draws the language switch, the Advanced toggle and the large-text toggle in the sidebar, applies large text,
-    and returns what they say."""
-    with st.sidebar:
+def topbar_settings(mode_column, language_column) -> Settings:
+    """Draws the settings in the top bar (ui/app.py), as in the mock-ups: the Tuga | Cone switch with the current guide
+    under it, and RO | EN. Returns what they say. The language comes first in the code because the other
+    labels need it; on the page it sits after the switch."""
+    with language_column, st.container(key=LANG_KEY):
         choice = st.radio("Limba / Language", list(LANGUAGES), horizontal=True, key=LANGUAGE_KEY,
-                          index=list(LANGUAGES).index(DEFAULT_LANGUAGE))
-        lang = LANGUAGES[choice]
-        advanced = st.toggle(TEXT[lang]["advanced"], key=ADVANCED_KEY, help=TEXT[lang]["advanced_help"])
+                          index=list(LANGUAGES).index(DEFAULT_LANGUAGE), format_func=SHORT_NAMES.get,
+                          label_visibility="collapsed")
+    lang = LANGUAGES[choice]
+    was_advanced = bool(st.session_state.get(ADVANCED_KEY, False))
+    with mode_column, st.container(key=MODE_KEY):
+        switch = st.container(horizontal=True, vertical_alignment="center", gap="small")
+        with switch, st.container(key=f"{MODE_KEY}-tuga-{'off' if was_advanced else 'on'}", width="content"):
+            st.markdown(TEXT[lang]["tuga_side"])
+        with switch, st.container(key=f"{MODE_KEY}-cone-{'on' if was_advanced else 'off'}", width="content"):
+            advanced = st.toggle(TEXT[lang]["advanced"], key=ADVANCED_KEY, help=TEXT[lang]["advanced_help"])
         show_guide(guide_of(advanced), lang, TEXT[lang]["advanced_guide" if advanced else "simple_guide"],
-                   SIDEBAR_PICTURE_PX)
-        large_text = st.toggle(TEXT[lang]["large_text"], value=False, key=LARGE_TEXT_KEY,
-                               help=TEXT[lang]["large_text_help"])
-        if large_text:
-            st.markdown(LARGE_TEXT_CSS, unsafe_allow_html=True)
-    return Settings(lang=lang, advanced=advanced, large_text=large_text)
+                   TOPBAR_PICTURE_PX, widths=TOPBAR_GUIDE_WIDTHS)
+    return Settings(lang=lang, advanced=advanced)
 
 
 def guide_of(advanced: bool) -> str:
@@ -92,8 +94,7 @@ def current_scan():
 
 
 def current() -> Settings:
-    """The settings as the sidebar left them in this run (the defaults before it is drawn)."""
+    """The settings as the top bar left them in this run (the defaults before it is drawn)."""
     choice = st.session_state.get(LANGUAGE_KEY, DEFAULT_LANGUAGE)
     return Settings(lang=LANGUAGES.get(choice, LANGUAGES[DEFAULT_LANGUAGE]),
-                    advanced=bool(st.session_state.get(ADVANCED_KEY, False)),
-                    large_text=bool(st.session_state.get(LARGE_TEXT_KEY, False)))
+                    advanced=bool(st.session_state.get(ADVANCED_KEY, False)))

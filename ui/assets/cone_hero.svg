@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" role="img" aria-labelledby="cone-hero-title">
+  <title id="cone-hero-title">Cone, the hare with goggles and a hoodie (Cone, iepurele cu ochelari și hanorac)</title>
+  <g stroke="#0B1220" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M86 92 C70 52 72 14 90 8 C106 4 112 40 108 86 Z" fill="#C98B5A"/>
+    <path d="M92 80 C84 52 86 26 94 22 C102 20 104 46 102 80 Z" fill="#F4A6B5" stroke="none"/>
+    <path d="M134 86 C134 40 146 6 164 10 C182 16 176 56 154 94 Z" fill="#C98B5A"/>
+    <path d="M142 80 C144 50 152 26 160 26 C168 28 164 54 150 84 Z" fill="#F4A6B5" stroke="none"/>
+    <path d="M44 236 C44 188 74 160 120 160 C166 160 196 188 196 236 Z" fill="#1E293B"/>
+    <path d="M78 176 C96 196 144 196 162 176" fill="none" stroke="#38BDF8" stroke-width="4"/>
+    <path d="M106 192 L104 214 M134 192 L136 214" fill="none" stroke="#CBD5E1" stroke-width="3"/>
+    <path d="M120 200 L134 206 L132 222 L120 230 L108 222 L106 206 Z" fill="#2563EB" stroke="#0B1220" stroke-width="3"/>
+    <path d="M114 214 L119 219 L127 208" fill="none" stroke="#FFFFFF" stroke-width="3"/>
+    <path d="M172 186 C192 168 202 146 206 126" fill="none" stroke-width="18" stroke="#0B1220"/>
+    <path d="M172 186 C192 168 202 146 206 126" fill="none" stroke-width="12" stroke="#1E293B"/>
+    <path d="M196 124 C192 104 204 96 212 100 C222 104 224 118 214 128 Z" fill="#E7C3A0"/>
+    <path d="M200 106 L196 96 M208 102 L208 92 M216 106 L222 98" fill="none" stroke-width="3"/>
+    <ellipse cx="120" cy="116" rx="54" ry="50" fill="#C98B5A"/>
+    <ellipse cx="120" cy="134" rx="34" ry="26" fill="#F1D2B3"/>
+    <rect x="70" y="92" width="100" height="34" rx="17" fill="#0F172A"/>
+    <ellipse cx="96" cy="109" rx="20" ry="14" fill="#22D3EE"/>
+    <ellipse cx="144" cy="109" rx="20" ry="14" fill="#22D3EE"/>
+    <path d="M66 104 L56 100 M174 104 L184 100" fill="none" stroke-width="5"/>
+  </g>
+  <circle cx="98" cy="110" r="6" fill="#0B1220"/>
+  <circle cx="146" cy="110" r="6" fill="#0B1220"/>
+  <path d="M86 102 L94 98" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+  <path d="M134 102 L142 98" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+  <ellipse cx="120" cy="128" rx="7" ry="5" fill="#E2687E"/>
+  <path d="M104 140 Q120 156 136 140" fill="#7F1D1D" stroke="#0B1220" stroke-width="4" stroke-linejoin="round"/>
+  <rect x="114" y="141" width="12" height="7" rx="2" fill="#FFFFFF" stroke="#0B1220" stroke-width="2"/>
+</svg>

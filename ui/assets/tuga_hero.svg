@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" role="img" aria-labelledby="tuga-hero-title">
+  <title id="tuga-hero-title">Tuga, the tortoise with a traffic-cone hat (Tuga, broasca țestoasă cu un con pe cap)</title>
+  <ellipse cx="118" cy="222" rx="86" ry="10" fill="#1F2937" opacity="0.12"/>
+  <g stroke="#3A2A12" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M52 196 C46 214 58 222 70 220 C80 218 84 206 80 196 Z" fill="#8BC34A"/>
+    <path d="M122 198 C118 216 130 222 142 220 C152 218 156 206 150 196 Z" fill="#8BC34A"/>
+    <path d="M24 176 C10 172 8 184 20 188 L40 186 Z" fill="#8BC34A"/>
+    <path d="M30 186 C24 128 60 92 108 92 C156 92 182 132 176 186 Z" fill="#E8762D"/>
+    <path d="M62 120 L88 108 L112 120 L112 146 L88 158 L62 146 Z" fill="#F4A259"/>
+    <path d="M118 112 L142 104 L160 122 L156 146 L132 154 L118 140 Z" fill="#F4A259"/>
+    <path d="M44 158 L62 150 L80 162 L76 182 L50 184 Z" fill="#F4A259"/>
+    <path d="M90 166 L112 156 L134 166 L132 186 L92 186 Z" fill="#F4A259"/>
+    <path d="M140 158 L160 150 L172 166 L170 186 L144 186 Z" fill="#F4A259"/>
+    <rect x="24" y="180" width="158" height="16" rx="8" fill="#F5D27A"/>
+    <path d="M166 150 C190 142 204 124 206 104" fill="none" stroke-width="16" stroke="#3A2A12"/>
+    <path d="M166 150 C190 142 204 124 206 104" fill="none" stroke-width="10" stroke="#8BC34A"/>
+    <circle cx="208" cy="98" r="11" fill="#8BC34A"/>
+    <path d="M200 90 L196 82 M208 87 L208 78 M216 90 L221 83" fill="none" stroke-width="3"/>
+    <path d="M150 128 C150 92 168 72 188 72 C208 72 222 90 220 112 C218 134 200 148 180 148 C164 148 150 142 150 128 Z" fill="#9CCC65"/>
+    <path d="M160 74 L184 18 L208 74 Z" fill="#F97316"/>
+    <path d="M170 52 L198 52 L203 63 L165 63 Z" fill="#FFFFFF" stroke="none"/>
+    <path d="M177 36 L191 36 L194 44 L174 44 Z" fill="#FFFFFF" stroke="none"/>
+    <path d="M160 74 L184 18 L208 74 Z" fill="none"/>
+    <rect x="152" y="70" width="64" height="10" rx="5" fill="#EA580C"/>
+    <circle cx="172" cy="104" r="13" fill="#FFFFFF"/>
+    <circle cx="202" cy="104" r="13" fill="#FFFFFF"/>
+    <path d="M185 104 L189 104" fill="none"/>
+  </g>
+  <circle cx="174" cy="106" r="5" fill="#1F2937"/>
+  <circle cx="204" cy="106" r="5" fill="#1F2937"/>
+  <circle cx="176" cy="104" r="1.6" fill="#FFFFFF"/>
+  <circle cx="206" cy="104" r="1.6" fill="#FFFFFF"/>
+  <circle cx="164" cy="126" r="6" fill="#F28B9B" opacity="0.7"/>
+  <circle cx="212" cy="126" r="6" fill="#F28B9B" opacity="0.7"/>
+  <path d="M178 128 Q188 138 198 128" fill="none" stroke="#3A2A12" stroke-width="4" stroke-linecap="round"/>
+</svg>

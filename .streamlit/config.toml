@@ -1,0 +1,8 @@
+# The app draws its own two looks (ui/theme.py): Tuga's light one in Simple mode, Cone's dark one in Advanced mode.
+# Streamlit's own theme stays light underneath, so every computer shows the same page whatever its system setting.
+[theme]
+base = "light"
+primaryColor = "#2563EB"
+backgroundColor = "#FAF6F0"
+secondaryBackgroundColor = "#F3EFE7"
+textColor = "#1F2937"

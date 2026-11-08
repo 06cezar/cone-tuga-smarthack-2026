@@ -12,7 +12,7 @@ import streamlit as st
 
 from conetuga.explain import narrate
 from ui.cards import TEXT as CARD_TEXT, show_finding
-from ui.style import CARD_KEY, block_key
+from ui.style import CARD_KEY, CHECKUP_ANCHOR, block_key
 from ui.view import DeviceView, device_status, md, score_without, status_options
 
 TILE_COLUMNS = 3  # device tiles per row on a laptop; Streamlit stacks them on a phone
@@ -64,7 +64,7 @@ def done_key(finding) -> str:
 def show_checklist(result, devices: list[DeviceView], lang: str) -> None:
     """The tasks, each a closed card except the next one to do, with the progress and the estimated score on top."""
     text = TEXT[lang]
-    st.subheader(text["todo"])
+    st.subheader(text["todo"], anchor=CHECKUP_ANCHOR)
     tasks = tasks_of(devices)
     if not tasks:
         st.success(text["nothing"])

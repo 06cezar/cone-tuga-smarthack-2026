@@ -22,13 +22,6 @@ tests read it without starting the app. It holds no scan text.
   headline sits in the guide's speech bubble, and while the guide reads it aloud the picture sways. With "reduce
   motion" turned on in the operating system, nothing moves."""
 
-# "🔍 Scris mare" (B's proposal, 2026-11-08): the whole page larger, for a grandparent or a jury reading from a distance.
-# Off by default (Cezar's call): at 1366×768 with it on, the headline ends at 894 px and the score at 1070 px, below the
-# first screen that live check 2 needs; with it off they end at 579 and 720 px. The presenter turns it on for the pitch.
-# Streamlit sizes its text and boxes in rem, so a larger root size scales them all; off, the 16 px rule holds (NFR-08).
-LARGE_TEXT_PERCENT = 125  # of the browser's root size: 16 px becomes 20 px
-LARGE_TEXT_CSS = f"<style>html {{ font-size: {LARGE_TEXT_PERCENT}% !important; }}</style>"
-
 FOCUS_COLOUR = "#2F7CF6"
 PICKER_KEY = "scan_picker"
 PICKER_TINT_ALPHA = 0.08  # how much FOCUS_COLOUR shows behind the picker: enough to set it apart, little enough for AA
@@ -54,7 +47,11 @@ TARGET_HEIGHT = "48px"  # buttons and card titles, above WCAG 2.5.5's 44 px
 LINE_HEIGHT = 1.6  # more room between lines for a slow reader (WCAG 1.4.12 tests with 1.5)
 STEP_GAP = "0.4rem"  # between a finding's numbered steps
 CARD_KEY, SAY_KEY, GAIN_KEY = "card", "say", "gain"
-VERDICT_KEY = "verdict"  # block_key(VERDICT_KEY, light): the score line as a large tinted banner (D-fe-checkup)
+CHIP_KEY = "chip"  # block_key(CHIP_KEY, severity): one tile of Cone's summary (ui/summary.py)
+VERDICT_KEY = "verdict"
+MODE_KEY = "mode"  # block_key(MODE_KEY, guide, "on"/"off"): the two modes side by side in the sidebar
+FIX_FIRST_KEY = "fix-first"  # the "Arată-mi cum îl repar" button beside the score (Simple mode)
+CHECKUP_ANCHOR = "checkup"  # the anchor of "Lista ta de reparat", where that button leads  # block_key(VERDICT_KEY, light): the score line as a large tinted banner (D-fe-checkup)
 LIGHT_COLOURS = {"green": "#1A7F37", "yellow": "#BF8700", "red": "#CF222E"}
 HEADLINE_KEY = "headline"  # block_key(HEADLINE_KEY, speaker): the guide's picture and the headline beside it
 TALKING_CLASS = "conetuga-talking"  # on the headline block while the guide speaks (ui/talking.py)
@@ -84,7 +81,12 @@ SAY_CSS = "\n".join(
     f'.stApp [class*="st-key-{SAY_KEY}-{speaker}-"] {{ background: {tint(colour)}; '
     f"border: 2px solid {tint(colour, BUBBLE_BORDER_ALPHA)}; border-radius: {ROUNDING} {ROUNDING} {ROUNDING} 0.25rem; padding: 0.5rem 1rem; }}"
     for speaker, colour in (("tuga", TUGA_COLOUR), ("cone", CONE_COLOUR)))
+# Streamlit puts a "Fullscreen" button on every picture. On the guides' pictures it only got in the way of tapping
+# Tuga or Cone to hear them (ui/talking.py), so pictures have no toolbar (Cezar, 2026-11-08).
+PICTURE_TOOLBAR = '[data-testid="stFullScreenFrame"]:has([data-testid="stImage"]) [data-testid="stElementToolbar"]'
+
 FRIENDLY_CSS = f"""{CARDS_CSS}
+.stApp {PICTURE_TOOLBAR} {{ display: none; }}
 {SAY_CSS}
 .stApp [class*="st-key-{GAIN_KEY}-"] {{ background: {tint(GAIN_COLOUR)}; border-radius: 999px; padding: 0.1rem 1rem; }}
 .stApp [class*="st-key-{CARD_KEY}-"] [data-testid="stExpander"] details {{ border: none; }}
@@ -113,7 +115,7 @@ FRIENDLY_CSS = f"""{CARDS_CSS}
   opacity: 1; }} 100% {{ transform: none; }} }}
 @keyframes guide-sway {{ from {{ transform: translateY(0) rotate(-4deg); }} to {{ transform: translateY(-4px) rotate(4deg); }} }}
 .stApp [class*="st-key-{VERDICT_KEY}-"] {{ border-radius: {ROUNDING}; padding: 0.25rem 1.25rem; }}
-{chr(10).join(f'.stApp .st-key-{VERDICT_KEY}-{light} {{{{ background: {tint(colour)}; border: 2px solid {colour}; }}}}'
+{chr(10).join(f'.stApp [class*="st-key-{VERDICT_KEY}-{light}"] {{ background: {tint(colour)}; border: 2px solid {colour}; }}'
               for light, colour in LIGHT_COLOURS.items())}
 .stApp [data-testid="stCheckbox"] label {{ min-height: {TARGET_HEIGHT}; align-items: center; font-weight: 600; }}
 @media (prefers-reduced-motion: reduce) {{ .stApp [class*="st-key-{HEADLINE_KEY}-"] img {{ animation: none !important;

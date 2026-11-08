@@ -64,3 +64,9 @@ def test_acasa_draws_the_cards_and_tugas_bubbles():
         blocks.extend(child for child in getattr(block, "children", {}).values() if hasattr(child, "children"))
     assert any("-card-high-192-168-1-40" in i for i in ids) and any("-card-none-" in i for i in ids)
     assert any("-say-tuga-" in i for i in ids) and any("-gain-" in i for i in ids)
+
+
+def test_the_guides_pictures_have_no_fullscreen_button():
+    """Tapping Tuga or Cone reads aloud (ui/talking.py); Streamlit's fullscreen button on a picture got in the way."""
+    from ui.style import PICTURE_TOOLBAR
+    assert f".stApp {PICTURE_TOOLBAR} {{ display: none; }}" in PAGE_CSS
