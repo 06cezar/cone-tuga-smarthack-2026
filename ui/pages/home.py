@@ -19,6 +19,7 @@ from conetuga.history import delete_history, diff, digest_of, load_history, save
 from conetuga.insights import record  # noqa: E402
 from ui.cards import show_device  # noqa: E402
 from ui.insights_panel import SEEN_KEY  # noqa: E402
+from ui.motion import HEIGHT_PX as MOTION_HEIGHT_PX, score_motion_html  # noqa: E402
 from ui.report import html_report  # noqa: E402
 from ui.state import current, guide_of, remember_scan, show_guide  # noqa: E402
 from ui.style import PICKER_KEY  # noqa: E402
@@ -222,6 +223,16 @@ def show_diff(before, after, lang: str) -> None:
         st.markdown(f"**{title} ({len(items)})**\n" + "\n".join(f"- {item}" for item in items))
 
 
+def _dark_theme(settings) -> bool | None:
+    """The theme the page is drawn in: our own toggle when there is one, else Streamlit's (the ⋮ menu or the
+    system); None when neither says, and the animation then follows the browser."""
+    if getattr(settings, "dark", None) is not None and "dark_theme" in st.session_state:
+        return bool(settings.dark)
+    theme = getattr(getattr(st, "context", None), "theme", None)
+    kind = getattr(theme, "type", None)
+    return None if kind is None else kind == "dark"
+
+
 def render() -> None:
     """The page itself; ui/app.py registers it in the navigation as the default page."""
     settings = current()
@@ -266,6 +277,9 @@ def render() -> None:
                widths=(1, 9))
     icon, colour, sentence = score_line(result.score, lang)
     st.markdown(f"### {icon} {text['score']}: {result.score}/100 · {colour}. {sentence}")
+    # The animated ring and severity bars (ui/motion.py) under the score line, which stays the readable text.
+    st.components.v1.html(score_motion_html(result, lang, dark=_dark_theme(settings)),
+                          height=MOTION_HEIGHT_PX)
 
     st.subheader(text["devices"])
     if devices:
