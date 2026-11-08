@@ -19,6 +19,27 @@ DURATION_MS = 1200  # long enough to see the score fill, short enough not to del
 STAGGER_MS = 120  # each severity bar starts a little after the one above it
 HEIGHT_PX = 190  # the component's frame height: the ring plus four bars
 
+# A component frame is see-through, so its text sits on the page's colour; but a browser draws the frame on an opaque
+# canvas when its light/dark scheme differs from the page's, and checkers such as axe-core can't see through it and
+# assume white. So the frame paints itself with the colour really behind it: the page's background with every
+# translucent tint above it (a card, a bubble) laid on top, read from the page (the frame has the page's origin).
+MATCH_PAGE_BACKGROUND_JS = r"""(() => {
+  try {
+    const frame = window.frameElement, page = frame && frame.ownerDocument.defaultView;
+    if (!page) return;
+    const layers = [];
+    for (let el = frame.parentElement; el; el = el.parentElement) {
+      const rgba = (page.getComputedStyle(el).backgroundColor.match(/[\d.]+/g) || []).map(Number);
+      const alpha = rgba.length > 3 ? rgba[3] : 1;
+      if (rgba.length >= 3 && alpha > 0) layers.push([...rgba.slice(0, 3), alpha]);
+      if (rgba.length >= 3 && alpha >= 1) break;
+    }
+    let colour = [255, 255, 255];
+    for (const [r, g, b, a] of layers.reverse()) colour = [r, g, b].map((c, i) => c * a + colour[i] * (1 - a));
+    document.documentElement.style.background = `rgb(${colour.map(Math.round).join(", ")})`;
+  } catch (error) {}  // a page we can't read: stay see-through, as before
+})();"""
+
 SEVERITIES = ("high", "medium", "low", "info")
 # Colours with at least 4.5:1 contrast on their background in each theme (WCAG AA), for the ring and the bars.
 PALETTE = {
@@ -105,6 +126,7 @@ body {{ margin: 0; background: transparent; color: var(--fg);
 <div class="center"><div><div class="number" id="n">{score}</div><div class="word">{icon} {html.escape(word)}</div></div></div></div>
 <div class="bars">{bars}</div></div>
 <script>
+{MATCH_PAGE_BACKGROUND_JS}
 (() => {{
   const target = {score}, el = document.getElementById("n");
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
