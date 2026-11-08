@@ -1,8 +1,8 @@
 """The Q&A assistant (FR-12): answers a question about one scan using only that scan's findings, with no LLM, no network
 and no key (specs/contracts.md, section answer_question).
 
-The question only selects: it may name an IP, a port, a device type, a service or catalog code, or ask what is the most
-dangerous. The answer is built from fixed phrases in data/qa.toml, explain()'s built-in text and values from the scan,
+The question only selects: it may name an IP, a port, a device type, a service or catalog code, ask what is the most
+dangerous, or ask for all the problems (the overview, in the UI's fix order). The answer is built from fixed phrases in data/qa.toml, explain()'s built-in text and values from the scan,
 and cites every finding it relies on, e.g. [192.168.1.10:9100 PRINTER_RAW_EXPOSED]. No part of the question is ever
 copied into the answer, because it is untrusted text (NFR-03, NFR-06). When the question names nothing the scan shows,
 the answer says so instead of guessing.
@@ -23,6 +23,9 @@ SOURCE_RETRIEVAL = "retrieval"  # Answer.source: built from the scan and our tex
 MAX_QUESTION_CHARS = 300
 # At most this many findings are spelled out in one answer, riskiest first; the UI's list shows them all.
 MAX_FINDINGS_SHOWN = 3
+# "What problems do I have?" lists at most this many, in the UI's fix order: a chat answer stays readable, and the
+# checkup list on Acasă shows them all.
+MAX_OVERVIEW_SHOWN = 10
 STEM_MARK = "*"  # a word in qa.toml ending in "*" matches every word that starts with it
 PORT_WORD = "port"  # a number right after a word starting with this is a port: "port 9100", "portul 9100"
 PROTOCOLS = ("tcp", "udp")  # a number right before one of these is a port: "9100/tcp", matched on that protocol only
@@ -55,6 +58,8 @@ def _phrase(words: str) -> tuple[tuple[str, bool], ...]:
 _FILE = tomllib.loads(QA_FILE.read_text(encoding="utf-8"))
 PHRASES = _FILE["phrases"]
 TOP_WORDS = [_phrase(words) for words in _FILE["top"]["words"]]
+OVERVIEW_WORDS = [_phrase(words) for words in _FILE["overview"]["words"]]
+THEN_WORDS = [_phrase(words) for words in _FILE["overview"]["then_words"]]
 UNKNOWABLE_WORDS = [_phrase(words) for words in _FILE["unknowable"]["words"]]
 DEVICE_WORDS = {device_type: [_phrase(words) for words in all_words]
                 for device_type, all_words in _FILE["devices"].items()}
@@ -80,6 +85,8 @@ class Asked:
     codes: set[str]
     most_dangerous: bool
     unknowable: bool  # it asks about something no scan shows, such as WPS or a password
+    all_problems: bool  # "ce probleme am?": the overview, unless "most dangerous" words are there too
+    rest_of_list: bool  # "si apoi", "what next": the overview, even after "ce repar intai?"
 
     def names_something(self) -> bool:
         return bool(self.ips or self.ports or self.device_types or self.codes)
@@ -106,9 +113,13 @@ def answer_question(question: str, result, lang: str) -> Answer:
         # answer.
         return _cannot_answer(lang)
     if asked.names_something():
-        return _answer_about(asked, result, lang)
+        return _one_line(_answer_about(asked, result, lang))
+    if asked.rest_of_list:
+        return _overview(result, lang)
     if asked.most_dangerous:
-        return _most_dangerous(result, lang)
+        return _one_line(_most_dangerous(result, lang))
+    if asked.all_problems:
+        return _overview(result, lang)
     return _cannot_answer(lang)
 
 
@@ -135,6 +146,8 @@ def read_question(question: str, result) -> Asked:
         codes={code for code, phrases in CODE_WORDS.items() if _any_in(phrases, words)},
         most_dangerous=_any_in(TOP_WORDS, words),
         unknowable=_any_in(UNKNOWABLE_WORDS, words),
+        all_problems=_any_in(OVERVIEW_WORDS, words),
+        rest_of_list=_any_in(THEN_WORDS, words),
     )
 
 
@@ -225,21 +238,60 @@ def _most_dangerous(result, lang: str) -> Answer:
     device with the highest sum of points (ties: the lower IP as a number), then its finding with the most points
     (ties: analyse_file's order), and that finding's first step."""
     phrases = PHRASES[lang]
-
-    def risk(host) -> int:
-        return sum(finding.points for finding in result.findings if finding.ip == host.ip)
-
-    devices = sorted(result.hosts, key=lambda host: (-risk(host), ip_order(host.ip)))
-    if not devices or risk(devices[0]) == 0:
+    devices = _devices_by_risk(result)
+    if not devices or sum(finding.points for finding in devices[0][1]) == 0:
         return Answer(phrases["nothing_dangerous"], [], SOURCE_RETRIEVAL)
-    top = devices[0]
-    own = [finding for finding in result.findings if finding.ip == top.ip]
-    finding = sorted(own, key=lambda finding: -finding.points)[0]  # stable: equal points keep analyse_file's order
+    top, own = devices[0]
+    finding = own[0]
     explanation = explain(finding, top, lang)
     headline = fill(phrases["most_dangerous"], {"device": device_name(top, lang), "ip": top.ip,
                                                 "title": explanation.title})
     parts = [headline, explanation.text, fill(phrases["do_first"], {"step": explanation.steps[0]}), citation(finding)]
     return Answer(" ".join(parts), [citation(finding)], SOURCE_RETRIEVAL)
+
+
+def _devices_by_risk(result) -> list[tuple[object, list]]:
+    """Every host with its findings, as the UI orders them (ui/view.py, devices_by_risk and _device_view): the highest
+    sum of points first (ties: the lower IP as a number); within a host, the most points first (ties: analyse_file's
+    order). Rebuilt here because conetuga.explain never imports ui/; tests compare the two on every Validation scan."""
+    devices = []
+    for host in result.hosts:
+        own = [finding for finding in result.findings if finding.ip == host.ip]
+        devices.append((host, sorted(own, key=lambda finding: -finding.points)))  # stable sort
+    return sorted(devices, key=lambda device: (-sum(f.points for f in device[1]), ip_order(device[0].ip)))
+
+
+def _overview(result, lang: str) -> Answer:
+    """Every finding in the order of the UI's fix list (ui/checkup.py, tasks_of): the most points first, ties keeping
+    the devices' order. One line each, at most MAX_OVERVIEW_SHOWN; every line is made one line on its own, so a
+    hostname with a line break can never add a line of its own (NFR-03)."""
+    phrases = PHRASES[lang]
+    tasks = [(host, finding) for host, own in _devices_by_risk(result) for finding in own]
+    tasks.sort(key=lambda task: -task[1].points)  # stable: ties keep the devices' order, as tasks_of does
+    if not tasks:
+        if any(host.timed_out for host in result.hosts):
+            return _cannot_answer(lang)  # a device nmap gave up on was never checked: "no problems" could be false
+        return Answer(phrases["no_problems"], [], SOURCE_RETRIEVAL)
+    lines, citations = [phrases["overview"]], []
+    for number, (host, finding) in enumerate(tasks[:MAX_OVERVIEW_SHOWN], start=1):
+        line = fill(phrases["overview_line"], {"n": str(number), "title": explain(finding, host, lang).title,
+                                               "device": device_name(host, lang), "where": place(finding),
+                                               "citation": citation(finding)})
+        lines.append(_flat(line))
+        citations.append(citation(finding))
+    if len(tasks) > MAX_OVERVIEW_SHOWN:
+        lines.append(phrases["overview_more"])
+    return Answer("\n".join(lines), citations, SOURCE_RETRIEVAL)
+
+
+def _flat(text: str) -> str:
+    """Every run of spaces, tabs or line breaks (a hostname or banner may carry them) as one space."""
+    return " ".join(text.split())
+
+
+def _one_line(answer: Answer) -> Answer:
+    """A one-paragraph answer keeps no line break from scan text: only the overview's own lines are lines."""
+    return Answer(_flat(answer.text), answer.citations, answer.source)
 
 
 def _cannot_answer(lang: str) -> Answer:

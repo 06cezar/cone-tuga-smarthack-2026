@@ -208,6 +208,23 @@ with its test.
     `points` (ties: `analyse_file`'s order); "fix first" is that finding's `steps[0]`. When that device has 0 points,
     the answer says the scan found nothing dangerous. On `V6a_before.xml`, the router at 192.168.1.1 (10 + 10) beats
     192.168.1.30 (20) on IP, and its finding is HTTP_ADMIN_CLEARTEXT.
+  - "What problems do I have?" (the overview) lists the scan's findings in the order of the UI's fix list
+    (`ui/checkup.py`, `tasks_of(devices_by_risk(result, lang))`): the most `points` first; ties keep the devices'
+    order (`devices_by_risk`: riskiest device first, ties by IP as a number), and within a device `analyse_file`'s
+    order. It is answered only when the question names nothing (no IP, port, device type, service or code) and has a
+    word from `[overview]` in `data/qa.toml`: `words` (problem*, issue*, gresit, wrong) or `then_words` ("si apoi",
+    "dupa aceea", "ce urmeaza", "and then", "after that", "what next"). Order of the rules: the unknowable rule first,
+    as before; then a question that names something; then `then_words` ("Ce repar întâi? Și apoi?" gets the whole
+    list); then the "most dangerous" words ("Care e cea mai periculoasă problemă?" still gets the one device); then
+    `words`.
+  - The overview's text is a fixed first line, then one line per finding, joined with "\n":
+    `{n}. {title}: {device} ({where}) [citation]`, with `explain()`'s title, `device_name()` and `ip:port` (or `ip`
+    for UNKNOWN_DEVICE). At most `MAX_OVERVIEW_SHOWN` (10) findings; with more, a fixed last line points to the list
+    on Acasă. `citations` are the citations shown, in that order. With no findings the text is exactly "Scanul nu a
+    găsit probleme din catalog." / "The scan found no problems from the catalog.", never "safe"; but when any device
+    timed out, it is the cannot-answer sentence. The overview names nothing, so `reply()` never sends it to the model.
+  - Every run of whitespace from scan text (a hostname with a line break) becomes one space, so the overview's own
+    line breaks are the only "\n" in any answer; the UI escapes each line with `md()` and joins them with "  \n".
   - The question is untrusted text (NFR-03): no part of it is ever copied into the answer. Same inputs, same answer.
   - Devices are named as the UI names them, with `device_name(host, lang)` (from `conetuga.explain`, also used by
     `ui/view.py`): `hostname — label`, or the label alone when the scan shows no hostname. The hostname is scan text,
@@ -217,6 +234,18 @@ with its test.
 - Output: `citations == ["[192.168.1.10:9100 PRINTER_RAW_EXPOSED]"]`, `text` contains `192.168.1.10` and that
   citation, `source == "retrieval"`. On the same result, "Is WPS turned on?" with `lang="en"` gives
   `text == "The scan doesn't show this."` and `citations == []`.
+- Input (real example, the overview): `analyse_file("V2_smart_home.xml")`, "ce probleme am?", `lang="ro"`. Output:
+  `source == "retrieval"` and `text ==`
+  ```
+  Problemele găsite de scan, în ordinea în care le repari:
+  1. Imaginea camerei se poate vedea din rețea: ipcam — Cameră video (192.168.1.40:554) [192.168.1.40:554 CAMERA_STREAM_EXPOSED]
+  2. Pagină de administrare fără criptare: ipcam — Cameră video (192.168.1.40:80) [192.168.1.40:80 HTTP_ADMIN_CLEARTEXT]
+  3. Pagină de administrare fără criptare: router.lan — Router sau punct de acces Wi-Fi (192.168.1.1:80) [192.168.1.1:80 HTTP_ADMIN_CLEARTEXT]
+  4. Aparatele pot deschide singure „uși” spre internet (UPnP): router.lan — Router sau punct de acces Wi-Fi (192.168.1.1:1900) [192.168.1.1:1900 UPNP_EXPOSED]
+  5. Mesageria dispozitivelor smart e deschisă (MQTT): smarthub — Aparat smart pentru casă (192.168.1.41:1883) [192.168.1.41:1883 MQTT_EXPOSED]
+  ```
+  with `citations` the five citations in that order. On `V6b_after.xml` (no findings) the text is "Scanul nu a găsit
+  probleme din catalog.".
 - Errors and edge cases: an unknown language raises `KeyError`; an empty question (only spaces) or one longer than
   `MAX_QUESTION_CHARS` (300, a named constant) raises `ValueError`; a result with an `error` raises `ValueError`
   (nothing to answer from, as in `diff`), so the UI offers no question box for such a file.
