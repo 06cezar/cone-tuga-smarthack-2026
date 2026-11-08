@@ -29,8 +29,8 @@
   hashes and names any changed, deleted, swapped or cleared batch. Only those hashes leave the computer, and only
   when a person sets the three `CONETUGA_CHAIN_*` variables; the demo uses a local Anvil, Sepolia needs a
   testnet-only key.
-- `ui/` (Streamlit): "Cel mai periculos: <device>. Fă asta întâi: <step>" first, then the traffic-light score, devices
-  by risk with explanations, and the history with change alerts. Scan text is escaped.
+- `ui/` (Streamlit): "Cel mai periculos: <device>. Fă asta întâi: <step>" first, then the traffic-light score and
+  devices by risk with explanations; Istoric (change alerts, before/after); Despre & Wiki. Scan text is escaped.
 - Calls between streams are fixed in `specs/contracts.md`, each with an example and a test. CI runs every test on Linux
   and Windows plus `gitleaks`; the Validation Set gives 24 of 24 rows, no extra rows, 8 of 8 scores.
 
