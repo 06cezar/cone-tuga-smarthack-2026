@@ -19,11 +19,12 @@ from conetuga.history import delete_history, diff, digest_of, load_history, save
 from conetuga.insights import record  # noqa: E402
 from ui.cards import show_device  # noqa: E402
 from ui.insights_panel import SEEN_KEY  # noqa: E402
-from ui.motion import HEIGHT_PX as MOTION_HEIGHT_PX, score_motion_html  # noqa: E402
+from ui.motion import HEIGHT_PX as MOTION_HEIGHT_PX, page_is_dark, score_motion_html  # noqa: E402
 from ui.report import html_report  # noqa: E402
 from ui.state import current, guide_of, remember_scan, show_guide  # noqa: E402
 from ui.style import PICKER_KEY  # noqa: E402
-from ui.view import device_name, devices_by_risk, headline, md, same_network, score_line  # noqa: E402
+from ui.view import (STATUS_NONE, device_name, device_status, devices_by_risk, headline, md,  # noqa: E402
+                     same_network, score_line)
 
 # After "delete my history", the scan on screen is not saved again until the user picks another one.
 SKIP_SAVE_KEY = "history_skip_digest"
@@ -44,6 +45,9 @@ TEXT = {
         "unreadable": "Fișierul nu poate fi citit",
         "score": "Scor standard",
         "devices": "Dispozitivele, de la cel mai periculos",
+        "devices_simple": "Aparatele care au nevoie de grijă, de la cel mai periculos",
+        "all_fine": "✅ Aparatele fără nicio problemă ({n})",
+        "nothing_wrong": "✅ Nu am găsit nicio problemă. Bravo!",
         "filters_elsewhere": "Pentru filtre (după risc sau tip) și altă ordine: pagina **Dispozitive** din meniul din "
                              "stânga.",
         "no_scan": "Alege sau încarcă o scanare ca să începi.",
@@ -82,6 +86,9 @@ TEXT = {
         "unreadable": "The file can't be read",
         "score": "Standard score",
         "devices": "Your devices, most dangerous first",
+        "devices_simple": "The devices that need care, most dangerous first",
+        "all_fine": "✅ The devices with no problems ({n})",
+        "nothing_wrong": "✅ We found no problems. Well done!",
         "filters_elsewhere": "For filters (by risk or type) and another order: the **Devices** page in the menu on the "
                              "left.",
         "no_scan": "Pick or upload a scan to start.",
@@ -223,16 +230,6 @@ def show_diff(before, after, lang: str) -> None:
         st.markdown(f"**{title} ({len(items)})**\n" + "\n".join(f"- {item}" for item in items))
 
 
-def _dark_theme(settings) -> bool | None:
-    """The theme the page is drawn in: our own toggle when there is one, else Streamlit's (the ⋮ menu or the
-    system); None when neither says, and the animation then follows the browser."""
-    if getattr(settings, "dark", None) is not None and "dark_theme" in st.session_state:
-        return bool(settings.dark)
-    theme = getattr(getattr(st, "context", None), "theme", None)
-    kind = getattr(theme, "type", None)
-    return None if kind is None else kind == "dark"
-
-
 def render() -> None:
     """The page itself; ui/app.py registers it in the navigation as the default page."""
     settings = current()
@@ -278,14 +275,28 @@ def render() -> None:
     icon, colour, sentence = score_line(result.score, lang)
     st.markdown(f"### {icon} {text['score']}: {result.score}/100 · {colour}. {sentence}")
     # The animated ring and severity bars (ui/motion.py) under the score line, which stays the readable text.
-    st.components.v1.html(score_motion_html(result, lang, dark=_dark_theme(settings)),
+    st.components.v1.html(score_motion_html(result, lang, dark=page_is_dark(settings)),
                           height=MOTION_HEIGHT_PX)
 
-    st.subheader(text["devices"])
+    # Simple mode lists first only the devices that need care, so a child or a grandparent reads less; the devices with
+    # no problem wait in one closed section at the end, each still with its details (FR-03). Advanced mode lists every
+    # device in one list.
+    if advanced:
+        need_care, fine = devices, []
+    else:
+        need_care = [d for d in devices if device_status(d) != STATUS_NONE]
+        fine = [d for d in devices if device_status(d) == STATUS_NONE]
+    st.subheader(text["devices"] if advanced else text["devices_simple"])
     if devices:
         st.markdown(text["filters_elsewhere"])
-    for i, device in enumerate(devices):
-        show_device(device, lang, expanded=i == 0, advanced=advanced)
+    if not advanced and devices and not need_care:
+        st.success(text["nothing_wrong"])
+    for i, device in enumerate(need_care):
+        show_device(device, lang, expanded=i == 0, advanced=advanced, result=result)
+    if fine:
+        with st.expander(text["all_fine"].format(n=len(fine))):
+            for device in fine:
+                show_device(device, lang, expanded=False, advanced=advanced, result=result)
 
     show_questions(result, lang)
     compared = show_history(result, content, lang)

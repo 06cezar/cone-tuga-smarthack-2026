@@ -75,4 +75,4 @@ def render() -> None:
     if not shown:
         st.markdown(text["none_match"])
     for i, device in enumerate(shown):
-        show_device(device, lang, expanded=i == 0, advanced=settings.advanced)
+        show_device(device, lang, expanded=i == 0, advanced=settings.advanced, result=result)
