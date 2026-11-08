@@ -29,6 +29,21 @@ FIX_NOW_KEY = "ct-fix-now"
 HOME_TITLE_KEY = "ct-home-title"  # Acasă's title: read by screen readers, shown by the logo
 CONE_BUBBLE_KEY = "ct-cone-bubble"
 TREND_LINE_KEY = "ct-trend-line"
+# Istoric (ui/pages/history.py): the change banner, the red delete button, the trend, the list, the export, the
+# comparator and the guide's summary. None of them starts with "ct-hist-green/-yellow/-red", the before/after cards.
+HISTORY_BANNER_KEY = "ct-hist-banner"
+HISTORY_DELETE_KEY = "ct-hist-delete"
+HISTORY_TREND_KEY = "ct-hist-trend"
+HISTORY_LIST_KEY = "ct-hist-list"
+HISTORY_EXPORT_KEY = "ct-hist-export"
+HISTORY_COMPARE_KEY = "ct-hist-compare"
+HISTORY_SAY_KEY = "ct-hist-say"
+# Despre (ui/pages/about.py): the app and its guides, the ethical shield, and the wiki's search and filters.
+ABOUT_INTRO_KEY = "ct-about-intro"
+ABOUT_SHIELD_KEY = "ct-about-shield"
+WIKI_FILTER_KEY = "ct-wiki-filter"
+DELETE_FILL = "#B91C1C"  # "Șterge istoricul meu": white bold text on it is 6.5:1 (AA), red in both looks
+DELETE_TEXT = "#FFFFFF"
 # Streamlit's info, warning and success boxes keep their light colours under its light theme; on Cone's dark page they
 # take the page's colours instead, so their (light) text keeps its contrast.
 ALERTS = ('.stApp [data-testid="stAlertContainer"] { background: var(--ct-soft) !important; '
@@ -131,7 +146,10 @@ def theme_css(dark: bool) -> str:
 
 /* Cards */
 .stApp .st-key-{PICKER_KEY}, .stApp .st-key-{SCORE_KEY}, .stApp .st-key-{SAFE_KEY}, .stApp .st-key-{AUDIT_KEY},
-.stApp [class*="st-key-{HEADLINE_KEY}-"], .stApp [class*="st-key-{VERDICT_KEY}-"] {{ {card} }}
+.stApp [class*="st-key-{HEADLINE_KEY}-"], .stApp [class*="st-key-{VERDICT_KEY}-"],
+.stApp .st-key-{HISTORY_TREND_KEY}, .stApp .st-key-{HISTORY_LIST_KEY}, .stApp .st-key-{HISTORY_EXPORT_KEY},
+.stApp .st-key-{HISTORY_COMPARE_KEY}, .stApp .st-key-{ABOUT_INTRO_KEY}, .stApp .st-key-{ABOUT_SHIELD_KEY},
+.stApp .st-key-{WIKI_FILTER_KEY} {{ {card} }}
 .stApp .st-key-{PICKER_KEY} {{ padding: 0.5rem 1.25rem 0.75rem; }}
 .stApp .st-key-{PICKER_KEY} h3 {{ font-size: 1.15rem !important; }}
 {bands}
@@ -218,6 +236,23 @@ def theme_css(dark: bool) -> str:
 .stApp .ct-threat {{ display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin: 0.5rem 0;
   padding: 0.6rem 0.9rem; border-radius: 14px; border-left: 6px solid var(--ct-st-high); background: var(--ct-danger-bg); }}
 .stApp .ct-threat.ct-resolved {{ border-left-color: var(--ct-st-none); background: var(--ct-ok-bg); }}
+/* Istoric: the change banner and its counts, the red delete button, the guide's summary */
+.stApp .st-key-{HISTORY_BANNER_KEY} {{ {card} border-left: 7px solid var(--ct-blue); background: var(--ct-bubble); }}
+.stApp .ct-chips {{ display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.25rem 0 0.5rem; }}
+.stApp .ct-chip {{ display: inline-flex; align-items: center; gap: 0.35rem; border-radius: 999px; padding: 0.3rem 0.9rem;
+  background: var(--ct-card); border: 1px solid var(--ct-line); }}
+.stApp .st-key-{HISTORY_DELETE_KEY} button {{ background: {DELETE_FILL} !important; border: 2px solid {DELETE_FILL} !important;
+  min-height: 52px; }}
+.stApp .st-key-{HISTORY_DELETE_KEY} button p {{ color: {DELETE_TEXT} !important; font-weight: 800; }}
+.stApp [class*="st-key-{HISTORY_SAY_KEY}-"] {{ background: var(--ct-bubble); border: 2px solid var(--ct-bubble-line);
+  border-radius: 22px; padding: 0.5rem 1rem; margin: 0.5rem 0; }}
+/* Narrow cards (two side by side in a column): long codes and tags wrap instead of spilling out */
+.stApp .ct-threat, .stApp .ct-card-head {{ flex-wrap: wrap; }}
+.stApp .ct-threat > span:first-child {{ flex: 1 1 8rem; min-width: 0; overflow-wrap: anywhere; }}
+.stApp .ct-card-head .ct-tag {{ overflow-wrap: anywhere; white-space: normal; }}
+.stApp .ct-tag.ct-tag-ok {{ background: var(--ct-gain-bg); border: 2px solid var(--ct-ok-line); color: var(--ct-gain-text); }}
+/* Despre: the ethical shield's lines */
+.stApp .st-key-{ABOUT_SHIELD_KEY} {{ border-top: 6px solid var(--ct-ok-line); }}
 .stApp .ct-tag {{ border-radius: 10px; padding: 0.15rem 0.6rem; font-weight: 800; background: var(--ct-card);
   border: 1px solid var(--ct-line); white-space: nowrap; }}
 

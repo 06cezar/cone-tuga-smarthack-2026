@@ -4,7 +4,8 @@ few basic network concepts, as Tuga 🐢 tells them in Simple mode or Cone 🐇 
 No scan is needed and none is read: the texts come from data/wiki.toml (Simple, and Advanced for the concepts) and
 data/cone.toml (Advanced for the codes), and none of them holds a scan value. References come from
 data/explanations.toml, so the wiki cites the same CIS Controls / OWASP IoT items as the finding pages; related codes
-(the Wiki's links between entries) come from data/wiki.toml and are the same in every language and mode.
+(the Wiki's links between entries) come from data/wiki.toml and are the same in every language and mode. Fix steps,
+for codes only, are data/explanations.toml's steps written without scan values ([steps] in data/wiki.toml).
 """
 import tomllib
 from dataclasses import dataclass
@@ -26,6 +27,7 @@ _WIKI = tomllib.loads(WIKI_FILE.read_text(encoding="utf-8"))
 SIMPLE = _WIKI["simple"]
 ADVANCED = _WIKI["advanced"]
 RELATED_CODES = _WIKI["related_codes"]
+STEPS = _WIKI["steps"]
 CODES = tuple(finding["code"] for finding in tomllib.loads(CATALOG_FILE.read_text(encoding="utf-8"))["finding"])
 
 
@@ -38,6 +40,7 @@ class WikiEntry:
     text: str
     references: list[str]
     related_codes: list[str]
+    steps: list[str]  # 1-5 fix steps for a code, the same in both modes; [] for a concept
 
 
 def wiki_entries(lang: str, mode: str) -> list[WikiEntry]:
@@ -56,8 +59,8 @@ def wiki_entries(lang: str, mode: str) -> list[WikiEntry]:
 
 
 def entry(entry_id: str, kind: str, lang: str, mode: str) -> WikiEntry:
-    """One entry: its text from the right file for the mode, references only for codes, the same related codes
-    in every language and mode."""
+    """One entry: its text from the right file for the mode, references and fix steps only for codes, the same
+    related codes in every language and mode."""
     if mode == "simple":
         block = SIMPLE[entry_id][lang]
     elif kind == KIND_CODE:
@@ -65,5 +68,6 @@ def entry(entry_id: str, kind: str, lang: str, mode: str) -> WikiEntry:
     else:
         block = ADVANCED[entry_id][lang]
     references = list(EXPLANATIONS[entry_id]["references"]) if kind == KIND_CODE else []
+    steps = list(STEPS[entry_id][lang]) if kind == KIND_CODE else []
     return WikiEntry(entry_id, kind, SPEAKERS[mode], block["title"], block["text"], references,
-                     list(RELATED_CODES[entry_id]))
+                     list(RELATED_CODES[entry_id]), steps)

@@ -1,9 +1,8 @@
 """Acasă: the first page. It answers "Which device is the most dangerous, and what should I do first?" (ui/CLAUDE.md),
-then shows every device (Dispozitive, FE-D3, adds filters and order), the Q&A box, the history and the report.
+then shows every device (Dispozitive, FE-D3, adds filters and order), the Q&A box and the report. Every scan shown is
+saved to the history, which has its own page (Istoric, ui/pages/history.py).
 Everything shown comes from analyse_file, narrate, answer_question and the history (specs/contracts.md); scan text is
 escaped with view.md before display. In Simple mode Tuga 🐢 speaks; in Advanced mode Cone 🐇 adds what nmap saw."""
-import html
-import itertools
 import sys
 import tempfile
 from datetime import date
@@ -15,25 +14,21 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))  # ui/app.py already does this; kept so the page also imports on its own
 
 from conetuga.analysis import analyse_file  # noqa: E402
-from conetuga.explain import answer_question, explain  # noqa: E402
+from conetuga.explain import answer_question  # noqa: E402
 from conetuga.explain.qa import MAX_QUESTION_CHARS  # noqa: E402
-from conetuga.history import delete_history, diff, digest_of, load_history, save_scan  # noqa: E402
+from conetuga.history import digest_of, load_history, save_scan  # noqa: E402
 from conetuga.insights import record  # noqa: E402
 from ui.cards import show_device  # noqa: E402
 from ui.checkup import show_checklist, show_home_map  # noqa: E402
 from ui.insights_panel import SEEN_KEY  # noqa: E402
 from ui.report import html_report  # noqa: E402
-from ui.state import current, remember_scan  # noqa: E402
+from ui.state import SKIP_SAVE_KEY, current, page_link, remember_digest, remember_scan  # noqa: E402
 from ui.dashboard import show_cone_dashboard, show_tuga_dashboard  # noqa: E402
 from ui.style import PICKER_KEY  # noqa: E402
-from ui.theme import HISTORY_KEY, HOME_TITLE_KEY, TREND_LINE_KEY  # noqa: E402
-from ui.view import (device_name, devices_by_risk, ip_md, light, md, same_network,  # noqa: E402
-                     score_line)
+from ui.theme import HOME_TITLE_KEY  # noqa: E402
+from ui.timeline import current_index, previous_index  # noqa: E402
+from ui.view import devices_by_risk, md  # noqa: E402
 
-# After "delete my history", the scan on screen is not saved again until the user picks another one.
-SKIP_SAVE_KEY = "history_skip_digest"
-DELETED_KEY = "history_just_deleted"
-TIME_OF_DAY = slice(11, 16)  # "HH:MM" inside an ISO timestamp "2026-11-07T16:40:12"
 HEADLINE_PICTURE_PX = 96  # the guide beside the headline: about as tall as its two lines of large text
 
 EXAMPLE_FOLDERS = [REPO_ROOT / "tests" / "fixtures" / "validation" / "scans", REPO_ROOT / "lab" / "scans"]
@@ -47,43 +42,11 @@ TEXT = {
         "pick": "Alege o scanare din exemple",
         "upload": "sau încarcă fișierul tău nmap XML",
         "unreadable": "Fișierul nu poate fi citit",
-        "score": "Scor standard",
+        "history_link": "📈 Istoric: vezi ce s-a schimbat față de scanările de dinainte",
         "devices": "Dispozitivele, de la cel mai periculos",
         "filters_elsewhere": "Pentru filtre (după risc sau tip) și altă ordine: pagina **Dispozitive** din meniul din "
                              "stânga.",
         "no_scan": "Alege sau încarcă o scanare ca să începi.",
-        "history": "Istoric: înainte și după",
-        "history_where": "Fiecare scanare analizată e păstrată doar pe acest calculator.",
-        "history_empty": "Istoricul e gol.",
-        "first_scan": "Aceasta e prima scanare din istoric. Repară ceva, scanează din nou și vezi aici diferența.",
-        "no_match": "Nicio scanare mai veche nu are aceleași dispozitive ca aceasta (doar cu unele adăugate sau "
-                    "scoase), deci nu comparăm singuri. Dacă e aceeași rețea, alege scanarea mai jos.",
-        "pick_compare": "Alege o scanare",
-        "compare_with": "Compară cu scanarea de la",
-        "better": "mai bine",
-        "before_card": "Înainte de scanare",
-        "after_card": "După scanare",
-        "risk_green": "Securizat!",
-        "risk_yellow": "Risc mediu",
-        "risk_red": "Risc mare",
-        "active_threats": "{n} probleme active",
-        "resolved_tag": "Rezolvat",
-        "new_tag": "Nou",
-        "trend": "Tendința scorului",
-        "trend_up": "Scorul a crescut cu +{delta} puncte!",
-        "trend_down": "Scorul a scăzut cu {delta} puncte.",
-        "trend_same": "Scorul a rămas la fel.",
-        "worse": "mai rău",
-        "same": "la fel",
-        "alert": "Atenție, ceva nou în rețea",
-        "new_device": "Dispozitiv nou",
-        "opened_port": "Port nou deschis",
-        "resolved": "Rezolvate",
-        "removed_device": "Dispozitive care nu mai apar",
-        "closed_port": "Porturi închise",
-        "nothing_changed": "Nicio schimbare față de scanarea aleasă.",
-        "delete": "🗑️ Șterge istoricul meu",
-        "deleted": "Istoricul a fost șters de pe acest calculator.",
         "report": "📄 Descarcă raportul (o pagină, pentru furnizorul IT sau asigurator)",
         "ask": "Întreabă despre rețeaua ta",
         "ask_label": "De exemplu: „Ce repar întâi?” sau „E periculos portul 9100 al imprimantei?”",
@@ -97,43 +60,11 @@ TEXT = {
         "pick": "Pick an example scan",
         "upload": "or upload your own nmap XML file",
         "unreadable": "The file can't be read",
-        "score": "Standard score",
+        "history_link": "📈 History: see what changed since your earlier scans",
         "devices": "Your devices, most dangerous first",
         "filters_elsewhere": "For filters (by risk or type) and another order: the **Devices** page in the menu on the "
                              "left.",
         "no_scan": "Pick or upload a scan to start.",
-        "history": "History: before and after",
-        "history_where": "Every analysed scan is kept only on this computer.",
-        "history_empty": "The history is empty.",
-        "first_scan": "This is the first scan in the history. Fix something, scan again, and see the difference here.",
-        "no_match": "No earlier scan has the same devices as this one (only with some added or removed), so we don't "
-                    "compare on our own. If it is the same network, pick that scan below.",
-        "pick_compare": "Pick a scan",
-        "compare_with": "Compare with the scan from",
-        "better": "better",
-        "before_card": "Before scan",
-        "after_card": "After scan",
-        "risk_green": "Secure!",
-        "risk_yellow": "Medium risk",
-        "risk_red": "High risk",
-        "active_threats": "{n} active threats",
-        "resolved_tag": "Resolved",
-        "new_tag": "New",
-        "trend": "Score trend",
-        "trend_up": "Score improved +{delta} points!",
-        "trend_down": "Score dropped {delta} points.",
-        "trend_same": "The score stayed the same.",
-        "worse": "worse",
-        "same": "the same",
-        "alert": "Watch out, something new on the network",
-        "new_device": "New device",
-        "opened_port": "Newly opened port",
-        "resolved": "Resolved",
-        "removed_device": "Devices no longer seen",
-        "closed_port": "Closed ports",
-        "nothing_changed": "Nothing changed compared with the chosen scan.",
-        "delete": "🗑️ Delete my history",
-        "deleted": "Your history was deleted from this computer.",
         "report": "📄 Download the report (one page, for your IT supplier or insurer)",
         "ask": "Ask about your network",
         "ask_label": "For example: \"What do I fix first?\" or \"Is my printer's port 9100 dangerous?\"",
@@ -173,145 +104,6 @@ def show_questions(result, lang: str) -> None:
         return
     st.info(md(answer.text))
     st.markdown(f"*{text['ask_source']}*")
-
-
-def show_history(result, content: bytes, lang: str):
-    """FR-10 and FR-13: store this scan, show the score trend of its network, compare it on its own only with an
-    earlier scan that `same_network` accepts (the person may pick any other), and offer to delete. Returns the earlier
-    scan shown in the comparison (None when there is none), so the report compares with the same one."""
-    text = TEXT[lang]
-    st.subheader(text["history"])
-    digest = digest_of(content)
-    if st.session_state.get(SKIP_SAVE_KEY) != digest:
-        save_scan(result, content)
-    if st.session_state.pop(DELETED_KEY, False):
-        st.success(text["deleted"])
-    records = load_history()
-    if not records:
-        st.markdown(text["history_empty"])
-        return None
-    st.markdown(text["history_where"])
-    st.markdown("\n".join(f"- {r.saved_at[TIME_OF_DAY]} · {md(r.file)} · {score_line(r.result.score, lang)[0]} "
-                          f"{r.result.score}/100" for r in records))
-    this_network = [r for r in records if same_network(r.result, result)]
-    if len(this_network) > 1:
-        st.line_chart({text["score"]: [r.result.score for r in this_network]})
-
-    current = next((i for i, r in enumerate(records) if r.digest == digest), len(records))
-    earlier = records[:current]
-    compared = None
-    if not earlier:
-        st.markdown(text["first_scan"])
-    else:
-        matches = [i for i, r in enumerate(earlier) if same_network(r.result, result)]
-        if not matches:
-            st.markdown(text["no_match"])
-        choice = st.selectbox(text["compare_with"], range(len(earlier)), index=matches[-1] if matches else None,
-                              placeholder=text["pick_compare"],
-                              format_func=lambda i: f"{earlier[i].saved_at[TIME_OF_DAY]} · {earlier[i].file}")
-        if choice is not None:
-            compared = earlier[choice].result
-            show_diff(compared, result, lang)
-
-    if st.button(text["delete"]):
-        delete_history()
-        st.session_state.get(SEEN_KEY, set()).clear()  # so a scan opened after opting in again counts again
-        st.session_state[SKIP_SAVE_KEY] = digest
-        st.session_state[DELETED_KEY] = True
-        st.rerun()
-    return compared
-
-
-BEFORE_AFTER_WIDTHS = (5, 4, 5)  # before : the trend : after, as in the mock-up
-
-
-def risk_words(score: int, lang: str) -> str:
-    """The words in a before/after card: "Securizat!", "Risc mediu", "Risc mare" (with the traffic light's icon)."""
-    icon = score_line(score, lang)[0]
-    return f"{icon} {TEXT[lang]['risk_' + light(score)]}"
-
-
-def threat_html(code: str, title: str, tag: str = "", resolved: bool = False) -> str:
-    """One finding in a before/after card: its code and title, and a tag ("Rezolvat", "Nou") when it has one."""
-    e = html.escape
-    tag_html = f'<span class="ct-tag">{e(tag)}</span>' if tag else ""
-    return (f'<div class="ct-threat{" ct-resolved" if resolved else ""}"><span>{"🛡️" if resolved else "❗"} '
-            f'<strong>{e(code)}</strong><br>{e(title)}</span>{tag_html}</div>')
-
-
-def show_before_after(before, after, change, lang: str, number: int) -> None:
-    """The mock-up's before and after: each score in its own card with its findings, the trend in the middle; the
-    findings fixed since are marked "Rezolvat", the new ones "Nou"."""
-    text = TEXT[lang]
-    hosts_before, hosts_after = {h.ip: h for h in before.hosts}, {h.ip: h for h in after.hosts}
-    resolved = set(change.resolved_findings)
-    seen_before = {(f.ip, f.port, f.proto, f.code) for f in before.findings}
-    new = [f for f in after.findings if (f.ip, f.port, f.proto, f.code) not in seen_before]
-    delta = change.score_after - change.score_before
-    left, middle, right = st.columns(BEFORE_AFTER_WIDTHS, gap="medium")
-    cards = ((left, "before", before, change.score_before), (right, "after", after, change.score_after))
-    for column, side, scan, score in cards:
-        with column, st.container(key=f"{HISTORY_KEY}-{light(score)}-{side}-{number}"):
-            st.markdown(f'<div class="ct-card-head"><span class="ct-card-title">{html.escape(text[side + "_card"])}'
-                        f'</span><span class="ct-tag">{html.escape(scan.file)}</span></div>'
-                        f'<div class="ct-big-score">{score}<small>/100</small></div>', unsafe_allow_html=True)
-            st.markdown(f"**{risk_words(score, lang)}**")
-            if side == "before":
-                items = [threat_html(f.code, explain(f, hosts_before[f.ip], lang).title) for f in before.findings]
-                count = len(before.findings)
-            else:
-                items = [threat_html(f.code, explain(f, hosts_before[f.ip], lang).title, text["resolved_tag"],
-                                     resolved=True) if f in resolved else
-                         threat_html(f.code, explain(f, hosts_before[f.ip], lang).title)
-                         for f in before.findings]
-                items += [threat_html(f.code, explain(f, hosts_after[f.ip], lang).title, text["new_tag"]) for f in new]
-                count = len(after.findings)
-            st.markdown(f"#### {text['active_threats'].format(n=count)}")
-            if items:
-                st.markdown("".join(items), unsafe_allow_html=True)
-    with middle:
-        st.markdown(f"#### {text['trend']}")
-        st.markdown(f"### 🎉 {text['trend_up' if delta > 0 else 'trend_down' if delta < 0 else 'trend_same'].format(delta=abs(delta))}")
-        st.line_chart({text["score"]: [change.score_before, change.score_after]}, height=TREND_CHART_PX)
-
-
-TREND_CHART_PX = 240
-# Each comparison drawn gets its own number, so its containers' keys stay unique when a page shows two of them.
-COMPARISON_NUMBERS = itertools.count()
-
-
-def show_diff(before, after, lang: str) -> None:
-    text = TEXT[lang]
-    change = diff(before, after)
-    delta = change.score_after - change.score_before
-    trend = text["better"] if delta > 0 else text["worse"] if delta < 0 else text["same"]
-    arrow = "⬆️" if delta > 0 else "⬇️" if delta < 0 else "➡️"
-    number = next(COMPARISON_NUMBERS)
-    show_before_after(before, after, change, lang, number)
-    with st.container(key=f"{TREND_LINE_KEY}-{number}"):
-        st.markdown(f"### {arrow} {text['score']}: {change.score_before} → {change.score_after} ({delta:+d}, {trend})")
-
-    alerts = [f"{text['new_device']}: {md(device_name(h, lang))} ({ip_md(h.ip)})" for h in change.new_devices]
-    alerts += [f"{text['opened_port']}: {p.port}/{md(p.proto)} · {md(device_name(h, lang))} ({ip_md(h.ip)})"
-               for h, p in change.opened_ports]
-    if alerts:
-        st.warning(f"🚨 **{text['alert']}**\n\n" + "\n".join(f"- {a}" for a in alerts))
-
-    hosts_before = {h.ip: h for h in before.hosts}
-    sections = [
-        (f"✅ {text['resolved']}", [f"{md(explain(f, hosts_before[f.ip], lang).title)} · "
-                                    f"{md(device_name(hosts_before[f.ip], lang))} ({ip_md(f.ip)})"
-                                    for f in change.resolved_findings]),
-        (f"➖ {text['removed_device']}", [f"{md(device_name(h, lang))} ({ip_md(h.ip)})"
-                                         for h in change.removed_devices]),
-        (f"🔒 {text['closed_port']}", [f"{p.port}/{md(p.proto)} · {md(device_name(h, lang))} ({ip_md(h.ip)})"
-                                      for h, p in change.closed_ports]),
-    ]
-    shown = [(title, items) for title, items in sections if items]
-    if not shown and not alerts:
-        st.markdown(text["nothing_changed"])
-    for title, items in shown:
-        st.markdown(f"**{title} ({len(items)})**\n" + "\n".join(f"- {item}" for item in items))
 
 
 def render() -> None:
@@ -369,9 +161,26 @@ def render() -> None:
         show_devices(result, devices, lang)
 
     show_questions(result, lang)
-    compared = show_history(result, content, lang)
+    compared = save_to_history(result, content)
+    page_link("istoric", TEXT[lang]["history_link"])
     st.download_button(text["report"], html_report(result, lang, before=compared, date=date.today().isoformat()),
                        file_name=f"conetuga-{Path(result.file).stem}.html", mime="text/html")
+
+
+def save_to_history(result, content: bytes):
+    """FR-10: store the scan on screen (not again right after "delete my history" on Istoric, until another scan is
+    picked) and remember its digest for Istoric. Returns the earlier scan of the same network the report compares
+    with, the one Istoric's banner shows, or None."""
+    digest = digest_of(content)
+    if st.session_state.get(SKIP_SAVE_KEY) != digest:
+        save_scan(result, content)
+    remember_digest(digest)
+    records = load_history()
+    now = current_index(records, digest)
+    if now is None or records[now].digest != digest:
+        return None
+    previous = previous_index(records, now)
+    return None if previous is None else records[previous].result
 
 
 def show_devices(result, devices, lang: str) -> None:

@@ -246,3 +246,227 @@ text = "UPnP (Universal Plug and Play) descoperă dispozitivele prin SSDP (mesaj
 [advanced.upnp.en]
 title = "UPnP and IGD (Internet Gateway Device)"
 text = "UPnP (Universal Plug and Play) discovers devices through SSDP (messages sent to the whole local network) and describes them in XML documents (a structured text format). Its IGD profile (Internet Gateway Device) lets any device on the LAN (the local network) add port forwards (rules that send internet traffic to one device) on the router with no authentication. So malware (a harmful program) can expose an internal service straight to the internet. Turning UPnP off on the router closes this path, and the forwards you really need are set up by hand."
+
+# ------------------------------------------------------------------------------------------------------------ Steps
+
+# [steps.<CODE>]: the fix steps of data/explanations.toml for each catalog code, in the same order, written without
+# any scan value: where a step there names the device's address, port or program ({ip}, {port}, {product}), it says
+# "the device" or "the port it uses" here. Keep the two files in step when a fix changes.
+
+[steps.TELNET_OPEN]
+ro = [
+  "Intră în setările dispozitivului (din aplicația lui sau din browser) și caută opțiunea „Telnet”.",
+  "Oprește Telnet; dacă ai nevoie de acces de la distanță, folosește SSH, varianta criptată.",
+  "Schimbă parola dispozitivului cu una lungă, pe care nu o mai folosești în altă parte.",
+  "Instalează cea mai nouă versiune a programului din interiorul dispozitivului (firmware).",
+  "Dacă nu poți opri Telnet, scoate dispozitivul din rețea până primești ajutor.",
+]
+en = [
+  "Open the device's settings (in its app or in a browser) and look for the \"Telnet\" option.",
+  "Turn Telnet off; if you need remote access, use SSH, the encrypted alternative.",
+  "Change the device's password to a long one you don't use anywhere else.",
+  "Install the newest version of the software inside the device (firmware).",
+  "If you can't turn Telnet off, unplug the device from the network until you get help.",
+]
+
+[steps.RDP_EXPOSED]
+ro = [
+  "Pe calculatorul respectiv, deschide Setări → Sistem → Desktop la distanță și oprește-l dacă nu îl folosești.",
+  "Dacă îl folosești, lasă accesul doar pentru contul tău și pune-i o parolă lungă.",
+  "Deschide Windows Update și instalează toate actualizările.",
+  "În pagina routerului (aparatul care îți dă internetul), verifică să nu existe o „redirecționare de port” (port forwarding) pentru portul folosit de el (portul e „ușa” prin care se intră în dispozitiv), ca să nu se poată intra din internet.",
+]
+en = [
+  "On that computer, open Settings → System → Remote Desktop and turn it off if you don't use it.",
+  "If you use it, allow access only for your own account and give it a long password.",
+  "Open Windows Update and install every update.",
+  "In the router's page (the box that gives you internet), check that there is no \"port forwarding\" for the port it uses (a port is the \"door\" used to get into the device), so nobody can get in from the internet.",
+]
+
+[steps.VNC_EXPOSED]
+ro = [
+  "Pe dispozitiv, închide programul de partajare a ecranului (VNC) și oprește-i pornirea automată.",
+  "Dacă ai nevoie de el, pune o parolă lungă și permite conectări doar de pe calculatoarele care chiar au nevoie.",
+  "Actualizează programul de partajare a ecranului la ultima versiune.",
+  "În pagina routerului (aparatul care îți dă internetul), verifică să nu existe o „redirecționare de port” (port forwarding) pentru portul folosit de el (portul e „ușa” prin care se intră în dispozitiv).",
+]
+en = [
+  "On the device, close the screen-sharing program (VNC) and stop it from starting automatically.",
+  "If you need it, set a long password and allow connections only from the computers that really need it.",
+  "Update the screen-sharing program to its latest version.",
+  "In the router's page (the box that gives you internet), check that there is no \"port forwarding\" for the port it uses (a port is the \"door\" used to get into the device).",
+]
+
+[steps.DB_EXPOSED]
+ro = [
+  "Înainte de orice schimbare, fă o copie de siguranță a datelor.",
+  "Află ce program folosește baza de date și dacă alte calculatoare chiar au nevoie de ea.",
+  "Dacă o folosește doar calculatorul pe care stă, setează baza de date să accepte conectări doar de pe acel calculator.",
+  "Pune o parolă puternică pentru fiecare utilizator al bazei de date.",
+  "În firewall (paravanul de protecție al calculatorului), blochează portul folosit de el (portul e „ușa” prin care se intră în dispozitiv) pentru calculatoarele care nu au nevoie de el.",
+]
+en = [
+  "Before changing anything, make a backup copy of the data.",
+  "Find out which program uses the database and whether other computers really need it.",
+  "If only the computer it runs on uses it, set the database to accept connections only from that computer.",
+  "Set a strong password for every database user.",
+  "In the firewall (the computer's protective barrier), block the port it uses (a port is the \"door\" used to get into the device) for the computers that don't need it.",
+]
+
+[steps.CAMERA_STREAM_EXPOSED]
+ro = [
+  "Intră în aplicația sau pagina camerei și schimbă parola din fabrică cu una lungă.",
+  "Activează cererea de parolă pentru fluxul video (RTSP) sau oprește-l, dacă folosești doar aplicația camerei.",
+  "Actualizează programul din interiorul camerei (firmware), din aplicație.",
+  "În pagina routerului (aparatul care îți dă internetul), verifică să nu existe o „redirecționare de port” (port forwarding) pentru portul folosit de el (portul e „ușa” prin care se intră în dispozitiv).",
+  "Dacă routerul are o rețea pentru oaspeți, poți muta camerele acolo; verifică apoi că aplicația camerei încă merge.",
+]
+en = [
+  "Open the camera's app or page and change the factory password to a long one.",
+  "Turn on the password for the video stream (RTSP), or turn the stream off if you only use the camera's app.",
+  "Update the software inside the camera (firmware) from the app.",
+  "In the router's page (the box that gives you internet), check that there is no \"port forwarding\" for the port it uses (a port is the \"door\" used to get into the device).",
+  "If the router has a guest network, you can move the cameras there; then check that the camera's app still works.",
+]
+
+[steps.OUTDATED_SERVICE]
+ro = [
+  "Actualizează programul vechi la cea mai nouă versiune oferită de producător.",
+  "Dacă programul nu mai primește actualizări, înlocuiește-l cu unul care încă e întreținut.",
+  "Până la actualizare, oprește programul sau blochează-i portul (portul e „ușa” prin care se intră în dispozitiv) în firewall (paravanul de protecție).",
+  "După actualizare, scanează din nou rețeaua ca să vezi că problema a dispărut.",
+]
+en = [
+  "Update the old program to the newest version from its maker.",
+  "If the program no longer gets updates, replace it with one that is still maintained.",
+  "Until it's updated, stop the program or block its port (a port is the \"door\" used to get into the device) in the firewall (the protective barrier).",
+  "After the update, scan the network again to check that the problem is gone.",
+]
+
+[steps.FTP_CLEARTEXT]
+ro = [
+  "Dacă nu folosești FTP, oprește-l din setările dispozitivului sau ale programului.",
+  "Dacă ai nevoie să muți fișiere, alege în program varianta criptată, numită SFTP sau FTPS.",
+  "Schimbă parola folosită pentru FTP, pentru că s-ar putea să fi fost văzută.",
+  "În pagina routerului (aparatul care îți dă internetul), verifică să nu existe o „redirecționare de port” (port forwarding) pentru portul folosit de el (portul e „ușa” prin care se intră în dispozitiv).",
+]
+en = [
+  "If you don't use FTP, turn it off in the device's or program's settings.",
+  "If you need to move files, choose the encrypted option in the program, called SFTP or FTPS.",
+  "Change the password used for FTP, because it may already have been seen.",
+  "In the router's page (the box that gives you internet), check that there is no \"port forwarding\" for the port it uses (a port is the \"door\" used to get into the device).",
+]
+
+[steps.HTTP_ADMIN_CLEARTEXT]
+ro = [
+  "În setările dispozitivului, caută o opțiune numită „HTTPS” sau „acces securizat” și activeaz-o.",
+  "Oprește accesul prin HTTP simplu, dacă dispozitivul permite asta.",
+  "Schimbă parola de administrare cu una lungă, pe care nu o mai folosești în altă parte.",
+  "Oprește „administrarea de la distanță” (Remote Management), ca pagina să nu poată fi deschisă din internet.",
+  "Actualizează programul din interiorul dispozitivului (firmware).",
+]
+en = [
+  "In the device's settings, look for an option called \"HTTPS\" or \"secure access\" and turn it on.",
+  "Turn off access over plain HTTP, if the device allows it.",
+  "Change the admin password to a long one you don't use anywhere else.",
+  "Turn off \"remote management\", so the page can't be opened from the internet.",
+  "Update the software inside the device (firmware).",
+]
+
+[steps.SMB_EXPOSED]
+ro = [
+  "Verifică ce foldere partajezi (în Windows: clic dreapta pe folder → Proprietăți → Partajare) și oprește partajarea celor de care nu ai nevoie.",
+  "Oprește versiunea veche și periculoasă a SMB: pe un calculator Windows, deschide „Activare sau dezactivare caracteristici Windows” și debifează opțiunea care conține „SMB” și „CIFS”; pe un dispozitiv de stocare în rețea, caută „SMB1” în setări și dezactivează-l.",
+  "Cere parolă pentru folderele care rămân partajate.",
+  "Instalează toate actualizările sistemului (Windows Update sau actualizarea dispozitivului de stocare în rețea).",
+  "În pagina routerului (aparatul care îți dă internetul), verifică să nu existe o „redirecționare de port” (port forwarding) pentru portul folosit de el (portul e „ușa” prin care se intră în dispozitiv).",
+]
+en = [
+  "Check which folders you share (in Windows: right-click the folder → Properties → Sharing) and stop sharing the ones you don't need.",
+  "Turn off the old, dangerous version of SMB: on a Windows computer, open \"Turn Windows features on or off\" and untick the option with \"SMB\" and \"CIFS\"; on a network storage box, look for \"SMB1\" in the settings and turn it off.",
+  "Require a password for the folders that stay shared.",
+  "Install every system update (Windows Update, or the update of your network storage box).",
+  "In the router's page (the box that gives you internet), check that there is no \"port forwarding\" for the port it uses (a port is the \"door\" used to get into the device).",
+]
+
+[steps.MQTT_EXPOSED]
+ro = [
+  "Deschide setările programului MQTT (de obicei în aplicația aparatului central care comandă casa smart) și oprește accesul fără parolă („anonymous”).",
+  "Creează un utilizator cu parolă pentru fiecare dispozitiv care trimite mesaje.",
+  "Dacă se poate, activează criptarea conexiunilor (opțiunea TLS).",
+  "În firewall (paravanul de protecție), blochează portul folosit de el (portul e „ușa” prin care se intră în dispozitiv) pentru dispozitivele care nu au nevoie de el.",
+]
+en = [
+  "Open the MQTT program's settings (usually in the app of the central box that controls the smart home) and turn off access without a password (\"anonymous\").",
+  "Create a user with a password for every device that sends messages.",
+  "If you can, turn on encrypted connections (the TLS option).",
+  "In the firewall (the protective barrier), block the port it uses (a port is the \"door\" used to get into the device) for the devices that don't need it.",
+]
+
+[steps.UPNP_EXPOSED]
+ro = [
+  "Dacă aparatul este routerul, intră în pagina lui cu parola de administrator, caută opțiunea „UPnP” (deseori în meniul Avansat) și oprește-o.",
+  "Dacă este alt aparat (televizor, imprimantă, consolă), caută „UPnP” în setările lui și oprește-l dacă nu ai nevoie de el.",
+  "Salvează setările și repornește aparatul.",
+  "Dacă o aplicație sau o consolă de jocuri nu mai merge, deschide manual din router doar „ușa” (portul) de care are nevoie ea.",
+]
+en = [
+  "If the device is the router, open its page with the admin password, find the \"UPnP\" option (often under Advanced) and turn it off.",
+  "If it is another gadget (TV, printer, console), look for \"UPnP\" in its settings and turn it off if you don't need it.",
+  "Save the settings and restart the gadget.",
+  "If an app or a game console stops working, open by hand, in the router, only the \"door\" (port) it needs.",
+]
+
+[steps.SNMP_EXPOSED]
+ro = [
+  "Intră în setările dispozitivului și oprește SNMP, dacă nu îl folosești.",
+  "Dacă îl folosești, treci la SNMPv3, varianta cu parolă și criptare.",
+  "Schimbă parolele din fabrică (numite „community”, de obicei „public” și „private”) cu unele greu de ghicit.",
+  "Actualizează programul din interiorul dispozitivului (firmware).",
+]
+en = [
+  "Open the device's settings and turn SNMP off if you don't use it.",
+  "If you use it, switch to SNMPv3, the version with a password and encryption.",
+  "Change the factory passwords (called \"community\", usually \"public\" and \"private\") to ones that are hard to guess.",
+  "Update the software inside the device (firmware).",
+]
+
+[steps.PRINTER_RAW_EXPOSED]
+ro = [
+  "Deschide pagina imprimantei (în browser, la adresa lui IP, din lista routerului) și pune o parolă de administrator, ca nimeni să nu-i mai poată schimba setările.",
+  "Caută în setările imprimantei o listă de calculatoare permise (numită des „Access Control” sau „IP Filter”) și lasă doar calculatoarele tale.",
+  "Actualizează programul din interiorul imprimantei (firmware).",
+  "Ține imprimanta doar în rețeaua ta, nu în rețeaua pentru oaspeți.",
+]
+en = [
+  "Open the printer's page (in a browser, at its IP address, from the router's list) and set an admin password, so nobody else can change its settings.",
+  "Look in the printer's settings for a list of allowed computers (often called \"Access Control\" or \"IP Filter\") and keep only your own computers.",
+  "Update the software inside the printer (firmware).",
+  "Keep the printer only on your own network, not on the guest network.",
+]
+
+[steps.UNKNOWN_DEVICE]
+ro = [
+  "Deschide lista dispozitivelor conectate (în pagina routerului sau în setările hotspot-ului de pe telefon) și caută adresa IP a aparatului necunoscut.",
+  "Oprește pe rând aparatele tale și scanează din nou, ca să afli care dintre ele este.",
+  "Verifică telefoanele: cele noi își ascund adresa Wi-Fi reală (adresa MAC), așa că nu se vede producătorul.",
+  "Dacă nu îl recunoști, schimbă parola Wi-Fi și reconectează doar aparatele tale.",
+]
+en = [
+  "Open the list of connected devices (in the router's page or in the hotspot settings on your phone) and look for the unknown device's IP address.",
+  "Turn off your gadgets one at a time and scan again, to find out which one it is.",
+  "Check your phones: newer ones hide their real Wi-Fi address (MAC address), so the maker doesn't show.",
+  "If you don't recognise it, change the Wi-Fi password and reconnect only your own gadgets.",
+]
+
+[steps.SSH_OPEN]
+ro = [
+  "Dacă nu te conectezi niciodată de la distanță la acest dispozitiv, poți opri SSH din setările lui.",
+  "Dacă îl folosești, pune o parolă lungă sau, mai bine, o cheie de acces (cheie SSH) în loc de parolă.",
+  "Instalează din când în când actualizările sistemului.",
+]
+en = [
+  "If you never log in to this device remotely, you can turn SSH off in its settings.",
+  "If you use it, set a long password or, better, an access key (SSH key) instead of a password.",
+  "Install the system updates from time to time.",
+]

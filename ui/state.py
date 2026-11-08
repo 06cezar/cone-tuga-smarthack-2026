@@ -13,6 +13,10 @@ LANGUAGES = {"Română": "ro", "English": "en"}  # shown name -> the code every 
 LANGUAGE_KEY = "language_choice"
 ADVANCED_KEY = "advanced_mode"
 SCAN_KEY = "scan_result"  # the scan picked on Acasă, shared with the other pages
+DIGEST_KEY = "scan_digest"  # the SHA-256 of that scan file, so Istoric knows which record it is
+# After "delete my history" on Istoric, Acasă doesn't save the scan on screen again until another one is picked.
+SKIP_SAVE_KEY = "history_skip_digest"
+PAGES_KEY = "pages_by_path"  # ui/app.py's pages by URL path, for links between pages
 DEFAULT_LANGUAGE = "Română"  # the brief's users are Romanian; English is one click away
 SHORT_NAMES = {"Română": "RO", "English": "EN"}  # what the RO | EN switch shows
 TOPBAR_PICTURE_PX = 34  # the current guide in the top bar: an icon beside one line of text
@@ -86,6 +90,24 @@ def remember_scan(result) -> None:
     """Keep the scan Acasă just analysed (its FileResult, an error included) for this session, so the other pages show
     the same scan. Only in this session's memory: nothing is written anywhere (the history saves scans itself)."""
     st.session_state[SCAN_KEY] = result
+
+
+def remember_digest(digest: str) -> None:
+    """Keep the digest of the scan file Acasă shows, so Istoric marks that record as "now" and compares with it."""
+    st.session_state[DIGEST_KEY] = digest
+
+
+def current_digest() -> str | None:
+    """The digest Acasă last remembered, or None before any scan was picked."""
+    return st.session_state.get(DIGEST_KEY)
+
+
+def page_link(url_path: str, label: str) -> None:
+    """A link to another page of the app, by its URL path ("istoric"). A page drawn on its own (the tests) has no
+    navigation, so it shows no link instead of failing."""
+    page = st.session_state.get(PAGES_KEY, {}).get(url_path)
+    if page is not None:
+        st.page_link(page, label=label)
 
 
 def current_scan():

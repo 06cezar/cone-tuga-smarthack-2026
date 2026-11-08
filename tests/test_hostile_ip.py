@@ -83,7 +83,7 @@ def test_a_hostile_ip_is_plain_text_in_the_history_changes(tmp_path):
     after = write_scan(tmp_path, host("10.0.0.5", port(80, "http"), port(23, "telnet")), name="after.xml")
     # Every IP hostile in one scan and plain in the other: the device shows as removed and as new.
     app = run("from pathlib import Path\nfrom conetuga.analysis import analyse_file\n"
-              "from test_hostile_ip import HOSTILE, with_ip\nfrom ui.pages.home import show_diff\n"
+              "from test_hostile_ip import HOSTILE, with_ip\nfrom ui.pages.history import show_diff\n"
               f"before, after = analyse_file(Path({str(before)!r})), analyse_file(Path({str(after)!r}))\n"
               "show_diff(before, with_ip(after, HOSTILE), 'ro')\n"
               "show_diff(with_ip(before, HOSTILE), after, 'ro')")
