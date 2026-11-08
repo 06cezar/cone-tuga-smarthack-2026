@@ -8,6 +8,8 @@ motion" turned on in the operating system, everything is drawn in its final stat
 only the score, counts and our own fixed words, so nothing here needs escaping."""
 import html
 
+import streamlit as st
+
 from conetuga.analysis import FileResult
 from ui.view import SEVERITY_ICON, TEXT as VIEW_TEXT, light, score_line
 
@@ -35,6 +37,16 @@ def severity_counts(result: FileResult) -> dict[str, int]:
     for finding in result.findings:
         counts[finding.severity] = counts.get(finding.severity, 0) + 1
     return counts
+
+
+def page_is_dark(settings) -> bool | None:
+    """The theme the page is drawn in: our own toggle when there is one, else Streamlit's (the ⋮ menu or the
+    system); None when neither says, and the animation then follows the browser."""
+    if getattr(settings, "dark", None) is not None and "dark_theme" in st.session_state:
+        return bool(settings.dark)
+    theme = getattr(getattr(st, "context", None), "theme", None)
+    kind = getattr(theme, "type", None)
+    return None if kind is None else kind == "dark"
 
 
 def _variables(colours: dict[str, str]) -> str:

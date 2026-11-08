@@ -1,11 +1,12 @@
 """What the first screen shows, built only from analyse_file's result and explain() (specs/contracts.md).
 
 Pure functions with no Streamlit, so tests/test_ui_view.py checks them on the Validation Set. The UI never computes a
-finding or a score: it only orders what analyse_file returned, so a person sees the riskiest device first."""
+finding or a score of its own: it orders what analyse_file returned, so a person sees the riskiest device first, and
+asks A's standard_score what the score would be without one finding ("Ce-ar fi dacă repar?")."""
 import ipaddress
 from dataclasses import dataclass
 
-from conetuga.analysis import FileResult, Finding, Host
+from conetuga.analysis import FileResult, Finding, Host, standard_score
 from conetuga.analysis.catalog import load_catalog
 from conetuga.explain import Explanation, device_label, explain
 from conetuga.history import diff
@@ -61,7 +62,14 @@ TEXT = {
 # The Dispozitive page's filters (FE-A4). A device's status is its worst severity, most severe first in the catalog's
 # own order (by points), or one of these two when it has no finding: nmap gave up on it (Host.timed_out, so "no
 # findings" means "not checked"), or it was checked and has none.
-_SEVERITY_POINTS = load_catalog().severity_points
+_CATALOG = load_catalog()
+_SEVERITY_POINTS = _CATALOG.severity_points
+
+
+def score_if_fixed(result: FileResult, finding: Finding) -> int:
+    """The standard score this scan would have without this one finding, as A's standard_score computes it: what
+    the person gains by fixing it. The same as result.score when the score is held at 0 by the other findings."""
+    return standard_score([other for other in result.findings if other != finding], _CATALOG)
 SEVERITY_ORDER = tuple(sorted(_SEVERITY_POINTS, key=_SEVERITY_POINTS.get, reverse=True))
 STATUS_UNCHECKED = "unchecked"
 STATUS_NONE = "none"
