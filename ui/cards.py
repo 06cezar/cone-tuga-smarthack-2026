@@ -8,7 +8,7 @@ from conetuga.explain import narrate
 from ui.motion import page_is_dark
 from ui.state import current
 from ui.style import CARD_KEY, GAIN_KEY, SAY_KEY, block_key
-from ui.view import DeviceView, device_status, md, score_if_fixed, severity_label, status_options
+from ui.view import DeviceView, device_status, ip_md, md, score_if_fixed, severity_label, status_options
 from ui.voice import HEIGHT_PX as VOICE_HEIGHT_PX, read_aloud_html, spoken_text
 
 TEXT = {
@@ -93,9 +93,9 @@ def show_device(device: DeviceView, lang: str, expanded: bool, advanced: bool, r
                f"**{text['vendor']}:** {md(host.vendor) or text['unknown']} · "
                f"**{text['mac']}:** {md(host.mac_masked) or text['unknown']}")
     if advanced:
-        label = f"{status} · {md(device.name)} · {host.ip} · {text['risk']} {device.risk} {text['points']}"
+        label = f"{status} · {md(device.name)} · {ip_md(host.ip)} · {text['risk']} {device.risk} {text['points']}"
     else:
-        label = f"{status} · {md(device.name)} · {host.ip} · {problem_count(len(device.findings), lang)}"
+        label = f"{status} · {md(device.name)} · {ip_md(host.ip)} · {problem_count(len(device.findings), lang)}"
     # The card's key carries its status, so ui/style.py colours its band; the address keeps the key unique.
     with st.container(key=block_key(CARD_KEY, device_status(device), host.ip)), st.expander(label, expanded=expanded):
         if advanced:
