@@ -1,0 +1,12 @@
+# Read by `streamlit run ui/app.py` from the repository's root (README, docs/jury-demo.md).
+# tests/test_ui_config.py checks both values.
+
+[server]
+# Only this computer can open the app (NFR-02: hostnames and history stay on the computer). Streamlit's default
+# listens on every network interface, so anyone on the hotspot or the venue's Wi-Fi could open the results, delete
+# the history or press "Scanează acum".
+address = "127.0.0.1"
+
+[browser]
+# Streamlit's default sends usage statistics from the browser to its servers; nothing leaves this computer.
+gatherUsageStats = false

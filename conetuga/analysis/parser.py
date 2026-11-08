@@ -24,6 +24,9 @@ OPEN_STATE = "open"  # "open|filtered", "filtered" and "closed" are not open (br
 UP_STATE = "up"
 NMAP_TRUE = "true"  # how nmap writes a true boolean attribute (nmap.dtd, %attr_bool: "true" or "false")
 IP_ADDRESS_TYPES = ("ipv4", "ipv6")  # in order of preference when a host has both
+# Python's ipaddress accepts an IPv6 zone after "%" ("fe80::1%eth0") holding almost any text, spaces and Markdown
+# included, so a hostile file could put a link or a phone number in a finding's IP. nmap's XML never writes a zone.
+IPV6_ZONE_SEPARATOR = "%"
 MAC_PATTERN = re.compile(r"^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$")
 # A MAC written inside other text (a banner, a page title, a hostname, an error): six hex pairs joined by ":" or "-"
 # (mixed too: a hostile banner may mix them to slip past), or Cisco's three dotted groups of four. Twelve hex digits
@@ -115,9 +118,12 @@ def _parse_host(element: Element) -> Host | None:
 
 def _ip_address(element: Element) -> str:
     """The host's IP address as nmap wrote it, "" when it has none. A malformed address makes the file unreadable:
-    findings are sorted by IP as a number, and a fake address must not crash that."""
+    findings are sorted by IP as a number, and a fake address must not crash that. An IPv6 zone ("%...") makes it
+    unreadable too, and its text isn't quoted back: it is hostile text, and the error reason is shown on the page."""
     addresses = {a.get("addrtype"): a.get("addr", "") for a in element.iterfind("address")}
     ip = next((addresses[kind] for kind in IP_ADDRESS_TYPES if addresses.get(kind)), "")
+    if IPV6_ZONE_SEPARATOR in ip:
+        raise ScanReadError("a host has an IPv6 address with a zone after '%', which nmap never writes")
     if ip:
         try:
             ipaddress.ip_address(ip)

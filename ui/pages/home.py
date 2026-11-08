@@ -26,7 +26,7 @@ from ui.state import current, guide_of, remember_scan, show_guide  # noqa: E402
 from ui.style import HEADLINE_KEY, VERDICT_KEY, block_key  # noqa: E402
 from ui.talking import HEIGHT_PX as TALKING_HEIGHT_PX, TEXT as TALKING_TEXT, talking_html  # noqa: E402
 from ui.style import PICKER_KEY  # noqa: E402
-from ui.view import (device_name, devices_by_risk, headline, light, md, same_network,  # noqa: E402
+from ui.view import (device_name, devices_by_risk, headline, ip_md, light, md, same_network,  # noqa: E402
                      score_line)
 
 # After "delete my history", the scan on screen is not saved again until the user picks another one.
@@ -205,8 +205,8 @@ def show_diff(before, after, lang: str) -> None:
     arrow = "⬆️" if delta > 0 else "⬇️" if delta < 0 else "➡️"
     st.markdown(f"### {arrow} {text['score']}: {change.score_before} → {change.score_after} ({delta:+d}, {trend})")
 
-    alerts = [f"{text['new_device']}: {md(device_name(h, lang))} ({h.ip})" for h in change.new_devices]
-    alerts += [f"{text['opened_port']}: {p.port}/{md(p.proto)} · {md(device_name(h, lang))} ({h.ip})"
+    alerts = [f"{text['new_device']}: {md(device_name(h, lang))} ({ip_md(h.ip)})" for h in change.new_devices]
+    alerts += [f"{text['opened_port']}: {p.port}/{md(p.proto)} · {md(device_name(h, lang))} ({ip_md(h.ip)})"
                for h, p in change.opened_ports]
     if alerts:
         st.warning(f"🚨 **{text['alert']}**\n\n" + "\n".join(f"- {a}" for a in alerts))
@@ -214,10 +214,11 @@ def show_diff(before, after, lang: str) -> None:
     hosts_before = {h.ip: h for h in before.hosts}
     sections = [
         (f"✅ {text['resolved']}", [f"{md(explain(f, hosts_before[f.ip], lang).title)} · "
-                                    f"{md(device_name(hosts_before[f.ip], lang))} ({f.ip})"
+                                    f"{md(device_name(hosts_before[f.ip], lang))} ({ip_md(f.ip)})"
                                     for f in change.resolved_findings]),
-        (f"➖ {text['removed_device']}", [f"{md(device_name(h, lang))} ({h.ip})" for h in change.removed_devices]),
-        (f"🔒 {text['closed_port']}", [f"{p.port}/{md(p.proto)} · {md(device_name(h, lang))} ({h.ip})"
+        (f"➖ {text['removed_device']}", [f"{md(device_name(h, lang))} ({ip_md(h.ip)})"
+                                         for h in change.removed_devices]),
+        (f"🔒 {text['closed_port']}", [f"{p.port}/{md(p.proto)} · {md(device_name(h, lang))} ({ip_md(h.ip)})"
                                       for h, p in change.closed_ports]),
     ]
     shown = [(title, items) for title, items in sections if items]
