@@ -4,7 +4,7 @@ them with the chain: a row changed, deleted, inserted or reordered in any anchor
 
 store.py keeps the log and computes the hashes; chain.py talks to the FindingsLedger contract. This module joins
 them: `anchor_pending` sends the full batches the chain doesn't hold yet, and `check` compares the log with the chain.
-Only the command line calls it (conetuga/__main__.py)."""
+The command line (conetuga/__main__.py) and the app's "Scanează acum" button (ui/pages/scan.py) call it."""
 from dataclasses import dataclass
 
 from conetuga.ledger.chain import (ENV_CONTRACT, ENV_PRIVATE_KEY, ENV_RPC_URL, ChainSettings, LedgerError, chain_count,

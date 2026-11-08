@@ -10,6 +10,7 @@ import os
 import re
 import shutil
 import subprocess
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -40,13 +41,15 @@ class LedgerError(Exception):
     """The chain can't be used now. The message is one Romanian line, then one English line, with no key in it."""
 
 
-def settings_from_env() -> ChainSettings | None:
-    """The chain settings, or None when no RPC URL is set: the log is then kept on this computer only."""
-    rpc_url = os.environ.get(ENV_RPC_URL, "").strip()
+def settings_from_env(values: Mapping[str, str] | None = None) -> ChainSettings | None:
+    """The chain settings from `values` (default: this process's environment), or None when no RPC URL is set: the
+    log is then kept on this computer only."""
+    values = os.environ if values is None else values
+    rpc_url = values.get(ENV_RPC_URL, "").strip()
     if not rpc_url:
         return None
-    return ChainSettings(rpc_url=rpc_url, contract=os.environ.get(ENV_CONTRACT, "").strip(),
-                         private_key=os.environ.get(ENV_PRIVATE_KEY, "").strip())
+    return ChainSettings(rpc_url=rpc_url, contract=values.get(ENV_CONTRACT, "").strip(),
+                         private_key=values.get(ENV_PRIVATE_KEY, "").strip())
 
 
 def deploy(settings: ChainSettings) -> str:

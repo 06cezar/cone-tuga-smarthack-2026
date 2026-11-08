@@ -92,7 +92,9 @@ with its test.
   "172.20.10.13", "172.20.10.0/28", "172.20.10.1"), ssid="RSH-ConeTuga", scanned="172.20.10.0/28",
   xml=<absolute path of results/scan_20261108-091500.xml>, minutes=5, timed_out=())`.
 - After it, the page does what the CLI does: `analyse_file(scan.xml)`, `save_scan(result, scan.xml.read_bytes())`
-  (the history, FR-10), `ledger.record_findings([result], "app")`, and names every device in `scan.timed_out`.
+  (the history, FR-10), `ledger.record_findings([result], "app")`, then, when the chain is set up (exported or in
+  `.env`, read with `conetuga.guard.env_file.settings_with_env_file()`), `ledger.anchor_pending(settings)`; and it
+  names every device in `scan.timed_out`.
 - Errors (each message: one Romanian line, then one English line): `ScanRefused` (the guardrail said no, the missing
   tick included); `NetworkNotFound`; `ScanError` (no nmap, nmap failed, `minutes` under 5);
   `PasswordWindowRefused`, a `ScanError`, when the window was cancelled or couldn't open (pkexec exit 126 or 127, no
