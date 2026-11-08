@@ -83,3 +83,22 @@ def test_lab_capture_holds_only_masked_macs_and_neutral_hostnames(name):
     names = [h.get("name") for h in root.iter("hostname")]
     assert all(NEUTRAL_HOSTNAME.match(name) for name in names)
     assert all(s.get("hostname") is None for s in root.iter("service"))
+
+
+# The rules of engagement for every capture (brief; lab/CLAUDE.md): at most 100 packets per second, version detection,
+# only the safe http-title script, our hotspot's subnet as the one target, and the scanner itself excluded. nmap writes
+# its own command line into the XML header (<nmaprun args=...>) and the mask keeps it, so each capture proves how it
+# was made (Mihnea's request, 2026-11-08: the lab scans as before/after fixtures, checked like the live scan).
+LAB_SUBNET = "172.20.10.0/28"  # the iPhone hotspot RSH-ConeTuga
+MAX_RATE = "100"  # packets per second, the rules of engagement
+FORBIDDEN_OPTIONS = {"-A", "-sC", "-T5", "--min-rate", "--script-args"}  # aggressive scans or scripts beyond http-title
+
+
+@pytest.mark.parametrize("name", CAPTURES)
+def test_each_capture_was_made_under_the_rules_of_engagement(name):
+    args = SafeET.parse(LAB_SCANS / name).getroot().get("args", "").split()
+    assert args[args.index("--max-rate") + 1] == MAX_RATE
+    assert args.count("--script") == 1 and args[args.index("--script") + 1] == "http-title"
+    assert {"-sS", "-sU", "-sV", "--exclude"} <= set(args)
+    assert args[-1] == LAB_SUBNET
+    assert not FORBIDDEN_OPTIONS & set(args)
