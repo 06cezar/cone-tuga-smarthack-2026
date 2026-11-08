@@ -22,6 +22,8 @@ from ui.insights_panel import SEEN_KEY  # noqa: E402
 from ui.motion import HEIGHT_PX as MOTION_HEIGHT_PX, page_is_dark, score_motion_html  # noqa: E402
 from ui.report import html_report  # noqa: E402
 from ui.state import current, guide_of, remember_scan, show_guide  # noqa: E402
+from ui.style import HEADLINE_KEY, block_key  # noqa: E402
+from ui.talking import HEIGHT_PX as TALKING_HEIGHT_PX, TEXT as TALKING_TEXT, talking_html  # noqa: E402
 from ui.style import PICKER_KEY  # noqa: E402
 from ui.view import (STATUS_NONE, device_name, device_status, devices_by_risk, headline, md,  # noqa: E402
                      same_network, score_line)
@@ -270,9 +272,14 @@ def render() -> None:
     devices = devices_by_risk(result, lang)
     # FE-D2: the current guide says the headline: its picture and name beside the sentence, which stays the same in
     # both modes (ui/CLAUDE.md's "Cel mai periculos: ... Fă asta întâi: ...").
-    show_guide(guide_of(advanced), lang, f"## {md(headline(devices, lang))}", HEADLINE_PICTURE_PX, name_below=True,
-               widths=(1, 9))
+    # Tap the guide and it reads the headline and the score aloud (ui/talking.py), swaying while it speaks.
+    speaker, said = guide_of(advanced), headline(devices, lang)
     icon, colour, sentence = score_line(result.score, lang)
+    with st.container(key=block_key(HEADLINE_KEY, speaker)):
+        show_guide(speaker, lang, f"## {md(said)}\n\n*{TALKING_TEXT[lang]}*", HEADLINE_PICTURE_PX,
+                   name_below=True, widths=(1, 9))
+        spoken = f"{said} {text['score']}: {result.score} / 100, {colour}. {sentence}"
+        st.components.v1.html(talking_html(spoken, lang, speaker), height=TALKING_HEIGHT_PX)
     st.markdown(f"### {icon} {text['score']}: {result.score}/100 · {colour}. {sentence}")
     # The animated ring and severity bars (ui/motion.py) under the score line, which stays the readable text.
     st.components.v1.html(score_motion_html(result, lang, dark=page_is_dark(settings)),

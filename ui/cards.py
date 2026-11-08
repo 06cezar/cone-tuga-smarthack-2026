@@ -7,6 +7,7 @@ import streamlit as st
 from conetuga.explain import narrate
 from ui.motion import page_is_dark
 from ui.state import current
+from ui.style import CARD_KEY, GAIN_KEY, SAY_KEY, block_key
 from ui.view import DeviceView, device_status, md, score_if_fixed, severity_label, status_options
 from ui.voice import HEIGHT_PX as VOICE_HEIGHT_PX, read_aloud_html, spoken_text
 
@@ -95,7 +96,8 @@ def show_device(device: DeviceView, lang: str, expanded: bool, advanced: bool, r
         label = f"{status} · {md(device.name)} · {host.ip} · {text['risk']} {device.risk} {text['points']}"
     else:
         label = f"{status} · {md(device.name)} · {host.ip} · {problem_count(len(device.findings), lang)}"
-    with st.expander(label, expanded=expanded):
+    # The card's key carries its status, so ui/style.py colours its band; the address keeps the key unique.
+    with st.container(key=block_key(CARD_KEY, device_status(device), host.ip)), st.expander(label, expanded=expanded):
         if advanced:
             st.markdown(details)
         if host.timed_out:
@@ -121,7 +123,9 @@ def show_finding(finding, host, lang: str, advanced: bool, result=None) -> None:
     else:
         where = code = ""
     st.markdown(f"#### {severity_label(finding.severity, lang)} · {md(told.title)}{where}{code}")
-    st.markdown(f"{text[told.speaker]} {md(told.text)}")
+    where_key = (finding.ip, finding.port, finding.proto, finding.code)  # unique on the page: one finding, once
+    with st.container(key=block_key(SAY_KEY, told.speaker, *where_key)):  # the guide's speech bubble
+        st.markdown(f"{text[told.speaker]} {md(told.text)}")
     steps = told.steps if advanced else told.steps[:SIMPLE_STEPS]
     st.markdown(f"**{text['steps']}:**\n" + "\n".join(f"{i}. {md(step)}" for i, step in enumerate(steps, start=1)))
     if not advanced:
@@ -132,7 +136,8 @@ def show_finding(finding, host, lang: str, advanced: bool, result=None) -> None:
     if result is not None:
         after = score_if_fixed(result, finding)
         if after > result.score:  # nothing to promise while the other findings still hold the score at 0
-            st.markdown(text["fix_gain"].format(before=result.score, after=after, gain=after - result.score))
+            with st.container(key=block_key(GAIN_KEY, *where_key)):
+                st.markdown(text["fix_gain"].format(before=result.score, after=after, gain=after - result.score))
     if not advanced and finding.port is not None:
         # The port, for the adult or technician who helps: kept out of the title, one line at the end. No catalog code
         # for Tuga (tests/test_ui_app.py).

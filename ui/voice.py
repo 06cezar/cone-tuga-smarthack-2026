@@ -16,6 +16,9 @@ from ui.motion import PALETTE
 # Tuga is a calm turtle: a little slower than normal and a little warmer, easier to follow for a child or a grandparent.
 TUGA_RATE = 0.9  # 1 is the browser's normal speed
 TUGA_PITCH = 1.1  # 1 is the voice's normal pitch
+CONE_RATE = 1.1  # Cone is a quick hare, in Advanced mode
+CONE_PITCH = 1.0
+GUIDE_VOICE = {"tuga": (TUGA_RATE, TUGA_PITCH), "cone": (CONE_RATE, CONE_PITCH)}
 HEIGHT_PX = 64  # the component's frame: the button, or the two-line note when there is no voice
 
 # Voices that sound friendly, tried first when the computer has them; any other local voice in the language comes next.
@@ -36,10 +39,18 @@ TEXT = {
 }
 
 
-def _script_json(value) -> str:
+def script_json(value) -> str:
     """JSON that is safe inside <script>: no <, > or & that could end the script or start a tag."""
     return (json.dumps(value, ensure_ascii=False)
             .replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026"))
+
+
+# The browser picks the voice: one of PREFERRED_VOICES that runs on this computer, else any local voice in the language,
+# else none (no online voice, see above). Shared by the card button here and the talking guide (ui/talking.py).
+PICK_VOICE_JS = """const pickVoice = (speech, lang, preferred) => {
+  const local = speech.getVoices().filter(v => v.localService && v.lang.toLowerCase().startsWith(lang));
+  return preferred.map(name => local.find(v => v.name.includes(name))).find(Boolean) || local[0] || null;
+};"""
 
 
 def spoken_text(title: str, explanation: str, steps_label: str, steps: list[str]) -> str:
@@ -68,22 +79,19 @@ p {{ margin: 4px 2px; }}
 <p id="n" hidden>{html.escape(words["no_voice"])}</p>
 <script>
 (() => {{
-  const text = {_script_json(text)}, lang = {_script_json(lang)}, preferred = {_script_json(PREFERRED_VOICES[lang])};
-  const listen = {_script_json(words["listen"])}, stop = {_script_json(words["stop"])};
+  const text = {script_json(text)}, lang = {script_json(lang)}, preferred = {script_json(PREFERRED_VOICES[lang])};
+  const listen = {script_json(words["listen"])}, stop = {script_json(words["stop"])};
   const button = document.getElementById("b"), note = document.getElementById("n");
   const speech = window.speechSynthesis;
   const noVoice = () => {{ button.hidden = true; note.hidden = false; }};
   if (!speech) {{ noVoice(); return; }}
-  const voice = () => {{
-    const local = speech.getVoices().filter(v => v.localService && v.lang.toLowerCase().startsWith(lang));
-    return preferred.map(name => local.find(v => v.name.includes(name))).find(Boolean) || local[0] || null;
-  }};
+  {PICK_VOICE_JS}
   let speaking = false;
   const reset = () => {{ speaking = false; button.textContent = listen; }};
   button.addEventListener("click", () => {{
     speech.cancel();
     if (speaking) {{ reset(); return; }}
-    const chosen = voice();
+    const chosen = pickVoice(speech, lang, preferred);
     if (!chosen) {{ noVoice(); return; }}
     const say = new SpeechSynthesisUtterance(text);
     Object.assign(say, {{ voice: chosen, lang: chosen.lang, rate: {TUGA_RATE}, pitch: {TUGA_PITCH} }});
