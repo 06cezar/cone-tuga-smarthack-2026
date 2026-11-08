@@ -87,12 +87,14 @@ passed to Foundry's `cast` on its command line while a transaction runs (testnet
 - Tuga reads aloud only with a voice installed on the computer (Windows: Andrei for Romanian); without one, he says
   how to add it. We never fall back to an online voice, because the text names the person's devices.
 - The checkup's estimated score trusts the person's tick: only a new scan proves a fix, and the page says so.
+- "Scanează acum" needs the system's own password window, since the app itself never runs as administrator: pkexec
+  with a desktop session on Linux, UAC on Windows. Where none can open (no polkit agent, or the window is refused),
+  the page says so and shows the terminal command instead.
 
 ## Next steps
 - An optional LLM layer that only rephrases the built-in text, with every sentence checked against the scan.
 - Fix steps tailored to the detected router model.
-- A one-click "rescan" in the UI for the loop "fix → rescan → ✅ resolved" (live scans already reach the history,
-  #47, but they are started from the terminal so the UI never needs administrator rights).
+- Live scans on macOS too: "Scanează acum" and the CLI's `scan` run on Linux and Windows today.
 
 ## How we used AI
 - **In the product: none deciding.** Findings, severities and scores come only from code and the catalog; the Q&A is
