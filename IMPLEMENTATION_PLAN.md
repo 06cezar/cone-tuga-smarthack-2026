@@ -58,7 +58,7 @@ Order: the contracts first (FE-A1, FE-B1, FE-B3), D's shell (FE-D1) next, then t
 - [ ] FE-B2 Tuga's and Cone's texts for the 15 codes, RO/EN, in `data/`; `narrate` with tests (Cone explains each
   technical word, NFR-09)
 - [ ] FE-B3 Contract `wiki_entries(lang, mode)`
-- [ ] FE-B4 Wiki amenințări: one entry per code plus port, encryption, firewall, MAC, UPnP; page `ui/pages/wiki.py`
+- [x] FE-B4 Wiki amenințări: one entry per code plus port, encryption, firewall, MAC, UPnP; page `ui/pages/wiki.py`
 - [ ] FE-B5 `conetuga/explain/assistant.py`: `reply(messages, result, lang, mode) -> Answer` through
   `answer_question`; page `ui/pages/ask.py` with a chat box (the future agent plugs in here, NFR-06)
 - [ ] FE-B6 The Q&A names devices as the UI does (`ui.view.device_name`)
@@ -68,7 +68,7 @@ Order: the contracts first (FE-A1, FE-B1, FE-B3), D's shell (FE-D1) next, then t
   `top_codes(n) -> list[(code, count)]` (D's OK, Nov 7 21:40)
 - [x] FE-A2 Local store in `.history/`: code counts only (no IP, MAC, hostname, file name), opt-in, cleared by
   "Șterge istoricul meu" (NFR-02)
-- [ ] FE-A3 "Cele mai comune probleme" panel on the Wiki page, with B
+- [x] FE-A3 "Cele mai comune probleme" panel on the Wiki page, with B
 - [x] FE-A4 Data for the Dispozitive page in `ui/view.py`: filter by risk and type, sort
 
 **C**
@@ -81,7 +81,7 @@ Order: the contracts first (FE-A1, FE-B1, FE-B3), D's shell (FE-D1) next, then t
 **E**
 - [x] FE-E1 Original SVG drawings of Tuga 🐢 and Cone 🐇 in `ui/assets/`, small, with alt text, never shown alone
 - [ ] FE-E2 Accessibility pass on every page in both themes: 16 px, AA contrast, keyboard, icon + label (done for
-  Acasă, Dispozitive, Scanare, Despre: 0 axe-core violations, no text under 16 px; Wiki and Întreabă when they land)
+  Acasă, Dispozitive, Wiki, Scanare, Despre: 0 axe-core violations, no text under 16 px; Întreabă when it lands)
 - [ ] FE-E3 Tuga's Romanian texts tested with a non-technical person; findings to B, the result to PITCH.md (D)
 - [ ] FE-E4 Rehearse the demo on the new UI; update `docs/jury-demo.md` with the new steps
 

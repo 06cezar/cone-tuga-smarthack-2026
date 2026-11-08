@@ -5,7 +5,9 @@
 - An explanation is at most 2 sentences, with no unexplained technical term, at about a 12-year-old's reading level.
   Words like "port" or "Telnet" get a few plain words of explanation the first time.
 - Fixes are 1–5 ordered, concrete steps a non-expert can follow, most important first.
-- No LLM in this version (team decision, 2026-11-07): the next three rules apply only if one is added later.
+- No LLM by default (team decision, 2026-11-07). The one optional model is a local Ollama model that only rephrases
+  a Q&A answer citing findings (`conetuga/explain/llm.py`, on only when `CONETUGA_LLM_MODEL` is set); the next three
+  rules apply to it.
 - The LLM only explains a finding that code already produced; it never adds, removes or re-rates findings.
 - A prompt gets only the evidence for that finding (code, IP, port, service, product, version), wrapped as untrusted
   data.

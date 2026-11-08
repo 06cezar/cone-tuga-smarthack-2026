@@ -1,27 +1,38 @@
-"""Scanare: the network this computer is on (FR-01), whether the guardrail would allow a live scan of it (FR-02), and
-the exact command a person runs in a terminal to scan it. The page itself runs nothing: no nmap, no administrator
-rights (NFR-04); a scan run from the terminal lands in the history (FR-10), where the other pages show it.
+"""Scanare: the network this computer is on (FR-01), whether the guardrail would allow a live scan of it (FR-02), a
+"Scanează acum" button, and the same scan as a terminal command.
+
+The button calls only scan_from_app (specs/contracts.md), which asks the guardrail first and gives administrator rights
+to nmap alone, through the system's own password window; the app itself stays an ordinary user (NFR-04) and never
+sees a password. The page puts no text of its own into the scan: the target is always the connected subnet, and the
+tick is the CLI's --confirm. The scan then lands in the history (FR-10) exactly as a terminal scan does.
 
 The network is read the same way the live scan reads it (detect_network, wifi_ssid, check_scope), so the page and the
-scan always agree. A Wi-Fi name is outside text: it is escaped before display (NFR-03)."""
+scan always agree. A Wi-Fi name and nmap's messages are outside text: they are escaped before display (NFR-03)."""
+import sqlite3
 import sys
 
 import streamlit as st
 
+from conetuga import ledger
+from conetuga.analysis import analyse_file
 from conetuga.guard import HOTSPOT_SSID, NetworkNotFound, check_scope, detect_network, wifi_ssid
 from conetuga.guard.scan import (DEFAULT_MINUTES, EXTRA_TCP_PORTS, MAX_PACKETS_PER_SECOND, MIN_MINUTES, SAFE_SCRIPT,
-                                 TOP_TCP_PORTS, UDP_PORTS)
+                                 TOP_TCP_PORTS, UDP_PORTS, PasswordWindowRefused, ScanError, ScanRefused,
+                                 scan_from_app)
+from conetuga.history import save_scan
 from ui.state import current
 from ui.view import md
 
 LINUX_COMMAND = ".venv/bin/python -m conetuga scan --confirm"
 WINDOWS_COMMAND = r".venv\Scripts\python -m conetuga scan --confirm"
+RETRY_FACTOR = 2  # as the CLI: a device that ran out of time gets twice the minutes on the next try
+LEDGER_COMMAND = "app"  # how the findings log records where a finding came from (CLI: "scan", "analyse")
 
 TEXT = {
     "ro": {
         "title": "Scanare live",
-        "intro": "Pagina asta nu scanează nimic. Îți arată la ce rețea ești conectat și comanda pe care o rulezi tu, "
-                 "într-un terminal, din folderul proiectului.",
+        "intro": "Aici scanezi rețeaua la care ești conectat, doar pe hotspotul echipei. Doar nmap primește drepturi "
+                 "de administrator, prin fereastra de parolă a sistemului; aplicația nu le primește niciodată.",
         "network": "Rețeaua ta",
         "wifi": "Wi-Fi",
         "no_wifi": "niciunul",
@@ -29,6 +40,22 @@ TEXT = {
         "refused": "⛔ Scanarea ar fi refuzată acum.",
         "not_hotspot": f"Conectează laptopul doar la hotspotul „{HOTSPOT_SSID}” și deschide din nou pagina.",
         "no_network": "Nu găsesc nicio rețea activă. Conectează laptopul la hotspotul echipei.",
+        "scan_now_title": "Scanează acum",
+        "tick": "Confirm că vreau să scanez rețeaua asta",
+        "scan_now": "🔍 Scanează acum",
+        "button_off": "Butonul pornește doar pe hotspotul echipei, după ce bifezi confirmarea.",
+        "linux_window": "Sistemul îți cere parola de administrator într-o fereastră a lui, doar pentru nmap.",
+        "windows_window": "Windows îți cere acordul în fereastra lui (UAC), doar pentru nmap.",
+        "scanning": "Scanez rețeaua... durează câteva minute (cel mult {minutes} minute pe dispozitiv).",
+        "use_terminal": "Poți rula aceeași scanare din terminal, cu comanda de mai jos.",
+        "done": "✅ Scanare gata: scor {score}, {devices}, {findings}.",
+        "device": ("dispozitiv", "dispozitive"),
+        "finding": ("problemă", "probleme"),
+        "go_home": "Deschide **Acasă** din meniu: noua scanare apare acolo, comparată cu cea de dinainte.",
+        "not_saved": "Scanarea nu a putut fi salvată în istoric ({reason}); rezultatul de mai sus rămâne valabil.",
+        "not_logged": "Jurnalul de constatări nu a putut fi scris ({reason}).",
+        "timed_out": "⚠️ {device} nu a terminat în {minutes} minute, deci rezultatele lui lipsesc: „nicio problemă” "
+                     "nu e adevărat pentru el. Rulează din terminal cu --minutes {retry}.",
         "command": "Comanda de rulat",
         "linux_note": "Programul îți cere parola de administrator doar pentru nmap, care trimite pachetele.",
         "windows_note": "Deschide terminalul ca administrator (clic dreapta, Run as administrator).",
@@ -51,8 +78,8 @@ TEXT = {
     },
     "en": {
         "title": "Live scan",
-        "intro": "This page scans nothing. It shows the network you're connected to and the command you run yourself, "
-                 "in a terminal, from the project folder.",
+        "intro": "Here you scan the network you're connected to, on the team's hotspot only. Only nmap gets "
+                 "administrator rights, through the system's password window; the app itself never gets them.",
         "network": "Your network",
         "wifi": "Wi-Fi",
         "no_wifi": "none",
@@ -60,6 +87,22 @@ TEXT = {
         "refused": "⛔ A scan would be refused right now.",
         "not_hotspot": f"Connect the laptop only to the hotspot \"{HOTSPOT_SSID}\" and open this page again.",
         "no_network": "No active network found. Connect the laptop to the team's hotspot.",
+        "scan_now_title": "Scan now",
+        "tick": "I confirm I want to scan this network",
+        "scan_now": "🔍 Scan now",
+        "button_off": "The button works only on the team's hotspot, once you tick the confirmation.",
+        "linux_window": "The system asks for the administrator password in its own window, for nmap only.",
+        "windows_window": "Windows asks for your consent in its own window (UAC), for nmap only.",
+        "scanning": "Scanning the network... this takes a few minutes (at most {minutes} minutes per device).",
+        "use_terminal": "You can run the same scan from a terminal, with the command below.",
+        "done": "✅ Scan finished: score {score}, {devices}, {findings}.",
+        "device": ("device", "devices"),
+        "finding": ("finding", "findings"),
+        "go_home": "Open **Home** from the menu: the new scan shows there, compared with the one before.",
+        "not_saved": "The scan couldn't be saved to the history ({reason}); the result above still stands.",
+        "not_logged": "The findings log couldn't be written ({reason}).",
+        "timed_out": "⚠️ {device} didn't finish within {minutes} minutes, so its results are missing: \"no findings\" "
+                     "isn't true for it. Run it from a terminal with --minutes {retry}.",
         "command": "The command to run",
         "linux_note": "It asks for the administrator password only for nmap, which sends the packets.",
         "windows_note": "Open the terminal as administrator (right-click, Run as administrator).",
@@ -93,7 +136,7 @@ def render() -> None:
     except NetworkNotFound as exc:
         st.warning(f"⛔ {text['no_network']}")
         if settings.advanced:
-            st.caption(md(_in_language(str(exc), settings.lang)))
+            st.markdown(md(_in_language(str(exc), settings.lang)))  # not st.caption: 3.88:1 on light (FE-E2)
         _show_command(text)
         return
     ssid = wifi_ssid(network.interface)
@@ -106,6 +149,7 @@ def render() -> None:
         st.error(f"{text['refused']} {md(_in_language(decision.reason, settings.lang))}")
         if ssid != HOTSPOT_SSID:
             st.markdown(text["not_hotspot"])
+    _show_scan_button(text, decision.allowed, settings.lang)
     _show_command(text)
     if settings.advanced:
         _show_details(text, network, ssid, decision.reason, settings.lang)
@@ -126,6 +170,60 @@ def nmap_summary(lang: str, scanner_ip: str) -> list[str]:
         "min_minutes": MIN_MINUTES,
     }
     return [line.format(**values) for line in TEXT[lang]["nmap_lines"]]
+
+
+def _show_scan_button(text: dict, allowed: bool, lang: str) -> None:
+    """The tick and the button. Both stay off unless the guardrail allows the network shown above; scan_from_app
+    asks the guardrail again anyway, so a stale page can't scan a network the laptop has since left."""
+    st.subheader(text["scan_now_title"])
+    confirmed = st.checkbox(text["tick"], key="scan_confirmed", disabled=not allowed)
+    st.markdown(text["windows_window"] if _on_windows() else text["linux_window"])
+    pressed = st.button(text["scan_now"], type="primary", disabled=not (allowed and confirmed))
+    if not (allowed and confirmed):
+        st.markdown(text["button_off"])
+    if pressed:
+        _scan_now(text, confirmed, lang)
+
+
+def _scan_now(text: dict, confirmed: bool, lang: str) -> None:
+    """Runs the scan, then does what the CLI's `scan --confirm` does with it: the analysis, the history (FR-10), the
+    findings log, and a warning for every device nmap gave up on."""
+    with st.spinner(text["scanning"].format(minutes=DEFAULT_MINUTES)):
+        try:
+            scan = scan_from_app(confirmed)
+        except PasswordWindowRefused as exc:
+            st.warning(f"{md(_in_language(str(exc), lang))} {text['use_terminal']}")
+            return
+        except (ScanRefused, NetworkNotFound, ScanError) as exc:
+            st.error(f"⛔ {md(_in_language(str(exc), lang))} {text['use_terminal']}")
+            return
+        result = analyse_file(scan.xml)
+    if result.error:
+        st.error(f"⛔ {md(result.error)}")
+        return
+    st.success(text["done"].format(score=result.score,
+                                   devices=_count(len(result.hosts), text["device"], lang),
+                                   findings=_count(len(result.findings), text["finding"], lang)))
+    try:
+        save_scan(result, scan.xml.read_bytes())
+    except OSError as exc:
+        st.warning(text["not_saved"].format(reason=md(exc.strerror or str(exc))))
+    try:
+        ledger.record_findings([result], LEDGER_COMMAND)
+    except (OSError, sqlite3.Error) as exc:
+        st.warning(text["not_logged"].format(reason=md(str(exc))))
+    for device in scan.timed_out:
+        st.warning(text["timed_out"].format(device=md(device), minutes=scan.minutes,
+                                            retry=scan.minutes * RETRY_FACTOR))
+    st.markdown(text["go_home"])
+
+
+def _count(count: int, forms: tuple[str, str], lang: str) -> str:
+    """ "1 problemă", "2 probleme", "20 de probleme"; "1 finding", "2 findings"."""
+    one, many = forms
+    if count == 1:
+        return f"1 {one}"
+    return f"{count} {_de(count) if lang == 'ro' else ''}{many}"
 
 
 def scan_command() -> str:

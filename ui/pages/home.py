@@ -18,10 +18,16 @@ from conetuga.explain.qa import MAX_QUESTION_CHARS  # noqa: E402
 from conetuga.history import delete_history, diff, digest_of, load_history, save_scan  # noqa: E402
 from conetuga.insights import record  # noqa: E402
 from ui.cards import show_device  # noqa: E402
+from ui.checkup import show_checklist, show_home_map  # noqa: E402
 from ui.insights_panel import SEEN_KEY  # noqa: E402
+from ui.motion import HEIGHT_PX as MOTION_HEIGHT_PX, page_is_dark, score_motion_html  # noqa: E402
 from ui.report import html_report  # noqa: E402
 from ui.state import current, guide_of, remember_scan, show_guide  # noqa: E402
-from ui.view import device_name, devices_by_risk, headline, md, same_network, score_line  # noqa: E402
+from ui.style import HEADLINE_KEY, VERDICT_KEY, block_key  # noqa: E402
+from ui.talking import HEIGHT_PX as TALKING_HEIGHT_PX, TEXT as TALKING_TEXT, talking_html  # noqa: E402
+from ui.style import PICKER_KEY  # noqa: E402
+from ui.view import (device_name, devices_by_risk, headline, light, md, same_network,  # noqa: E402
+                     score_line)
 
 # After "delete my history", the scan on screen is not saved again until the user picks another one.
 SKIP_SAVE_KEY = "history_skip_digest"
@@ -34,6 +40,9 @@ EXAMPLE_FOLDERS = [REPO_ROOT / "tests" / "fixtures" / "validation" / "scans", RE
 TEXT = {
     "ro": {
         "title": "ConeTuga: cât de sigură e rețeaua ta?",
+        "start": "📂 Începe aici: alege o scanare",
+        "start_help": "Un exemplu din listă sau fișierul tău de la nmap (`nmap -oX`): rezultatul apare imediat "
+                      "dedesubt.",
         "pick": "Alege o scanare din exemple",
         "upload": "sau încarcă fișierul tău nmap XML",
         "unreadable": "Fișierul nu poate fi citit",
@@ -70,6 +79,8 @@ TEXT = {
     },
     "en": {
         "title": "ConeTuga: how safe is your network?",
+        "start": "📂 Start here: pick a scan",
+        "start_help": "An example from the list or your own nmap file (`nmap -oX`): the result appears right below.",
         "pick": "Pick an example scan",
         "upload": "or upload your own nmap XML file",
         "unreadable": "The file can't be read",
@@ -223,12 +234,18 @@ def render() -> None:
     text = TEXT[lang]
     st.title(text["title"])
 
+    # The page's main feature (Mihnea, 2026-11-08): choosing the scan, in a large box right under the title, styled by
+    # ui/style.py through its key. The widgets are the same as before; only their box and size changed.
     examples = example_scans()
     names = [p.name for p in examples]
-    left, right = st.columns(2)
-    picked = left.selectbox(text["pick"], names, index=names.index("V2_smart_home.xml")
-                            if "V2_smart_home.xml" in names else 0) if names else None
-    upload = right.file_uploader(text["upload"], type=None)
+    with st.container(key=PICKER_KEY):
+        st.markdown(f"### {text['start']}")
+        left, right = st.columns(2, gap="large")
+        picked = left.selectbox(text["pick"], names, index=names.index("V2_smart_home.xml")
+                                if "V2_smart_home.xml" in names else 0) if names else None
+        # The help sits behind the upload's "?" so the box stays short and the headline stays on the first screen of a
+        # 1366×768 laptop, in a browser window (E's review of #71).
+        upload = right.file_uploader(text["upload"], type=None, help=text["start_help"])
 
     if upload is not None:
         result, content = analyse_upload(upload), upload.getvalue()
@@ -250,18 +267,40 @@ def render() -> None:
     devices = devices_by_risk(result, lang)
     # FE-D2: the current guide says the headline: its picture and name beside the sentence, which stays the same in
     # both modes (ui/CLAUDE.md's "Cel mai periculos: ... Fă asta întâi: ...").
-    show_guide(guide_of(advanced), lang, f"## {md(headline(devices, lang))}", HEADLINE_PICTURE_PX, name_below=True,
-               widths=(1, 9))
+    # Tap the guide and it reads the headline and the score aloud (ui/talking.py), swaying while it speaks.
+    speaker, said = guide_of(advanced), headline(devices, lang)
     icon, colour, sentence = score_line(result.score, lang)
-    st.markdown(f"### {icon} {text['score']}: {result.score}/100 · {colour}. {sentence}")
+    with st.container(key=block_key(HEADLINE_KEY, speaker)):
+        show_guide(speaker, lang, f"## {md(said)}\n\n*{TALKING_TEXT[lang]}*", HEADLINE_PICTURE_PX,
+                   name_below=True, widths=(1, 9))
+        spoken = f"{said} {text['score']}: {result.score} / 100, {colour}. {sentence}"
+        st.components.v1.html(talking_html(spoken, lang, speaker), height=TALKING_HEIGHT_PX)
+    with st.container(key=block_key(VERDICT_KEY, light(result.score))):  # a banner in the score's colour
+        st.markdown(f"### {icon} {text['score']}: {result.score}/100 · {colour}. {sentence}")
+    # The animated ring and severity bars (ui/motion.py) under the score line, which stays the readable text.
+    st.components.v1.html(score_motion_html(result, lang, dark=page_is_dark(settings)),
+                          height=MOTION_HEIGHT_PX)
 
-    st.subheader(text["devices"])
-    if devices:
+    # Simple mode is a checkup (ui/checkup.py): the list of things to fix, then the home as device tiles. Advanced mode
+    # lists every device with Cone's details.
+    if not advanced:
+        show_checklist(result, devices, lang)
+        show_home_map(devices, lang)
         st.markdown(text["filters_elsewhere"])
-    for i, device in enumerate(devices):
-        show_device(device, lang, expanded=i == 0, advanced=advanced)
+    else:
+        show_devices(result, devices, lang)
 
     show_questions(result, lang)
     compared = show_history(result, content, lang)
     st.download_button(text["report"], html_report(result, lang, before=compared, date=date.today().isoformat()),
                        file_name=f"conetuga-{Path(result.file).stem}.html", mime="text/html")
+
+
+def show_devices(result, devices, lang: str) -> None:
+    """Advanced mode: every device as a card with Cone's details, the most dangerous first."""
+    text = TEXT[lang]
+    st.subheader(text["devices"])
+    if devices:
+        st.markdown(text["filters_elsewhere"])
+    for i, device in enumerate(devices):
+        show_device(device, lang, expanded=i == 0, advanced=True, result=result)

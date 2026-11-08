@@ -74,6 +74,32 @@ with its test.
   allowed. With `ssid="Venue-WiFi"`, every target is refused, the connected subnet too.
 - Test: `tests/test_guard.py::test_contract_check_scope`
 
+### scan_from_app · owner: C · used by: D (the Scanare page's "Scanează acum" button)
+- Call: `scan_from_app(confirmed: bool, minutes: int = 5, out: Path = Path("results")) -> LiveScan`, the same
+  `LiveScan` that `live_scan` (the CLI's `scan --confirm`) returns. The page passes no text: the target is always the
+  subnet `detect_network` finds, and `confirmed` is the tick "Confirm că vreau să scanez rețeaua asta".
+- Order: `check_scope(subnet, [subnet], confirmed, ssid)` first; nothing reaches nmap without its yes. Then the same
+  `nmap_command` as the CLI (100 packets per second, `--host-timeout <minutes>m`), with administrator rights for nmap
+  only, through the system's own password window, never a password typed into the page (NFR-04):
+  Linux `pkexec <nmap's full path> ... -oX - <subnet>`, the XML read from nmap's output and written by us to
+  `out/scan_<time>.xml`; Windows the UAC window (`ShellExecuteExW`, verb `runas`, on nmap.exe), nmap writes into a new
+  temporary folder of the user, we copy the file to `out/` and delete the folder. If the app already has the rights,
+  nmap runs directly.
+- Example, on `RSH-ConeTuga`, laptop `172.20.10.13` on `172.20.10.0/28`, Linux, `confirmed=True`: nmap runs as
+  `["/usr/bin/pkexec", "/usr/bin/nmap", "-sS", "-sU", "-sV", "--script", "http-title", "--max-rate", "100", "-p",
+  "T:<nmap's top 1,000 + 1883,6379,6380,27017>,U:53,123,161,1900,5353", "--exclude", "172.20.10.13", "--host-timeout",
+  "5m", "--stats-every", "30s", "-oX", "-", "172.20.10.0/28"]` and the call returns `LiveScan(network=Network("wlp0s20f3",
+  "172.20.10.13", "172.20.10.0/28", "172.20.10.1"), ssid="RSH-ConeTuga", scanned="172.20.10.0/28",
+  xml=<absolute path of results/scan_20261108-091500.xml>, minutes=5, timed_out=())`.
+- After it, the page does what the CLI does: `analyse_file(scan.xml)`, `save_scan(result, scan.xml.read_bytes())`
+  (the history, FR-10), `ledger.record_findings([result], "app")`, and names every device in `scan.timed_out`.
+- Errors (each message: one Romanian line, then one English line): `ScanRefused` (the guardrail said no, the missing
+  tick included); `NetworkNotFound`; `ScanError` (no nmap, nmap failed, `minutes` under 5);
+  `PasswordWindowRefused`, a `ScanError`, when the window was cancelled or couldn't open (pkexec exit 126 or 127, no
+  polkit agent; UAC cancelled): the page says so and shows the terminal command. No error writes a file.
+- Test: `tests/test_scan.py::test_contract_scan_from_app`, with nmap and the password window mocked; no test runs a
+  real scan.
+
 ### explain · owner: B · used by: D (UI)
 - Call: `explain(finding: Finding, host: Host, lang: str) -> Explanation(title: str, text: str, steps: list[str],
   references: list[str], source: str)`.
@@ -183,6 +209,9 @@ with its test.
     the answer says the scan found nothing dangerous. On `V6a_before.xml`, the router at 192.168.1.1 (10 + 10) beats
     192.168.1.30 (20) on IP, and its finding is HTTP_ADMIN_CLEARTEXT.
   - The question is untrusted text (NFR-03): no part of it is ever copied into the answer. Same inputs, same answer.
+  - Devices are named as the UI names them, with `device_name(host, lang)` (from `conetuga.explain`, also used by
+    `ui/view.py`): `hostname — label`, or the label alone when the scan shows no hostname. The hostname is scan text,
+    inserted through `fill()` as plain text; the UI escapes it with `md()`.
 - Input (real example): `analyse_file("V3_small_office.xml")`, the brief's question
   "is it safe that my printer has port 9100 open?", `lang="en"`.
 - Output: `citations == ["[192.168.1.10:9100 PRINTER_RAW_EXPOSED]"]`, `text` contains `192.168.1.10` and that
@@ -255,6 +284,45 @@ with its test.
 - Errors and edge cases: an unknown language or mode raises `KeyError`. The ids and their order are the same in every
   language and mode.
 - Test: `tests/test_wiki.py::test_contract_wiki_entries`
+
+### reply · owner: B · used by: the Întreabă page (`ui/pages/ask.py`)
+- Call: `reply(messages: list[dict], result: FileResult, lang: str, mode: str) -> Answer(text: str,
+  citations: list[str], source: str)`, from `conetuga.explain`; the same `Answer` as `answer_question`. The chat
+  behind the Întreabă page: the one place a future model plugs in (NFR-06), so the page never changes.
+  - `messages`: the conversation, oldest first; each is `{"role": "user" | "assistant", "text": str}`. Only the last
+    message is answered, and it must be the user's. Earlier messages are checked only for their form (role, text,
+    length), never read for meaning, never copied into the answer and never sent to a model. At most `MAX_MESSAGES`
+    (40) messages; a user message has at most `MAX_QUESTION_CHARS` (300, `answer_question`'s own limit); assistant
+    messages have no length limit, because they are our own answers.
+  - `mode` is `"simple"` or `"advanced"`, as in `narrate`. The answer is the same in both modes today; `mode` only
+    picks the tone of the optional local model (Tuga plain, Cone technical, every technical word explained, NFR-09).
+  - With no model (the default): `reply(messages, result, lang, mode) == answer_question(messages[-1]["text"],
+    result, lang)`.
+  - Optional local model (off by default; implemented in a later PR): it is on only when the environment variable
+    `CONETUGA_LLM_MODEL` names an Ollama model (e.g. `qwen2.5:3b`), read from `os.environ` at each call (set it in the
+    terminal before `streamlit run`); empty or unset means off. It is called only at `http://127.0.0.1:11434`, a fixed
+    address: nothing leaves the computer and no key is needed (NFR-01). Only an answer that cites findings for a
+    question naming something in the scan goes to the model; the cannot-answer sentence, "no catalog problem at …",
+    "nothing dangerous" and the "most dangerous" answer never do. The model gets only our system text and, wrapped as
+    data, each cited finding's citation, severity and `explain()` title, text and first step; never the question,
+    earlier messages, a hostname, a MAC address or a page title. Its answer is rejected when it has an IP or a number
+    that isn't in that evidence (step numbers aside), a CVE, a citation it wasn't given, or misses one it was given,
+    calls something safe ("safe", "secure", "sigur", "în siguranță"), holds HTML or a link (`<`, `](`), or is longer
+    than `MAX_LLM_CHARS` (800). A rejected answer is retried once (`LLM_ATTEMPTS` = 2 in all); a timeout
+    (`LLM_TIMEOUT_SECONDS` = 10) or a connection error is not retried. Whenever the model is off, missing, slow or
+    rejected, the retrieval answer is returned. An accepted answer has `source == "llm"` and the same `citations`.
+    Outcomes are cached in memory (at most `LLM_CACHE_SIZE`, 128), so a page rerun doesn't call the model again.
+- Input (real example): `analyse_file("V3_small_office.xml")`, messages
+  `[{"role": "user", "text": "Ce repar întâi?"}, {"role": "assistant", "text": <the answer to it>},
+  {"role": "user", "text": "is it safe that my printer has port 9100 open?"}]`, `lang="en"`, `mode="simple"`.
+- Output (no model): equal to `answer_question("is it safe that my printer has port 9100 open?", result, "en")`:
+  `citations == ["[192.168.1.10:9100 PRINTER_RAW_EXPOSED]"]`, `source == "retrieval"`; the same with
+  `mode="advanced"`.
+- Errors and edge cases: an unknown language or mode raises `KeyError`. `ValueError` for no messages, more than
+  `MAX_MESSAGES`, a message that isn't a dict with a `"role"` of `"user"` or `"assistant"` and a `"text"` string, a
+  last message that isn't the user's, and every case where `answer_question` raises it (an empty or too long question,
+  a scan in error). The model never makes `reply` raise.
+- Test: `tests/test_assistant.py::test_contract_reply`
 
 ## Template (copy it)
 

@@ -1,0 +1,248 @@
+# The threat wiki ("Wiki amenințări"): what each catalog code and a few basic network concepts mean, in Romanian and
+# English. Owner: stream B. Used by conetuga/explain/wiki.py; the contract is "wiki_entries" in specs/contracts.md.
+#
+# These texts hold NO value from any scan and NO placeholder: no IP, port number, version or product name of a real
+# network. The wiki is read without a scan, so every sentence must be true for every network.
+#
+# Format:
+#   [simple.<id>.ro] / [simple.<id>.en]: what Tuga 🐢 says, for the 15 catalog codes and the 5 concepts
+#     title = short label (for a code, the same as in data/explanations.toml)
+#     text  = at most 3 sentences, no unexplained term, about a 12-year-old's reading level
+#   [advanced.<id>.ro] / [advanced.<id>.en]: what Cone 🐇 says, ONLY for the 5 concepts (for the 15 codes, Cone's
+#     title and text come from data/cone.toml)
+#     title = short technical label
+#     text  = at most 4 sentences; every technical term explained in a few words (NFR-09)
+#   [related_codes]: for every id, the catalog codes the entry links to (the same in every language and mode);
+#     valid catalog codes only, never the entry's own id, in catalog order, [] when none
+#   <id> is a catalog code (e.g. TELNET_OPEN) or one of the concepts: port, encryption, firewall, mac, upnp.
+# Romanian uses ș and ț with a comma below.
+
+# ---------------------------------------------------------------------------------------------------- Related codes
+
+[related_codes]
+TELNET_OPEN = ["FTP_CLEARTEXT", "HTTP_ADMIN_CLEARTEXT", "SSH_OPEN"]
+RDP_EXPOSED = ["VNC_EXPOSED", "OUTDATED_SERVICE"]
+VNC_EXPOSED = ["RDP_EXPOSED"]
+DB_EXPOSED = ["OUTDATED_SERVICE"]
+CAMERA_STREAM_EXPOSED = ["HTTP_ADMIN_CLEARTEXT", "UPNP_EXPOSED"]
+OUTDATED_SERVICE = []
+FTP_CLEARTEXT = ["TELNET_OPEN", "HTTP_ADMIN_CLEARTEXT"]
+HTTP_ADMIN_CLEARTEXT = ["TELNET_OPEN", "FTP_CLEARTEXT"]
+SMB_EXPOSED = ["OUTDATED_SERVICE"]
+MQTT_EXPOSED = ["UPNP_EXPOSED"]
+UPNP_EXPOSED = ["CAMERA_STREAM_EXPOSED", "MQTT_EXPOSED"]
+SNMP_EXPOSED = ["PRINTER_RAW_EXPOSED"]
+PRINTER_RAW_EXPOSED = ["SNMP_EXPOSED"]
+UNKNOWN_DEVICE = []
+SSH_OPEN = ["TELNET_OPEN"]
+port = ["RDP_EXPOSED", "VNC_EXPOSED", "DB_EXPOSED", "SMB_EXPOSED", "PRINTER_RAW_EXPOSED"]
+encryption = ["TELNET_OPEN", "FTP_CLEARTEXT", "HTTP_ADMIN_CLEARTEXT", "SNMP_EXPOSED"]
+firewall = ["RDP_EXPOSED", "DB_EXPOSED", "SMB_EXPOSED", "UPNP_EXPOSED"]
+mac = ["UNKNOWN_DEVICE"]
+upnp = ["UPNP_EXPOSED"]
+
+# ---------------------------------------------------------------------------------------------------- Simple: codes
+
+[simple.TELNET_OPEN.ro]
+title = "Conectare de la distanță necriptată (Telnet)"
+text = "Telnet este o metodă veche prin care cineva poate controla un dispozitiv de pe alt calculator. Parola trece prin rețea necriptată, adică oricine ascultă o poate citi. Cel mai sigur e să oprești Telnet și să folosești SSH, varianta criptată."
+
+[simple.TELNET_OPEN.en]
+title = "Unencrypted remote login (Telnet)"
+text = "Telnet is an old way to control a device from another computer. The password travels over the network unencrypted, so anyone listening can read it. The safest choice is to turn Telnet off and use SSH, the encrypted alternative."
+
+[simple.RDP_EXPOSED.ro]
+title = "Control de la distanță al calculatorului (Remote Desktop)"
+text = "Remote Desktop lasă pe cineva să folosească un calculator de pe alt calculator, ca și cum ar sta în fața lui. Dacă parola e slabă sau Windows nu e actualizat, un străin poate prelua calculatorul. Oprește-l când nu îl folosești și instalează actualizările."
+
+[simple.RDP_EXPOSED.en]
+title = "Remote control of the computer (Remote Desktop)"
+text = "Remote Desktop lets someone use a computer from another computer, as if they were sitting in front of it. If the password is weak or Windows isn't up to date, a stranger can take over the computer. Turn it off when you don't use it and install the updates."
+
+[simple.VNC_EXPOSED.ro]
+title = "Ecran partajat în rețea (VNC)"
+text = "VNC arată ecranul unui calculator altor calculatoare și le lasă să miște mouse-ul și să scrie. Multe instalări au o parolă scurtă sau deloc, așa că un străin poate vedea tot ce faci. Oprește-l dacă nu ai nevoie de el sau pune-i o parolă lungă."
+
+[simple.VNC_EXPOSED.en]
+title = "Screen shared on the network (VNC)"
+text = "VNC shows a computer's screen to other computers and lets them move the mouse and type. Many setups have a short password or none, so a stranger could see everything you do. Turn it off if you don't need it, or give it a long password."
+
+[simple.DB_EXPOSED.ro]
+title = "Bază de date accesibilă din rețea"
+text = "O bază de date este locul în care un program își ține informațiile, cum ar fi conturi sau comenzi. Dacă alte dispozitive din rețea pot vorbi direct cu ea, cineva ar putea citi, schimba sau șterge datele. De obicei, doar programul care o folosește ar trebui să ajungă la ea."
+
+[simple.DB_EXPOSED.en]
+title = "Database reachable from the network"
+text = "A database is where a program keeps its information, such as accounts or orders. If other devices on the network can talk to it directly, someone could read, change or delete the data. Usually only the program that uses it should be able to reach it."
+
+[simple.CAMERA_STREAM_EXPOSED.ro]
+title = "Imaginea camerei se poate vedea din rețea"
+text = "Unele camere trimit imaginea în rețea fără să ceară o parolă sau cu parola din fabrică. Atunci oricine din rețea poate vedea ce filmează camera. Pune-i camerei o parolă nouă și actualizează-i programul."
+
+[simple.CAMERA_STREAM_EXPOSED.en]
+title = "The camera's picture can be watched from the network"
+text = "Some cameras send their picture over the network without asking for a password, or with the factory password. Then anyone on the network can watch what the camera films. Give the camera a new password and update its software."
+
+[simple.OUTDATED_SERVICE.ro]
+title = "Program vechi, cu probleme cunoscute"
+text = "Programele au uneori greșeli pe care atacatorii le cunosc și știu să le folosească. Producătorii le repară în versiunile noi, așa că o versiune veche rămâne deschisă atacurilor. Actualizarea programului sau a dispozitivului închide aceste găuri."
+
+[simple.OUTDATED_SERVICE.en]
+title = "Old software with known problems"
+text = "Programs sometimes have mistakes that attackers know about and know how to use. Makers fix them in new versions, so an old version stays open to attack. Updating the program or the device closes these holes."
+
+[simple.FTP_CLEARTEXT.ro]
+title = "Transfer de fișiere necriptat (FTP)"
+text = "FTP este o metodă veche de a trimite fișiere între dispozitive. Trimite parola și fișierele necriptate, așa că oricine ascultă rețeaua le poate citi. Folosește în loc o variantă criptată, cum e SFTP."
+
+[simple.FTP_CLEARTEXT.en]
+title = "Unencrypted file transfer (FTP)"
+text = "FTP is an old way to send files between devices. It sends the password and the files unencrypted, so anyone listening on the network can read them. Use an encrypted alternative instead, such as SFTP."
+
+[simple.HTTP_ADMIN_CLEARTEXT.ro]
+title = "Pagină de administrare fără criptare"
+text = "Multe dispozitive au o pagină de setări pe care o deschizi în browser. Dacă adresa începe cu „http” fără „s”, parola pe care o scrii trece necriptată prin rețea. Pe cât se poate, folosește varianta cu „https”, care e criptată."
+
+[simple.HTTP_ADMIN_CLEARTEXT.en]
+title = "Admin page without encryption"
+text = "Many devices have a settings page you open in a browser. If the address starts with \"http\" without the \"s\", the password you type crosses the network unencrypted. Whenever you can, use the \"https\" version, which is encrypted."
+
+[simple.SMB_EXPOSED.ro]
+title = "Fișiere partajate în rețea (SMB)"
+text = "SMB este felul în care calculatoarele cu Windows își împart fișiere și dosare în rețea. Dacă o partajare nu are parolă sau folosește o versiune veche, un străin sau un virus îți poate citi ori strica fișierele. Partajează doar ce trebuie și ține sistemul actualizat."
+
+[simple.SMB_EXPOSED.en]
+title = "Files shared on the network (SMB)"
+text = "SMB is how Windows computers share files and folders on a network. If a share has no password or uses an old version, a stranger or a virus could read or damage your files. Share only what you need and keep the system updated."
+
+[simple.MQTT_EXPOSED.ro]
+title = "Mesageria dispozitivelor smart e deschisă (MQTT)"
+text = "MQTT este un fel de poștă prin care aparatele smart din casă își trimit mesaje, de exemplu „aprinde becul”. Dacă poșta nu cere parolă, oricine din rețea poate citi mesajele și poate trimite comenzi false. Pune o parolă în setările aparatului care ține poșta."
+
+[simple.MQTT_EXPOSED.en]
+title = "The smart devices' messaging is open (MQTT)"
+text = "MQTT is a kind of post office that smart home devices use to send each other messages, such as \"turn on the light\". If it doesn't ask for a password, anyone on the network can read the messages and send fake commands. Set a password in the settings of the device that runs the post office."
+
+[simple.UPNP_EXPOSED.ro]
+title = "Aparatele pot deschide singure „uși” spre internet (UPnP)"
+text = "UPnP lasă aparatele din casă să-i ceară routerului (aparatul care îți dă internetul) să le deschidă o ușă spre internet, fără să te întrebe. Un program rău de pe orice aparat poate folosi asta ca să poată fi găsit din internet. Dacă nu ai nevoie de UPnP, oprește-l din setările routerului."
+
+[simple.UPNP_EXPOSED.en]
+title = "Devices can open \"doors\" to the internet by themselves (UPnP)"
+text = "UPnP lets devices at home ask the router (the box that gives you internet) to open a door to the internet for them, without asking you. A harmful program on any device can use this to become reachable from the internet. If you don't need UPnP, turn it off in the router's settings."
+
+[simple.SNMP_EXPOSED.ro]
+title = "Setările dispozitivului se pot citi din rețea (SNMP)"
+text = "SNMP este un serviciu prin care setările unui dispozitiv pot fi citite și schimbate de pe alt calculator. Versiunile vechi îl apără doar cu o parolă comună, lăsată des cea din fabrică. Oprește-l dacă nu îl folosești."
+
+[simple.SNMP_EXPOSED.en]
+title = "The device's settings can be read from the network (SNMP)"
+text = "SNMP is a service that lets another computer read and change a device's settings. Older versions protect it only with a shared password, often left at the factory one. Turn it off if you don't use it."
+
+[simple.PRINTER_RAW_EXPOSED.ro]
+title = "Oricine poate trimite lucrări la imprimantă"
+text = "Multe imprimante tipăresc orice primesc din rețea, fără să ceară o parolă. Așa, oricine din rețea poate tipări pe ea sau îi poate schimba unele setări. Dacă nu ai nevoie de ea, oprește tipărirea directă (numită JetDirect sau RAW) din setările imprimantei."
+
+[simple.PRINTER_RAW_EXPOSED.en]
+title = "Anyone can send jobs to the printer"
+text = "Many printers print whatever they receive from the network, without asking for a password. So anyone on the network can print on it or change some of its settings. If you don't need it, turn off direct printing (called JetDirect or RAW) in the printer's settings."
+
+[simple.UNKNOWN_DEVICE.ro]
+title = "Dispozitiv necunoscut în rețea"
+text = "E un aparat din rețea despre care scanarea nu a aflat nici producătorul, nici numele. Poate fi un telefon de-al tău care își ascunde adresa pentru intimitate sau un aparat pe care nu îl cunoști. Verifică lista de aparate din pagina routerului (aparatul care îți dă internetul)."
+
+[simple.UNKNOWN_DEVICE.en]
+title = "Unknown device on the network"
+text = "It's a device on your network for which the scan found neither a maker nor a name. It may be one of your phones hiding its address for privacy, or a device you don't know. Check the device list on your router's page (the box that gives you internet)."
+
+[simple.SSH_OPEN.ro]
+title = "Conectare de la distanță criptată (SSH), doar informativ"
+text = "SSH este o metodă criptată de a controla un dispozitiv de pe alt calculator, adică nimeni nu poate citi ce trimiți. E felul potrivit de a face asta, de aceea apare doar ca informație. Riscul rămâne mic dacă are o parolă puternică și programul e actualizat."
+
+[simple.SSH_OPEN.en]
+title = "Encrypted remote login (SSH), for your information"
+text = "SSH is an encrypted way to control a device from another computer, so nobody can read what you send. It's the right way to do it, which is why it only appears as information. The risk stays low with a strong password and up-to-date software."
+
+# ------------------------------------------------------------------------------------------------- Simple: concepts
+
+[simple.port.ro]
+title = "Port: ușa unui dispozitiv"
+text = "Un port este ca o ușă numerotată a unui dispozitiv, prin care intră un anumit fel de mesaje. Fiecare serviciu, cum ar fi o pagină web sau o imprimantă, ascultă la ușa lui. O ușă deschisă de care nu ai nevoie e o cale în plus pe care poate intra cineva."
+
+[simple.port.en]
+title = "Port: a device's door"
+text = "A port is like a numbered door on a device, through which one kind of message comes in. Each service, such as a web page or a printer, listens at its own door. An open door you don't need is one more way in for someone else."
+
+[simple.encryption.ro]
+title = "Criptare: mesaje pe care doar tu le poți citi"
+text = "Criptarea amestecă un mesaj astfel încât doar cine are cheia potrivită îl poate citi. Fără criptare, parolele și fișierele trec prin rețea ca o carte poștală pe care o poate citi oricine. Lacătul din browser și litera „s” din „https” arată că pagina e criptată."
+
+[simple.encryption.en]
+title = "Encryption: messages only you can read"
+text = "Encryption scrambles a message so that only someone with the right key can read it. Without encryption, passwords and files cross the network like a postcard anyone can read. The padlock in the browser and the \"s\" in \"https\" show that a page is encrypted."
+
+[simple.firewall.ro]
+title = "Firewall: paznicul rețelei"
+text = "Un firewall este un paznic care hotărăște ce are voie să intre și să iasă dintr-un dispozitiv sau dintr-o rețea. El poate închide ușile (porturile) de care nu ai nevoie. Routerul (aparatul care îți dă internetul) și calculatorul tău au de obicei câte unul, pe care e bine să-l lași pornit."
+
+[simple.firewall.en]
+title = "Firewall: the network's guard"
+text = "A firewall is a guard that decides what may come into and go out of a device or a network. It can close the doors (ports) you don't need. Your router (the box that gives you internet) and your computer usually each have one, and it's best to leave it on."
+
+[simple.mac.ro]
+title = "Adresa MAC: numele de fabrică al unui aparat"
+text = "Adresa MAC este numele de fabrică al piesei prin care un aparat se conectează la rețea, ca un număr de serie. Din prima ei parte se poate afla adesea producătorul. Telefoanele și laptopurile noi folosesc des o adresă inventată, ca să nu poată fi urmărite."
+
+[simple.mac.en]
+title = "MAC address: a device's factory name"
+text = "A MAC address is the factory name of the part a device uses to connect to the network, like a serial number. Its first part often tells who made the device. Newer phones and laptops often use a made-up address so they can't be tracked."
+
+[simple.upnp.ro]
+title = "UPnP: aparate care își deschid singure uși"
+text = "UPnP este o funcție prin care aparatele din casă se găsesc singure și îi cer routerului (aparatul care îți dă internetul) să le deschidă uși spre internet. E comodă, pentru că jocurile și aplicațiile merg fără setări. Dar o poate folosi și un program rău, de aceea mulți o opresc din pagina routerului."
+
+[simple.upnp.en]
+title = "UPnP: devices that open doors by themselves"
+text = "UPnP is a feature that lets devices at home find each other and ask the router (the box that gives you internet) to open doors to the internet for them. It's handy, because games and apps work without any setup. But a harmful program can use it too, so many people turn it off on the router's page."
+
+# ----------------------------------------------------------------------------------------------- Advanced: concepts
+
+[advanced.port.ro]
+title = "Port (TCP și UDP)"
+text = "Un port este un număr care, împreună cu adresa IP (adresa dispozitivului în rețea), arată cărui serviciu îi e destinat un pachet (o bucată de date trimisă prin rețea). TCP (protocol cu conexiune, care confirmă livrarea) și UDP (protocol fără conexiune, mai simplu și mai rapid) au fiecare porturile lor, deci același număr poate fi deschis pe unul și închis pe celălalt. nmap marchează un port ca deschis când un serviciu răspunde acolo și recunoaște serviciul după răspuns, nu doar după număr. Fiecare port deschis care nu e necesar mărește suprafața de atac (totalul căilor prin care se poate încerca un atac)."
+
+[advanced.port.en]
+title = "Port (TCP and UDP)"
+text = "A port is a number that, together with the IP address (the device's address on the network), tells which service a packet (a piece of data sent over the network) is for. TCP (a connection-based protocol that confirms delivery) and UDP (a connectionless protocol, simpler and faster) each have their own ports, so the same number can be open on one and closed on the other. nmap marks a port open when a service answers there and recognises the service by its answer, not only by the number. Every open port that isn't needed widens the attack surface (all the paths through which an attack can be tried)."
+
+[advanced.encryption.ro]
+title = "Criptare în rețea (TLS)"
+text = "Criptarea transformă datele astfel încât doar cine are cheia le poate citi; pe web, standardul este TLS (Transport Layer Security, criptarea din spatele HTTPS). Protocoalele în clar (cleartext, fără criptare: Telnet, FTP, HTTP, SNMPv1 și SNMPv2c) trimit parolele așa cum sunt, deci pot fi citite prin sniffing (captarea pachetelor de pe rețea). Variantele criptate sunt SSH în locul Telnet, SFTP sau FTPS în locul FTP, HTTPS în locul HTTP și SNMPv3. TLS verifică și identitatea serverului printr-un certificat (un act de identitate digital, semnat de o autoritate), ca să nu vorbești cu un impostor."
+
+[advanced.encryption.en]
+title = "Network encryption (TLS)"
+text = "Encryption transforms data so that only whoever holds the key can read it; on the web, the standard is TLS (Transport Layer Security, the encryption behind HTTPS). Cleartext protocols (no encryption: Telnet, FTP, HTTP, SNMPv1 and SNMPv2c) send passwords as they are, so they can be read by sniffing (capturing packets on the network). The encrypted alternatives are SSH instead of Telnet, SFTP or FTPS instead of FTP, HTTPS instead of HTTP, and SNMPv3. TLS also checks the server's identity with a certificate (a digital ID signed by an authority), so you don't talk to an impostor."
+
+[advanced.firewall.ro]
+title = "Firewall (filtrare de pachete)"
+text = "Un firewall filtrează pachetele (bucățile de date din rețea) după reguli: adresă, port, protocol și direcție. Pe router, el blochează implicit conexiunile care vin din internet, iar redirecționarea de porturi (port forwarding) sau UPnP fac excepții de la această regulă. Firewall-ul de pe dispozitiv (Windows Defender Firewall, sau iptables și nftables pe Linux) poate limita un serviciu la anumite adrese din rețeaua locală (LAN). Firewall-ul reduce cine ajunge la un serviciu, dar nu repară un serviciu vulnerabil."
+
+[advanced.firewall.en]
+title = "Firewall (packet filtering)"
+text = "A firewall filters packets (the pieces of data on a network) by rules: address, port, protocol and direction. On a router it blocks connections coming from the internet by default, while port forwarding (a rule that sends outside traffic to one device) or UPnP make exceptions to that rule. The firewall on a device (Windows Defender Firewall, or iptables and nftables on Linux) can limit a service to certain addresses on the local network (LAN). A firewall narrows who reaches a service, but it doesn't fix a vulnerable service."
+
+[advanced.mac.ro]
+title = "Adresa MAC (adresa hardware)"
+text = "Adresa MAC este adresa hardware a plăcii de rețea (piesa care conectează dispozitivul), folosită doar în rețeaua locală: routerul nu o trimite mai departe în internet. Prima ei jumătate este OUI (Organizationally Unique Identifier, codul atribuit producătorului), după care nmap ghicește producătorul. O adresă local administrată (marcată de un bit din primul octet, adică primul grup de opt biți) este aleasă de sistem, des la întâmplare de telefoane și laptopuri pentru intimitate (MAC randomization), și nu are un producător real. ConeTuga nu afișează niciodată adresa MAC, ci doar dacă este privată."
+
+[advanced.mac.en]
+title = "MAC address (hardware address)"
+text = "A MAC address is the hardware address of the network card (the part that connects the device), used only on the local network: the router doesn't pass it on to the internet. Its first half is the OUI (Organizationally Unique Identifier, the code assigned to the maker), from which nmap guesses the maker. A locally administered address (marked by one bit in the first octet, the first group of eight bits) is chosen by the system, often at random by phones and laptops for privacy (MAC randomization), and has no real maker. ConeTuga never shows the MAC address, only whether it is private."
+
+[advanced.upnp.ro]
+title = "UPnP și IGD (Internet Gateway Device)"
+text = "UPnP (Universal Plug and Play) descoperă dispozitivele prin SSDP (mesaje trimise către toată rețeaua locală) și le descrie prin documente XML (un format de text structurat). Profilul IGD (Internet Gateway Device) lasă orice dispozitiv din LAN (rețeaua locală) să adauge pe router, fără autentificare, redirecționări de porturi (reguli care trimit traficul din internet către un dispozitiv). Astfel, un malware (program rău-intenționat) poate expune un serviciu intern direct în internet. Dezactivarea UPnP pe router închide această cale, iar redirecționările de care chiar ai nevoie se fac manual."
+
+[advanced.upnp.en]
+title = "UPnP and IGD (Internet Gateway Device)"
+text = "UPnP (Universal Plug and Play) discovers devices through SSDP (messages sent to the whole local network) and describes them in XML documents (a structured text format). Its IGD profile (Internet Gateway Device) lets any device on the LAN (the local network) add port forwards (rules that send internet traffic to one device) on the router with no authentication. So malware (a harmful program) can expose an internal service straight to the internet. Turning UPnP off on the router closes this path, and the forwards you really need are set up by hand."
