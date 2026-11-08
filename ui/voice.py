@@ -11,7 +11,7 @@ The text goes into the page as JSON with <, > and & escaped, so a hostname from 
 import html
 import json
 
-from ui.motion import PALETTE
+from ui.motion import MATCH_PAGE_BACKGROUND_JS, PALETTE
 
 # Tuga is a calm turtle: a little slower than normal and a little warmer, easier to follow for a child or a grandparent.
 TUGA_RATE = 0.9  # 1 is the browser's normal speed
@@ -78,6 +78,7 @@ p {{ margin: 4px 2px; }}
 <button id="b" type="button" aria-live="polite">{html.escape(words["listen"])}</button>
 <p id="n" hidden>{html.escape(words["no_voice"])}</p>
 <script>
+{MATCH_PAGE_BACKGROUND_JS}
 (() => {{
   const text = {script_json(text)}, lang = {script_json(lang)}, preferred = {script_json(PREFERRED_VOICES[lang])};
   const listen = {script_json(words["listen"])}, stop = {script_json(words["stop"])};

@@ -34,3 +34,14 @@ def test_no_scan_text_reaches_the_animation():
     page = score_motion_html(result, "ro", dark=True)
     for host in result.hosts:
         assert host.ip not in page and (not host.hostname or host.hostname not in page)
+
+
+def test_the_ring_and_the_voice_button_paint_the_colour_behind_them():
+    """axe-core on the dark theme (FE-E2, 2026-11-08) saw their light text on white: a frame is see-through, and a
+    checker, or a browser whose light/dark scheme differs from the page's, puts white behind it. Both frames now paint
+    the page's real colour behind them."""
+    from ui.motion import MATCH_PAGE_BACKGROUND_JS
+    from ui.voice import read_aloud_html
+    ring = score_motion_html(analyse_file(SCANS / "V2_smart_home.xml"), "ro", dark=True)
+    for page in (ring, read_aloud_html("Salut", "ro", dark=True)):
+        assert MATCH_PAGE_BACKGROUND_JS in page and "frameElement" in page
