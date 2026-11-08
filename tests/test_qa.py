@@ -9,8 +9,8 @@ import pytest
 
 from conetuga.analysis import analyse_file
 from conetuga.explain import answer_question, device_label
-from conetuga.explain.qa import (CODE_WORDS, DEVICE_WORDS, MAX_QUESTION_CHARS, PHRASES, QA_FILE, STEM_MARK, citation,
-                                 read_question)
+from conetuga.explain.qa import (CODE_WORDS, DEVICE_WORDS, MAX_OVERVIEW_SHOWN, MAX_QUESTION_CHARS, PHRASES, QA_FILE,
+                                 STEM_MARK, citation, normalise, read_question)
 from conetuga.explain.template import DEVICE_LABELS
 from ui.view import devices_by_risk
 from nmap_xml import host as xml_host, port as xml_port, write_scan
@@ -400,3 +400,124 @@ def test_a_hostile_hostname_stays_literal_in_the_answer(tmp_path, question):
     result = analyse_file(write_scan(tmp_path, xml_host("10.0.0.5", xml_port(23, "telnet"), hostname="{ip}<script>")))
     label = device_label(result.hosts[0].device_type, "en")
     assert f"{{ip}}<script> — {label}" in answer_question(question, result, "en").text
+
+
+# --- the overview: "what problems do I have?" ---------------------------------------------------------------------
+
+OVERVIEW_QUESTIONS = [("unde pot gasi probleme?", "ro"), ("ce probleme am?", "ro"), ("ce probleme are reteaua mea?", "ro"),
+                      ("ce e gresit in reteaua mea?", "ro"), ("Ce e greșit în rețeaua mea?", "ro"),
+                      ("ce repar intai? si apoi", "ro"), ("what problems do I have?", "en")]
+V2_IN_FIX_ORDER = ["[192.168.1.40:554 CAMERA_STREAM_EXPOSED]", "[192.168.1.40:80 HTTP_ADMIN_CLEARTEXT]",
+                   "[192.168.1.1:80 HTTP_ADMIN_CLEARTEXT]", "[192.168.1.1:1900 UPNP_EXPOSED]",
+                   "[192.168.1.41:1883 MQTT_EXPOSED]"]
+NO_PROBLEMS = {"ro": "Scanul nu a găsit probleme din catalog.", "en": "The scan found no problems from the catalog."}
+
+
+def test_contract_answer_question_overview():
+    answer = answer_question("ce probleme am?", scan("V2_smart_home.xml"), "ro")
+
+    assert answer.source == "retrieval"
+    assert answer.citations == V2_IN_FIX_ORDER
+    assert answer.text == (
+        "Problemele găsite de scan, în ordinea în care le repari:\n"
+        "1. Imaginea camerei se poate vedea din rețea: ipcam — Cameră video (192.168.1.40:554) "
+        "[192.168.1.40:554 CAMERA_STREAM_EXPOSED]\n"
+        "2. Pagină de administrare fără criptare: ipcam — Cameră video (192.168.1.40:80) "
+        "[192.168.1.40:80 HTTP_ADMIN_CLEARTEXT]\n"
+        "3. Pagină de administrare fără criptare: router.lan — Router sau punct de acces Wi-Fi (192.168.1.1:80) "
+        "[192.168.1.1:80 HTTP_ADMIN_CLEARTEXT]\n"
+        "4. Aparatele pot deschide singure „uși” spre internet (UPnP): router.lan — Router sau punct de acces Wi-Fi "
+        "(192.168.1.1:1900) [192.168.1.1:1900 UPNP_EXPOSED]\n"
+        "5. Mesageria dispozitivelor smart e deschisă (MQTT): smarthub — Aparat smart pentru casă (192.168.1.41:1883) "
+        "[192.168.1.41:1883 MQTT_EXPOSED]"
+    )
+    assert answer_question("ce probleme am?", scan("V6b_after.xml"), "ro").text == NO_PROBLEMS["ro"]
+
+
+@pytest.mark.parametrize("question, lang", OVERVIEW_QUESTIONS)
+def test_a_question_about_all_the_problems_lists_them_all(question, lang):
+    answer = answer_question(question, scan("V2_smart_home.xml"), lang)
+
+    assert answer.citations == V2_IN_FIX_ORDER
+    lines = answer.text.split("\n")
+    assert len(lines) == 1 + len(V2_IN_FIX_ORDER)
+    for number, (line, cited) in enumerate(zip(lines[1:], V2_IN_FIX_ORDER), start=1):
+        assert line.startswith(f"{number}. ") and line.endswith(cited)
+
+
+@pytest.mark.parametrize("lang", LANGUAGES)
+@pytest.mark.parametrize("path", READABLE_SCANS, ids=lambda path: path.name)
+def test_the_overview_follows_the_uis_fix_list(path, lang):
+    from ui.checkup import tasks_of  # the test may read the UI's rule; conetuga.explain never imports ui/
+
+    result = analyse_file(path)
+    expected = [citation(finding) for _device, finding in tasks_of(devices_by_risk(result, lang))]
+
+    answer = answer_question("what problems do I have?", result, lang)
+
+    assert answer.citations == expected[:MAX_OVERVIEW_SHOWN]
+    if not expected:
+        assert answer.text == NO_PROBLEMS[lang]
+
+
+@pytest.mark.parametrize("question, lang", [("Are there problems on port 9100?", "en"),
+                                            ("probleme la imprimanta?", "ro")])
+def test_a_question_that_names_something_is_not_the_overview(question, lang):
+    answer = answer_question(question, scan("V3_small_office.xml"), lang)
+    assert answer.citations == [PRINTER]
+    assert not answer.text.startswith(PHRASES[lang]["overview"])
+
+
+def test_a_question_about_problems_at_the_camera_gets_the_cameras_findings_only():
+    answer = answer_question("probleme la camera?", scan("V2_smart_home.xml"), "ro")
+    assert answer.citations == V2_IN_FIX_ORDER[:2]
+    assert not answer.text.startswith(PHRASES["ro"]["overview"])
+
+
+@pytest.mark.parametrize("lang", LANGUAGES)
+def test_a_scan_without_findings_says_so_and_never_calls_it_safe(lang):
+    answer = answer_question("ce probleme am?", scan("V6b_after.xml"), lang)
+    assert answer.text == NO_PROBLEMS[lang] and answer.citations == []
+    assert not any(word in normalise(answer.text) for word in ("safe", "secure", "sigur"))
+
+
+@pytest.mark.parametrize("lang", LANGUAGES)
+def test_with_no_findings_and_a_timed_out_device_the_overview_cannot_answer(lang):
+    result = scan("V6b_after.xml")
+    answer = answer_question("ce probleme am?", timed_out(result, result.hosts[0].ip), lang)
+    assert answer.text == CANNOT[lang] and answer.citations == []
+
+
+def test_the_overview_shows_at_most_its_limit_and_points_to_the_list(tmp_path):
+    hosts = [xml_host(f"10.0.0.{n}", xml_port(23, "telnet")) for n in range(1, MAX_OVERVIEW_SHOWN + 3)]
+    answer = answer_question("what problems do I have?", analyse_file(write_scan(tmp_path, *hosts)), "en")
+    lines = answer.text.split("\n")
+    assert len(answer.citations) == MAX_OVERVIEW_SHOWN
+    assert len(lines) == 1 + MAX_OVERVIEW_SHOWN + 1 and lines[-1] == PHRASES["en"]["overview_more"]
+
+
+def test_the_most_dangerous_problem_is_still_one_device():
+    answer = answer_question("Care e cea mai gravă problemă?", scan("V3_small_office.xml"), "ro")
+    assert answer.citations == ["[192.168.1.30:3389 RDP_EXPOSED]"]
+
+
+@pytest.mark.parametrize("question, lines", [("what problems do I have?", 2), ("Is port 23 dangerous?", 1),
+                                             ("What should I fix first?", 1)])
+def test_a_hostname_with_a_line_break_never_adds_a_line(tmp_path, question, lines):
+    result = analyse_file(write_scan(tmp_path, xml_host("10.0.0.5", xml_port(23, "telnet"),
+                                                        hostname="evil\n2. [x](http://y.z) *fake*")))
+    text = answer_question(question, result, "en").text
+    assert len(text.split("\n")) == lines
+    assert "evil 2. [x](http://y.z) *fake*" in text
+
+
+def test_the_overview_is_never_sent_to_the_local_model(monkeypatch):
+    from conetuga.explain import llm, reply
+
+    def no_model(*args, **kwargs):
+        raise AssertionError("the overview reached the local model")
+
+    monkeypatch.setenv(llm.MODEL_VARIABLE, "qwen2.5:7b")
+    monkeypatch.setattr(llm, "chat", no_model)
+    answer = reply([{"role": "user", "text": "ce probleme am?"}], scan("V2_smart_home.xml"), "ro", "simple")
+    assert answer.source == "retrieval" and answer.citations == V2_IN_FIX_ORDER

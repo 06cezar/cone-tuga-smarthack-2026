@@ -10,7 +10,7 @@
 # a row.
 
 # Placeholders, filled in by code: {where} = ip:port or ip, {device} = device_name() (as the UI names it), {ip},
-# {title}, {step}.
+# {title}, {step}; in overview_line also {n} = the finding's number in the fix list and {citation}.
 [phrases.ro]
 cannot_answer = "Scanul nu arată asta."
 found = "La {where} ({device}), scanul a găsit: {title}."
@@ -21,6 +21,10 @@ no_problem_topic = "Scanul nu a găsit o problemă din catalog despre asta."
 most_dangerous = "Cel mai periculos: {device} ({ip}). {title}."
 do_first = "Fă asta întâi: {step}"
 nothing_dangerous = "Scanul nu a găsit nimic periculos."
+overview = "Problemele găsite de scan, în ordinea în care le repari:"
+overview_line = "{n}. {title}: {device} ({where}) {citation}"
+overview_more = "Scanul a mai găsit și altele; le vezi pe toate în lista de pe Acasă."
+no_problems = "Scanul nu a găsit probleme din catalog."
 
 [phrases.en]
 cannot_answer = "The scan doesn't show this."
@@ -32,6 +36,10 @@ no_problem_topic = "The scan found no problem from the catalog about this."
 most_dangerous = "Most dangerous: {device} ({ip}). {title}."
 do_first = "Do this first: {step}"
 nothing_dangerous = "The scan found nothing dangerous."
+overview = "The problems the scan found, in the order to fix them:"
+overview_line = "{n}. {title}: {device} ({where}) {citation}"
+overview_more = "The scan found more; you can see them all in the list on Home."
+no_problems = "The scan found no problems from the catalog."
 
 # "What is the most dangerous / what do I fix first": answered with the UI's rule (ui/view.py, devices_by_risk).
 [top]
@@ -43,6 +51,13 @@ words = [
   "most dangerous", "most risky", "riskiest", "worst", "biggest risk", "fix first", "do first", "start with",
   "priority", "priorities",
 ]
+
+# "What problems do I have?": every finding, in the UI's fix order (ui/checkup.py), when the question names nothing.
+# `then_words` ask for the rest of the list, so they win over [top] ("Ce repar intai? Si apoi?"); `words` lose to it,
+# so "Care e cea mai grava problema?" still gets the one device.
+[overview]
+words = ["problem*", "issue*", "gresit", "wrong"]
+then_words = ["si apoi", "dupa aceea", "ce urmeaza", "and then", "after that", "what next"]
 
 # Things no network scan shows. A question with one of these gets cannot_answer, even when it names a device, unless it
 # also names a service or code ("Parola de telnet trece în clar?" is about Telnet). No word here may also be in
