@@ -8,11 +8,12 @@ from types import SimpleNamespace
 import pytest
 
 from conetuga.analysis import analyse_file
-from conetuga.explain import answer_question
+from conetuga.explain import answer_question, device_label
 from conetuga.explain.qa import (CODE_WORDS, DEVICE_WORDS, MAX_QUESTION_CHARS, PHRASES, QA_FILE, STEM_MARK, citation,
                                  read_question)
 from conetuga.explain.template import DEVICE_LABELS
 from ui.view import devices_by_risk
+from nmap_xml import host as xml_host, port as xml_port, write_scan
 
 ROOT = Path(__file__).resolve().parents[1]
 SCANS = ROOT / "tests" / "fixtures" / "validation" / "scans"
@@ -115,14 +116,14 @@ def test_an_open_port_without_a_finding_is_not_called_safe():
     ro = answer_question("Portul 631 al imprimantei e periculos?", scan("V3_small_office.xml"), "ro")
     en = answer_question("Is port 631 on the printer dangerous?", scan("V3_small_office.xml"), "en")
 
-    assert ro.text == "Scanul nu a găsit o problemă din catalog la 192.168.1.10:631 (Imprimantă)."
-    assert en.text == "The scan found no problem from the catalog at 192.168.1.10:631 (Printer)."
+    assert ro.text == "Scanul nu a găsit o problemă din catalog la 192.168.1.10:631 (office-printer — Imprimantă)."
+    assert en.text == "The scan found no problem from the catalog at 192.168.1.10:631 (office-printer — Printer)."
     assert ro.citations == en.citations == []
 
 
 def test_a_device_without_findings_is_not_called_safe():
     answer = answer_question("Is my phone OK?", scan("V1_home_basic.xml"), "en")
-    assert answer.text == "The scan found no problem from the catalog at 192.168.1.35 (Phone)."
+    assert answer.text == "The scan found no problem from the catalog at 192.168.1.35 (galaxy-s23 — Phone)."
 
 
 def test_a_service_not_on_the_named_port_still_shows_the_ports_real_finding():
@@ -375,3 +376,27 @@ def test_both_languages_have_the_same_phrases():
 def test_romanian_uses_comma_below_s_and_t_not_cedilla():
     raw = QA_FILE.read_text(encoding="utf-8")
     assert [char for char in CEDILLA_LETTERS if char in raw] == []
+
+
+@pytest.mark.parametrize("lang", LANGUAGES)
+@pytest.mark.parametrize("path", READABLE_SCANS + LAB, ids=lambda path: path.name)
+def test_most_dangerous_answer_names_the_device_as_the_ui_does(path, lang):
+    result = analyse_file(path)
+    top = devices_by_risk(result, lang)[0]
+    if top.risk:
+        assert f"{top.name} ({top.host.ip})" in answer_question(FIX_FIRST[lang], result, lang).text
+
+
+@pytest.mark.parametrize("lang", LANGUAGES)
+def test_a_device_without_hostname_is_named_by_its_label_alone(tmp_path, lang):
+    result = analyse_file(write_scan(tmp_path, xml_host("10.0.0.5", xml_port(23, "telnet"), hostname="")))
+    host = result.hosts[0]
+    text = answer_question(FIX_FIRST[lang], result, lang).text
+    assert f": {device_label(host.device_type, lang)} (10.0.0.5)" in text
+
+
+@pytest.mark.parametrize("question", ["Ce fac primul?", "Is port 23 dangerous?"])
+def test_a_hostile_hostname_stays_literal_in_the_answer(tmp_path, question):
+    result = analyse_file(write_scan(tmp_path, xml_host("10.0.0.5", xml_port(23, "telnet"), hostname="{ip}<script>")))
+    label = device_label(result.hosts[0].device_type, "en")
+    assert f"{{ip}}<script> — {label}" in answer_question(question, result, "en").text

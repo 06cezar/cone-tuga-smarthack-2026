@@ -9,7 +9,8 @@
 # matches any word that starts with it ("imprimant*" matches imprimanta, imprimantei); a phrase matches its words in
 # a row.
 
-# Placeholders, filled in by code: {where} = ip:port or ip, {device} = device_label(), {ip}, {title}, {step}.
+# Placeholders, filled in by code: {where} = ip:port or ip, {device} = device_name() (as the UI names it), {ip},
+# {title}, {step}.
 [phrases.ro]
 cannot_answer = "Scanul nu arată asta."
 found = "La {where} ({device}), scanul a găsit: {title}."
