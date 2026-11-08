@@ -8,6 +8,7 @@
   | verify` puts its hashes on a blockchain and checks the log against them."""
 import argparse
 import io
+import os
 import sqlite3
 import sys
 from pathlib import Path
@@ -28,10 +29,14 @@ LEDGER_ACTIONS = ("deploy", "anchor", "verify")
 MISSING_IDS_SHOWN = 10  # deleted row numbers listed by ledger verify; the count says how many there are in all
 RETRY_FACTOR = 2  # a device that ran out of time gets this many times as long on the next try
 FOLDERS_SHOWN = 3  # subfolders named when the scans sit deeper than the folder given; one is the usual case
+ENV_FILE = Path(__file__).resolve().parents[1] / ".env"  # gitignored: where a person keeps settings and secrets
+ENV_FILE_VARIABLE = "CONETUGA_ENV_FILE"  # another file than ENV_FILE (the tests point it at a file that isn't there)
+ENV_PREFIX = "CONETUGA_"  # the only names read from the file
 
 
 def main(argv: list[str] | None = None) -> int:
     _write_utf8()
+    _load_env_file()
     parser = argparse.ArgumentParser(
         prog="python -m conetuga",
         description="ConeTuga: verifică rețeaua ta și explică riscurile / checks your network and explains the risks.",
@@ -313,6 +318,28 @@ def _printable(text: str) -> str:
     such as a terminal escape sequence or a line break hidden in a file name, is shown escaped ("\\x1b", "\\n")
     instead of being run by the terminal or faking a line of output."""
     return "".join(char if char.isprintable() else repr(char)[1:-1] for char in text)
+
+
+def _load_env_file() -> None:
+    """Reads the CONETUGA_* settings in .env into the environment, so a person writes them once (the chain's RPC URL,
+    key and contract) instead of exporting them in every terminal, on Linux and Windows alike. A variable already set
+    wins; any other name in the file is ignored; no value is ever printed; no package is needed. Lines look like
+    `NAME=value`, optionally after `export `, with the value optionally in quotes and an optional ` # comment`."""
+    path = Path(os.environ.get(ENV_FILE_VARIABLE) or ENV_FILE)
+    try:
+        lines = path.read_text(encoding="utf-8-sig").splitlines()  # -sig: Notepad starts the file with a BOM
+    except OSError:
+        return  # no .env: the environment alone decides
+    for line in lines:
+        name, separator, value = line.strip().removeprefix("export ").partition("=")
+        name, value = name.strip(), value.strip()
+        if not separator or not name.startswith(ENV_PREFIX) or name == ENV_FILE_VARIABLE:
+            continue  # a blank line, a comment, or a name that isn't ours
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        else:
+            value = value.split(" #", 1)[0].rstrip()
+        os.environ.setdefault(name, value)
 
 
 def _write_utf8() -> None:
