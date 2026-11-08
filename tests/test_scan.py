@@ -356,3 +356,181 @@ def test_a_history_that_cant_be_written_still_shows_the_result_and_the_timeouts(
     assert "score " in captured.out
     assert "couldn't be saved to the history (No space left on device)" in captured.err
     assert "192.168.1.1 didn't finish within 5 minutes" in captured.err
+
+
+# --- the app's "Scanează acum" button: scan_from_app (specs/contracts.md) ----------------------------------------
+
+@pytest.fixture
+def app_lab(monkeypatch):
+    """The app as it really runs: an ordinary user, never an administrator, with pkexec installed. Every way the
+    app could start nmap is a fake that fails the test unless the test replaces it."""
+    def forbidden(*args, **kwargs):
+        raise AssertionError("a test tried to start nmap")
+
+    monkeypatch.setattr(scan, "_is_admin", lambda: False)
+    monkeypatch.setattr(scan.shutil, "which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr(scan, "_run_nmap_for_xml", forbidden)
+    monkeypatch.setattr(scan, "_run_as_admin", forbidden)
+
+
+def fake_pkexec(monkeypatch, returncode: int = 0, xml: bytes = V1.read_bytes(), errors: str = "") -> list:
+    """nmap through pkexec: records the command and answers with an exit code, the XML on its output and its errors."""
+    commands = []
+    monkeypatch.setattr(scan, "_run_nmap_for_xml", lambda command: commands.append(command) or (returncode, xml, errors))
+    return commands
+
+
+def test_contract_scan_from_app(app_lab, monkeypatch, tmp_path):
+    commands = fake_pkexec(monkeypatch)
+    result = scan.scan_from_app(confirmed=True, out=tmp_path / "results")
+    ports = "T:21,22,23,80,443,445,1883,6379,6380,8080,27017,U:53,123,161,1900,5353"
+    assert commands == [["/usr/bin/pkexec", "/usr/bin/nmap", "-sS", "-sU", "-sV", "--script", "http-title",
+                         "--max-rate", "100", "-p", ports, "--exclude", "172.20.10.13", "--host-timeout", "5m",
+                         "--stats-every", "30s", "-oX", "-", "172.20.10.0/28"]]
+    assert (result.network, result.ssid, result.scanned, result.minutes, result.timed_out) == (
+        HOTSPOT, "RSH-ConeTuga", "172.20.10.0/28", 5, ())
+    assert result.xml.parent == (tmp_path / "results").resolve() and result.xml.name.startswith("scan_")
+    assert result.xml.read_bytes() == V1.read_bytes()
+    assert analyse_file(result.xml).score == 90
+
+
+def test_the_app_runs_exactly_the_cli_command_with_the_xml_on_nmaps_output(app_lab, monkeypatch, tmp_path):
+    commands = fake_pkexec(monkeypatch)
+    scan.scan_from_app(True, minutes=8, out=tmp_path)
+    expected = nmap_command("/usr/bin/nmap", "172.20.10.0/28", "172.20.10.13", scan.scan_ports("/usr/bin/nmap"),
+                            "-", 8)
+    assert commands[0][1:] == expected
+
+
+@pytest.mark.parametrize("confirmed, network, ssid, why", [
+    (False, HOTSPOT, "RSH-ConeTuga", "--confirm"),
+    (True, VENUE, "UnivBuc Free", "not on our hotspot"),
+    (True, HOTSPOT, "", "not on our hotspot"),
+])
+def test_nothing_reaches_nmap_from_the_app_without_the_tick_and_the_guardrails_yes(app_lab, monkeypatch, tmp_path,
+                                                                                  confirmed, network, ssid, why):
+    on_network(monkeypatch, network, ssid)
+    asked = []
+    monkeypatch.setattr(scan, "top_tcp_ports", lambda nmap: asked.append(nmap) or TOP_PORTS)
+    with pytest.raises(ScanRefused, match=why):
+        scan.scan_from_app(confirmed, out=tmp_path / "results")
+    assert asked == [] and list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("returncode", [scan.PKEXEC_DISMISSED, scan.PKEXEC_NO_AGENT])
+def test_a_closed_or_missing_password_window_changes_nothing(app_lab, monkeypatch, tmp_path, returncode):
+    fake_pkexec(monkeypatch, returncode=returncode, xml=b"")
+    with pytest.raises(scan.PasswordWindowRefused, match="password window"):
+        scan.scan_from_app(True, out=tmp_path / "results")
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_without_pkexec_the_app_says_so_and_nmap_never_starts(app_lab, monkeypatch, tmp_path):
+    monkeypatch.setattr(scan.shutil, "which", lambda name: None)
+    with pytest.raises(scan.PasswordWindowRefused, match="pkexec"):
+        scan.scan_from_app(True, out=tmp_path / "results")
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_an_nmap_failure_from_the_app_is_a_scan_error_with_nmaps_message(app_lab, monkeypatch, tmp_path):
+    fake_pkexec(monkeypatch, returncode=1, xml=b"", errors="Failed to open device wlp0s20f3\n")
+    with pytest.raises(ScanError, match="didn't finish the scan \\(Failed to open device wlp0s20f3\\)") as raised:
+        scan.scan_from_app(True, out=tmp_path / "results")
+    assert not isinstance(raised.value, scan.PasswordWindowRefused)
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_an_app_already_running_as_administrator_runs_nmap_directly(app_lab, monkeypatch, tmp_path):
+    monkeypatch.setattr(scan, "_is_admin", lambda: True)
+    commands = fake_pkexec(monkeypatch)
+    scan.scan_from_app(True, out=tmp_path)
+    assert commands[0][0] == "/usr/bin/nmap" and "/usr/bin/pkexec" not in commands[0]
+
+
+def test_the_app_needs_at_least_5_minutes_too(app_lab, tmp_path):
+    with pytest.raises(ScanError, match="at least 5 minutes"):
+        scan.scan_from_app(True, minutes=4, out=tmp_path / "results")
+
+
+def test_on_windows_the_uac_window_starts_nmap_alone_and_its_temporary_folder_is_deleted(app_lab, monkeypatch,
+                                                                                         tmp_path):
+    monkeypatch.setattr(scan, "_on_windows", lambda: True)
+    started = []
+
+    def uac(command):
+        started.append(command)
+        shutil.copyfile(V1, command[command.index("-oX") + 1])
+        return 0
+
+    monkeypatch.setattr(scan, "_run_as_admin", uac)
+    result = scan.scan_from_app(True, out=tmp_path / "results")
+    written = Path(started[0][started[0].index("-oX") + 1])
+    assert started[0][0] == "/usr/bin/nmap" and started[0][-1] == "172.20.10.0/28"
+    assert not written.parent.exists()  # nmap's temporary folder is gone
+    assert result.xml.read_bytes() == V1.read_bytes()
+
+
+def test_on_windows_a_cancelled_uac_window_changes_nothing(app_lab, monkeypatch, tmp_path):
+    monkeypatch.setattr(scan, "_on_windows", lambda: True)
+    folders = []
+
+    def cancelled(command):
+        folders.append(Path(command[command.index("-oX") + 1]).parent)
+        raise scan._window_refused()
+
+    monkeypatch.setattr(scan, "_run_as_admin", cancelled)
+    with pytest.raises(scan.PasswordWindowRefused):
+        scan.scan_from_app(True, out=tmp_path / "results")
+    assert not folders[0].exists() and list(tmp_path.iterdir()) == []
+
+
+class FakeWindows:
+    """shell32 and kernel32 as the UAC call sees them: ShellExecuteExW answers `accepted`, and nmap exits with 0.
+    Each function is a plain function, since the real code sets `argtypes` on it as on a ctypes function."""
+
+    def __init__(self, accepted: bool):
+        self.accepted, self.info, self.closed = accepted, None, []
+        for name in ("ShellExecuteExW", "WaitForSingleObject", "GetExitCodeProcess", "CloseHandle"):
+            setattr(self, name, self._plain(getattr(self, f"_{name}")))
+
+    @staticmethod
+    def _plain(method):
+        return lambda *args: method(*args)
+
+    def __call__(self, name, use_last_error=False):
+        return self
+
+    def _ShellExecuteExW(self, info_pointer):
+        self.info = info_pointer._obj
+        if self.accepted:
+            self.info.hProcess = 42
+        return int(self.accepted)
+
+    def _WaitForSingleObject(self, handle, milliseconds):
+        return 0
+
+    def _GetExitCodeProcess(self, handle, code_pointer):
+        code_pointer._obj.value = 0
+        return 1
+
+    def _CloseHandle(self, handle):
+        self.closed.append(handle)
+        return 1
+
+
+def test_the_uac_call_asks_runas_for_nmap_with_its_arguments_and_waits_for_it(monkeypatch):
+    windows = FakeWindows(accepted=True)
+    monkeypatch.setattr(scan.ctypes, "WinDLL", windows, raising=False)
+    command = ["C:\\Program Files (x86)\\Nmap\\nmap.exe", "-sS", "-oX", "C:\\Users\\Ana Maria\\scan.xml", "10.0.0.0/28"]
+    assert scan._run_as_admin(command) == 0
+    info = windows.info
+    assert (info.lpVerb, info.lpFile) == ("runas", command[0])
+    assert info.lpParameters == '-sS -oX "C:\\Users\\Ana Maria\\scan.xml" 10.0.0.0/28'
+    assert info.fMask & scan.SEE_MASK_NOCLOSEPROCESS and info.cbSize == scan.ctypes.sizeof(info)
+    assert windows.closed == [42]
+
+
+def test_a_refused_uac_window_raises_and_starts_nothing(monkeypatch):
+    monkeypatch.setattr(scan.ctypes, "WinDLL", FakeWindows(accepted=False), raising=False)
+    with pytest.raises(scan.PasswordWindowRefused):
+        scan._run_as_admin(["nmap.exe", "-sS"])

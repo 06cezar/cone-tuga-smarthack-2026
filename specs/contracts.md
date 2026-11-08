@@ -74,6 +74,32 @@ with its test.
   allowed. With `ssid="Venue-WiFi"`, every target is refused, the connected subnet too.
 - Test: `tests/test_guard.py::test_contract_check_scope`
 
+### scan_from_app · owner: C · used by: D (the Scanare page's "Scanează acum" button)
+- Call: `scan_from_app(confirmed: bool, minutes: int = 5, out: Path = Path("results")) -> LiveScan`, the same
+  `LiveScan` that `live_scan` (the CLI's `scan --confirm`) returns. The page passes no text: the target is always the
+  subnet `detect_network` finds, and `confirmed` is the tick "Confirm că vreau să scanez rețeaua asta".
+- Order: `check_scope(subnet, [subnet], confirmed, ssid)` first; nothing reaches nmap without its yes. Then the same
+  `nmap_command` as the CLI (100 packets per second, `--host-timeout <minutes>m`), with administrator rights for nmap
+  only, through the system's own password window, never a password typed into the page (NFR-04):
+  Linux `pkexec <nmap's full path> ... -oX - <subnet>`, the XML read from nmap's output and written by us to
+  `out/scan_<time>.xml`; Windows the UAC window (`ShellExecuteExW`, verb `runas`, on nmap.exe), nmap writes into a new
+  temporary folder of the user, we copy the file to `out/` and delete the folder. If the app already has the rights,
+  nmap runs directly.
+- Example, on `RSH-ConeTuga`, laptop `172.20.10.13` on `172.20.10.0/28`, Linux, `confirmed=True`: nmap runs as
+  `["/usr/bin/pkexec", "/usr/bin/nmap", "-sS", "-sU", "-sV", "--script", "http-title", "--max-rate", "100", "-p",
+  "T:<nmap's top 1,000 + 1883,6379,6380,27017>,U:53,123,161,1900,5353", "--exclude", "172.20.10.13", "--host-timeout",
+  "5m", "--stats-every", "30s", "-oX", "-", "172.20.10.0/28"]` and the call returns `LiveScan(network=Network("wlp0s20f3",
+  "172.20.10.13", "172.20.10.0/28", "172.20.10.1"), ssid="RSH-ConeTuga", scanned="172.20.10.0/28",
+  xml=<absolute path of results/scan_20261108-091500.xml>, minutes=5, timed_out=())`.
+- After it, the page does what the CLI does: `analyse_file(scan.xml)`, `save_scan(result, scan.xml.read_bytes())`
+  (the history, FR-10), `ledger.record_findings([result], "app")`, and names every device in `scan.timed_out`.
+- Errors (each message: one Romanian line, then one English line): `ScanRefused` (the guardrail said no, the missing
+  tick included); `NetworkNotFound`; `ScanError` (no nmap, nmap failed, `minutes` under 5);
+  `PasswordWindowRefused`, a `ScanError`, when the window was cancelled or couldn't open (pkexec exit 126 or 127, no
+  polkit agent; UAC cancelled): the page says so and shows the terminal command. No error writes a file.
+- Test: `tests/test_scan.py::test_contract_scan_from_app`, with nmap and the password window mocked; no test runs a
+  real scan.
+
 ### explain · owner: B · used by: D (UI)
 - Call: `explain(finding: Finding, host: Host, lang: str) -> Explanation(title: str, text: str, steps: list[str],
   references: list[str], source: str)`.
