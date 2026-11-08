@@ -4,6 +4,7 @@ the guardrail's yes (live check 4).
 No test runs nmap or touches the network (tests/CLAUDE.md). The network, the Wi-Fi name, nmap's port list and nmap
 itself are fakes; a run of the real nmap fails the test, and the fake nmap writes an official Validation Set file
 where the real one would write its XML."""
+import os
 import shutil
 from pathlib import Path
 
@@ -360,6 +361,11 @@ def test_a_history_that_cant_be_written_still_shows_the_result_and_the_timeouts(
 
 # --- the app's "Scanează acum" button: scan_from_app (specs/contracts.md) ----------------------------------------
 
+# nmap's full path as scan_from_app makes it (pkexec needs one): "/usr/bin/nmap" on Linux, "C:\\usr\\bin\\nmap" on the
+# Windows CI runner.
+APP_NMAP = os.path.abspath("/usr/bin/nmap")
+
+
 @pytest.fixture
 def app_lab(monkeypatch):
     """The app as it really runs: an ordinary user, never an administrator, with pkexec installed. Every way the
@@ -367,6 +373,7 @@ def app_lab(monkeypatch):
     def forbidden(*args, **kwargs):
         raise AssertionError("a test tried to start nmap")
 
+    monkeypatch.setattr(scan, "_find_nmap", lambda: APP_NMAP)
     monkeypatch.setattr(scan, "_is_admin", lambda: False)
     monkeypatch.setattr(scan.shutil, "which", lambda name: f"/usr/bin/{name}")
     monkeypatch.setattr(scan, "_run_nmap_for_xml", forbidden)
@@ -384,7 +391,7 @@ def test_contract_scan_from_app(app_lab, monkeypatch, tmp_path):
     commands = fake_pkexec(monkeypatch)
     result = scan.scan_from_app(confirmed=True, out=tmp_path / "results")
     ports = "T:21,22,23,80,443,445,1883,6379,6380,8080,27017,U:53,123,161,1900,5353"
-    assert commands == [["/usr/bin/pkexec", "/usr/bin/nmap", "-sS", "-sU", "-sV", "--script", "http-title",
+    assert commands == [["/usr/bin/pkexec", APP_NMAP, "-sS", "-sU", "-sV", "--script", "http-title",
                          "--max-rate", "100", "-p", ports, "--exclude", "172.20.10.13", "--host-timeout", "5m",
                          "--stats-every", "30s", "-oX", "-", "172.20.10.0/28"]]
     assert (result.network, result.ssid, result.scanned, result.minutes, result.timed_out) == (
@@ -397,7 +404,7 @@ def test_contract_scan_from_app(app_lab, monkeypatch, tmp_path):
 def test_the_app_runs_exactly_the_cli_command_with_the_xml_on_nmaps_output(app_lab, monkeypatch, tmp_path):
     commands = fake_pkexec(monkeypatch)
     scan.scan_from_app(True, minutes=8, out=tmp_path)
-    expected = nmap_command("/usr/bin/nmap", "172.20.10.0/28", "172.20.10.13", scan.scan_ports("/usr/bin/nmap"),
+    expected = nmap_command(APP_NMAP, "172.20.10.0/28", "172.20.10.13", scan.scan_ports(APP_NMAP),
                             "-", 8)
     assert commands[0][1:] == expected
 
@@ -444,7 +451,7 @@ def test_an_app_already_running_as_administrator_runs_nmap_directly(app_lab, mon
     monkeypatch.setattr(scan, "_is_admin", lambda: True)
     commands = fake_pkexec(monkeypatch)
     scan.scan_from_app(True, out=tmp_path)
-    assert commands[0][0] == "/usr/bin/nmap" and "/usr/bin/pkexec" not in commands[0]
+    assert commands[0][0] == APP_NMAP and "/usr/bin/pkexec" not in commands[0]
 
 
 def test_the_app_needs_at_least_5_minutes_too(app_lab, tmp_path):
@@ -465,7 +472,7 @@ def test_on_windows_the_uac_window_starts_nmap_alone_and_its_temporary_folder_is
     monkeypatch.setattr(scan, "_run_as_admin", uac)
     result = scan.scan_from_app(True, out=tmp_path / "results")
     written = Path(started[0][started[0].index("-oX") + 1])
-    assert started[0][0] == "/usr/bin/nmap" and started[0][-1] == "172.20.10.0/28"
+    assert started[0][0] == APP_NMAP and started[0][-1] == "172.20.10.0/28"
     assert not written.parent.exists()  # nmap's temporary folder is gone
     assert result.xml.read_bytes() == V1.read_bytes()
 
