@@ -37,8 +37,11 @@ code checks every sentence" is gone: we use no LLM, so there is nothing to check
   off) resolved 4 findings and added none. In the UI: pick `scan_01.xml`, then `scan_03.xml`.
 - Accessibility (FE-E2, run by hand, not in CI): axe-core 4.10 with the WCAG 2.1 A/AA rules, on Acasă, Dispozitive,
   Scanare and Despre, in Streamlit's light and dark themes: 0 violations, no text under 16 px. It found two things we
-  then fixed: a focused menu link you couldn't see (#61) and a 2.69:1 colour in the Scanare command (#64). That run
-  was before the new Acasă (#78–#81: checkup, talking Tuga, coloured cards): run it again before quoting it on stage.
+  then fixed: a focused menu link you couldn't see (#61) and a 2.69:1 colour in the Scanare command (#64).
+  Re-run on Nov 8 after the new Acasă (#78–#81), axe-core 4.10.2 at 1366×768: Acasă in Simple mode (also with a task
+  ticked) and in Advanced mode, Dispozitive with a scan, Wiki, Scanare and Despre, light and dark: 0 violations, no
+  text under 16 px, once #83 is in. It found that the score ring and the 🔊 button were measured as light text on
+  white on the dark theme; they now paint the colour behind them (#83).
 
 ## Trade-offs (what we chose, and what we gave up for it)
 - **Exact catalog over clever guesses:** findings come only from nmap's service name and the official rules, so the
