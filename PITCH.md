@@ -68,8 +68,6 @@ code checks every sentence" is gone: we use no LLM, so there is nothing to check
 - A one-click "rescan" in the UI for the loop "fix → rescan → ✅ resolved" (live scans already reach the history,
   #47, but they are started from the terminal so the UI never needs administrator rights).
 
-## What we brought, and what we built in 24 hours
-
 ## How we used AI
 - **In the product: none deciding.** Findings, severities and scores come only from code and the catalog; the Q&A is
   retrieval-based, from the scan and our fixed texts.
