@@ -66,10 +66,15 @@ _CATALOG = load_catalog()
 _SEVERITY_POINTS = _CATALOG.severity_points
 
 
+def score_without(result: FileResult, fixed: list[Finding]) -> int:
+    """The standard score this scan would have without these findings, as A's standard_score computes it."""
+    return standard_score([other for other in result.findings if other not in fixed], _CATALOG)
+
+
 def score_if_fixed(result: FileResult, finding: Finding) -> int:
-    """The standard score this scan would have without this one finding, as A's standard_score computes it: what
-    the person gains by fixing it. The same as result.score when the score is held at 0 by the other findings."""
-    return standard_score([other for other in result.findings if other != finding], _CATALOG)
+    """The standard score without this one finding: what the person gains by fixing it. The same as result.score when
+    the score is held at 0 by the other findings."""
+    return score_without(result, [finding])
 SEVERITY_ORDER = tuple(sorted(_SEVERITY_POINTS, key=_SEVERITY_POINTS.get, reverse=True))
 STATUS_UNCHECKED = "unchecked"
 STATUS_NONE = "none"
