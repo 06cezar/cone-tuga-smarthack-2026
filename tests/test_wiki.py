@@ -129,3 +129,34 @@ def test_related_codes_are_the_same_in_every_language_and_mode():
     for lang in LANGUAGES:
         for mode in MODES:
             assert [entry.related_codes for entry in wiki_entries(lang, mode)] == expected, (lang, mode)
+
+
+def test_contract_wiki_entries_steps():
+    """The contract's example for `steps` (added for the About page's wiki): Telnet's five steps, none for concepts."""
+    entries = {entry.id: entry for entry in wiki_entries("ro", "simple")}
+    assert len(entries["TELNET_OPEN"].steps) == 5
+    assert entries["TELNET_OPEN"].steps[0] == ("Intră în setările dispozitivului (din aplicația lui sau din browser) "
+                                               "și caută opțiunea „Telnet”.")
+    assert all(entries[concept].steps == [] for concept in CONCEPTS)
+
+
+@pytest.mark.parametrize("mode", MODES)
+@pytest.mark.parametrize("lang", LANGUAGES)
+def test_every_code_has_its_fixes_as_steps_without_a_scan_value(lang, mode):
+    """As many steps as the finding page shows, in the same order, with no placeholder, address or lone number."""
+    for entry in wiki_entries(lang, mode):
+        if entry.kind != "code":
+            continue
+        assert len(entry.steps) == len(EXPLANATIONS[entry.id][lang]["steps"]), (entry.id, lang)
+        assert 1 <= len(entry.steps) <= 5, entry.id
+        for step in entry.steps:
+            assert not set("{}") & set(step) and not IPV4.search(step), (entry.id, step)
+            assert not LONE_NUMBER.search(step), (entry.id, step)
+
+
+def test_steps_without_a_placeholder_are_the_finding_pages_own_words():
+    """Only the steps that name a scan value are rewritten; every other step is word for word the finding page's."""
+    for entry in wiki_entries("en", "simple"):
+        for original, generic in zip(EXPLANATIONS.get(entry.id, {}).get("en", {}).get("steps", []), entry.steps):
+            if "{" not in original:
+                assert generic == original, entry.id

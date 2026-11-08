@@ -264,7 +264,7 @@ with its test.
 
 ### wiki_entries · owner: B · used by: the Wiki page, A (the "most common problems" panel links to entries)
 - Call: `wiki_entries(lang: str, mode: str) -> list[WikiEntry(id: str, kind: str, speaker: str, title: str, text: str,
-  references: list[str], related_codes: list[str])]`, from `conetuga.explain`. No scan needed: no entry holds an IP,
+  references: list[str], related_codes: list[str], steps: list[str])]`, from `conetuga.explain`. No scan needed: no entry holds an IP,
   a port number, a version or any other scan value.
   - `kind` is `"code"` (one entry per catalog code; `id` is the code, e.g. `"TELNET_OPEN"`, so `top_codes()` links
     straight to it) or `"concept"` (`id` is `"port"`, `"encryption"`, `"firewall"`, `"mac"` or `"upnp"`).
@@ -277,10 +277,15 @@ with its test.
   - `related_codes`: the catalog codes an entry leads to, for the Wiki's links (e.g. `encryption` →
     `TELNET_OPEN`, `FTP_CLEARTEXT`, ...), from `data/wiki.toml`; every id is a valid catalog code, never the entry's
     own id; `[]` when none. The same in every language and mode.
+  - `steps`: for a code, its 1-5 fix steps from `data/explanations.toml`, in the same order, written without any
+    scan value (`[steps]` in `data/wiki.toml`: "the device", "the port it uses" instead of `{ip}`, `{port}`,
+    `{product}`); the same in both modes. `[]` for a concept. Added 2026-11-08 by D for the About page's wiki.
 - Input (real example): `wiki_entries("ro", "simple")`.
 - Output: 20 entries; the first has `id == "TELNET_OPEN"`, `kind == "code"`, `speaker == "tuga"`; the last 5 are the
   concepts in the order above; every `title` and `text` is non-empty and has no `{` or `}`; the `encryption` entry's
-  `related_codes` contains `FTP_CLEARTEXT`, and every `related_codes` id is a catalog code.
+  `related_codes` contains `FTP_CLEARTEXT`, and every `related_codes` id is a catalog code. `TELNET_OPEN` has 5
+  `steps`, the first one "Intră în setările dispozitivului (din aplicația lui sau din browser) și caută opțiunea
+  „Telnet”."; every concept has none.
 - Errors and edge cases: an unknown language or mode raises `KeyError`. The ids and their order are the same in every
   language and mode.
 - Test: `tests/test_wiki.py::test_contract_wiki_entries`
