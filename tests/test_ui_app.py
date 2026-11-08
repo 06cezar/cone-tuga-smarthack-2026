@@ -1,5 +1,6 @@
 """The whole page (ui/app.py) run headless with Streamlit's AppTest: it starts without an error, the headline is at
-the top in both languages, a broken scan shows an error instead of a crash, and the history shows before/after."""
+the top in both languages, a broken scan shows an error instead of a crash, Acasă saves each scan, and the
+history page (ui/pages/history.py) shows before/after."""
 from pathlib import Path
 
 import pytest
@@ -54,10 +55,39 @@ def test_a_broken_scan_shows_an_error_not_a_crash(history_in_tmp):
     assert app.error and "V7\\_broken" in app.error[0].value
 
 
-def test_history_shows_before_and_after_with_the_change_alert():
+def history_page(*scans: str, current: str | None = None, language: str = "Română", advanced: bool = False):
+    """The Istoric page with these example scans stored in this order, as Acasă would have saved them, and `current`
+    (by default the last one) as the scan on screen. The scans are saved once per session, so a click on "delete"
+    leaves the history empty."""
+    script = (f"import streamlit as st\nst.session_state['language_choice'] = {language!r}\n"
+              f"st.session_state['advanced_mode'] = {advanced!r}\n"
+              "from conetuga.analysis import analyse_file\nfrom conetuga.history import digest_of, save_scan\n"
+              "from ui.pages.home import example_scans\nfrom ui.state import remember_digest\n"
+              "paths = {path.name: path for path in example_scans()}\n"
+              "if not st.session_state.get('stored'):\n"
+              f"    for name in {list(scans)!r}:\n"
+              "        save_scan(analyse_file(paths[name]), paths[name].read_bytes())\n"
+              "    st.session_state['stored'] = True\n"
+              f"remember_digest(digest_of(paths[{current or scans[-1]!r}].read_bytes()))\n"
+              "from ui.pages import history\nhistory.render()")
+    app = AppTest.from_string(script, default_timeout=TIMEOUT_SECONDS).run()
+    assert not app.exception
+    return app
+
+
+def test_acasa_saves_every_scan_it_shows(history_in_tmp):
+    """FR-10: the history has its own page now, but Acasă still stores each scan it shows, once."""
+    from conetuga.history import load_history
+
     app = run(scan="V6a_before.xml")
     app.selectbox[0].set_value("V6b_after.xml").run()
+    app.selectbox[0].set_value("V6b_after.xml").run()
     assert not app.exception
+    assert [record.file for record in load_history()] == ["V2_smart_home.xml", "V6a_before.xml", "V6b_after.xml"]
+
+
+def test_history_shows_before_and_after_with_the_change_alert():
+    app = history_page("V6a_before.xml", "V6b_after.xml")
     text = all_text(app)
     assert "60 → 100" in text
     assert "Rezolvate (3)" in text
@@ -65,15 +95,13 @@ def test_history_shows_before_and_after_with_the_change_alert():
 
 
 def nothing_compared(app) -> bool:
-    """No comparison on screen: no "compare with" box, or one with nothing picked."""
-    return all(box.value is None for box in app.selectbox[1:]) and "Rezolvate" not in all_text(app)
+    """No comparison on screen: the comparator's "before" box with nothing picked, and no "Rezolvate" list."""
+    return app.selectbox(key="history_before").value is None and "Rezolvate" not in all_text(app)
 
 
 def test_history_never_compares_two_unrelated_networks_on_its_own():
     """C's review (17:37): V2 then V3 showed "🚨 ceva nou în rețea", 4 new devices and "Rezolvate (5)", all false."""
-    app = run(scan="V2_smart_home.xml")
-    app.selectbox[0].set_value("V3_small_office.xml").run()
-    assert not app.exception
+    app = history_page("V2_smart_home.xml", "V3_small_office.xml")
     assert not app.warning
     assert nothing_compared(app)
     assert "40 → 45" not in all_text(app)
@@ -81,10 +109,9 @@ def test_history_never_compares_two_unrelated_networks_on_its_own():
 
 
 def test_the_person_can_still_compare_with_any_earlier_scan():
-    """Nothing is hidden: the "compare with" box lists every earlier scan, and picking one shows its before/after."""
-    app = run(scan="V2_smart_home.xml")
-    app.selectbox[0].set_value("V3_small_office.xml").run()
-    app.selectbox[1].set_value(0).run()  # the only earlier scan, V2
+    """Nothing is hidden: the "before" box lists every stored scan, and picking one shows its before/after."""
+    app = history_page("V2_smart_home.xml", "V3_small_office.xml")
+    app.selectbox(key="history_before").set_value(0).run()  # the only earlier scan, V2
     assert not app.exception
     assert "40 → 45" in all_text(app)
 
@@ -92,19 +119,14 @@ def test_the_person_can_still_compare_with_any_earlier_scan():
 def test_one_shared_router_does_not_make_two_homes_the_same_network():
     """V1 and V2 both have 192.168.1.1 "router.lan" and nothing else in common; CI caught V1 being compared with the
     V2 the page opens by default, with a false alert."""
-    app = run(scan="V1_home_basic.xml")
-    app.selectbox[0].set_value("V2_smart_home.xml").run()
-    app.selectbox[0].set_value("V1_home_basic.xml").run()
-    assert not app.exception
+    app = history_page("V2_smart_home.xml", "V1_home_basic.xml")
     assert not app.warning
     assert nothing_compared(app)
 
 
 def test_history_shows_our_lab_before_and_after():
     """Live check 6: our hotspot lab, scan_01 then scan_03."""
-    app = run(scan="scan_01.xml")
-    app.selectbox[0].set_value("scan_03.xml").run()
-    assert not app.exception
+    app = history_page("scan_01.xml", "scan_03.xml")
     text = all_text(app)
     assert "0 → 70" in text
     assert "Rezolvate (4)" in text
@@ -112,21 +134,16 @@ def test_history_shows_our_lab_before_and_after():
 
 
 def test_a_jury_file_opened_after_our_lab_is_the_first_scan_of_its_network():
-    """The hands-on check: with our lab in the history, the jury's file must not be compared with it. The history
-    orders scans saved in the same second by file name, so this checks what matters (no comparison, no alert), not
-    which sentence shows."""
-    app = run(scan="scan_01.xml")
-    app.selectbox[0].set_value("scan_03.xml").run()
-    app.selectbox[0].set_value("V1_home_basic.xml").run()
-    assert not app.exception
+    """The hands-on check: with our lab in the history, the jury's file must not be compared with it."""
+    app = history_page("scan_01.xml", "scan_03.xml", "V1_home_basic.xml")
     assert not app.warning
     assert nothing_compared(app)
 
 
 def test_delete_my_history_leaves_nothing(history_in_tmp):
-    app = run(scan="V6a_before.xml")
+    app = history_page("V6a_before.xml")
     assert any(history_in_tmp.iterdir())
-    app.button[0].click().run()
+    next(b for b in app.button if b.label == "🗑️ Șterge istoricul meu").click().run()
     assert not app.exception
     assert not history_in_tmp.exists()
     assert "Istoricul a fost șters" in all_text(app)

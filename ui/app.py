@@ -14,8 +14,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))  # `streamlit run ui/app.py` puts only ui/ on the path
 
 from ui.assets import ASSETS_DIR  # noqa: E402
-from ui.pages import about, ask, devices, home, scan, wiki  # noqa: E402
-from ui.state import topbar_settings  # noqa: E402
+from ui.pages import about, ask, devices, history, home, scan  # noqa: E402
+from ui.state import PAGES_KEY, topbar_settings  # noqa: E402
 from ui.style import PAGE_CSS  # noqa: E402  (16 px text and a visible keyboard focus, NFR-08)
 from ui.theme import NAV_ACTIVE_KEY, TOPBAR_KEY, theme_css  # noqa: E402
 
@@ -24,9 +24,10 @@ PAGES = [
     (home, "Acasă", "Home", "🏠", "acasa", "Acasă", "Home"),
     (devices, "Dispozitive", "Devices", "💻", "dispozitive", "Dispozitive", "Devices"),
     (ask, "Întreabă", "Ask", "💬", "intreaba", "Întreabă", "Ask"),
-    (wiki, "Wiki amenințări", "Threat wiki", "📚", "wiki", "Wiki", "Wiki"),
+    (history, "Istoric", "History", "📈", "istoric", "Istoric", "History"),
     (scan, "Scanare", "Scan", "📡", "scanare", "Scanare", "Scan"),
-    (about, "Despre", "About", "ℹ️", "despre", "Despre", "About"),
+    # Despre holds the threat wiki too (ui/pages/wiki.py draws it), so it has no tab of its own.
+    (about, "Despre & Wiki", "About & Wiki", "ℹ️", "despre", "Despre & Wiki", "About & Wiki"),
 ]
 TOPBAR_WIDTHS = (2.0, 4.8, 3.9, 1.4)  # logo, pages, Tuga | Cone switch, RO | EN
 LOGO_PICTURE = ASSETS_DIR / "tuga_hero.svg"
@@ -62,6 +63,7 @@ def main() -> None:
                          url_path=row[4], default=i == 0)
                  for i, row in enumerate(PAGES)]
         current = st.navigation(pages, position="hidden")
+        st.session_state[PAGES_KEY] = {page.url_path: page for page in pages}  # ui.state.page_link
         logo.markdown(logo_html(), unsafe_allow_html=True)
         show_tabs(tabs, pages, current, settings.lang)
     st.markdown(theme_css(settings.advanced), unsafe_allow_html=True)

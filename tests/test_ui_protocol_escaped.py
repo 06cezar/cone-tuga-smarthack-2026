@@ -48,7 +48,7 @@ def test_a_hostile_protocol_is_plain_text_in_the_history_changes(tmp_path):
     before = write_scan(tmp_path, host("10.0.0.5", port(80, "http")), name="before.xml")
     after = write_scan(tmp_path, host("10.0.0.5", port(80, "http"), port(23, "telnet")), name="after.xml")
     app = run("from pathlib import Path\nfrom conetuga.analysis import analyse_file\n"
-              "from test_ui_protocol_escaped import HOSTILE, with_protocol\nfrom ui.pages.home import show_diff\n"
+              "from test_ui_protocol_escaped import HOSTILE, with_protocol\nfrom ui.pages.history import show_diff\n"
               f"show_diff(analyse_file(Path({str(before)!r})), "
               f"with_protocol(analyse_file(Path({str(after)!r})), HOSTILE), 'ro')")
     text = page_text(app)

@@ -1,5 +1,6 @@
 """FE-A3's two lines on Acasă (ui/pages/home.py), run headless with AppTest on the real page: a readable scan shown is
-counted once per session, only with statistics on, a broken scan never, and "Șterge istoricul meu" also empties the
+counted once per session, only with statistics on, a broken scan never, and "Șterge istoricul meu" (on Istoric) also
+empties the
 session's set, so after opting in again the same scan counts again (the insights contract's "Deleting")."""
 from pathlib import Path
 
@@ -60,17 +61,36 @@ def test_a_broken_scan_is_never_counted():
     assert counts() == {} and app.session_state[SEEN_KEY] == set()
 
 
+# Acasă, then the Istoric page in the same session, as a person clicks from one tab to the other: "Șterge istoricul
+# meu" lives on Istoric (ui/pages/history.py) and must empty the set Acasă filled.
+TWO_PAGES = ("import streamlit as st\nfrom ui.pages import history, home\n"
+             "(history if st.session_state.get('page') == 'history' else home).render()")
+
+
+def open_scan_then_history(scan: str):
+    """Acasă with statistics on and `scan` picked, then the Istoric page in the same session."""
+    app = AppTest.from_string(TWO_PAGES, default_timeout=TIMEOUT_SECONDS).run()
+    set_enabled(True)
+    app.selectbox[0].set_value(scan).run()
+    app.session_state["page"] = "history"
+    app.run()
+    assert not app.exception
+    return app
+
+
 def test_deleting_the_history_also_empties_the_sessions_set():
-    app = open_scan("V4_legacy.xml")
+    app = open_scan_then_history("V4_legacy.xml")
     assert app.session_state[SEEN_KEY]
     next(b for b in app.button if b.label == DELETE_LABEL).click().run()
     assert app.session_state[SEEN_KEY] == set() and status() == "off" and counts() == {}
 
 
 def test_after_deleting_and_opting_in_again_the_same_scan_counts_again():
-    app = open_scan("V4_legacy.xml")
+    app = open_scan_then_history("V4_legacy.xml")
     next(b for b in app.button if b.label == DELETE_LABEL).click().run()
     set_enabled(True)
+    app.session_state["page"] = "home"
+    app.run()
     app.selectbox[0].set_value("V2_smart_home.xml").run()
     app.selectbox[0].set_value("V4_legacy.xml").run()
     assert counts()["TELNET_OPEN"] == 1
