@@ -14,7 +14,7 @@ import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
-from conetuga.explain.template import LANGUAGES, device_label, explain, fill
+from conetuga.explain.template import LANGUAGES, device_name, explain, fill
 
 QA_FILE = Path(__file__).resolve().parents[2] / "data" / "qa.toml"
 SOURCE_RETRIEVAL = "retrieval"  # Answer.source: built from the scan and our texts, no model involved
@@ -187,10 +187,10 @@ def _answer_about(asked: Asked, result, lang: str) -> Answer:
 
     phrases = PHRASES[lang]
     if asked.ports:
-        where = [f"{host.ip}:{number}{'/' + proto if proto else ''} ({device_label(host.device_type, lang)})"
+        where = [f"{host.ip}:{number}{'/' + proto if proto else ''} ({device_name(host, lang)})"
                  for host, number, proto in places]
     elif asked.ips or asked.device_types:
-        where = [f"{host.ip} ({device_label(host.device_type, lang)})" for host in hosts]
+        where = [f"{host.ip} ({device_name(host, lang)})" for host in hosts]
     else:
         return Answer(phrases["no_problem_topic"], [], SOURCE_RETRIEVAL)
     return Answer(fill(phrases["no_problem_at"], {"where": ", ".join(where)}), [], SOURCE_RETRIEVAL)
@@ -210,7 +210,7 @@ def _found(findings, result, lang: str) -> Answer:
     for finding in ranked[:MAX_FINDINGS_SHOWN]:
         host = hosts[finding.ip]
         explanation = explain(finding, host, lang)
-        found = fill(phrases["found"], {"where": place(finding), "device": device_label(host.device_type, lang),
+        found = fill(phrases["found"], {"where": place(finding), "device": device_name(host, lang),
                                         "title": explanation.title})
         parts += [found, explanation.text, fill(phrases["first_step"], {"step": explanation.steps[0]}),
                   citation(finding)]
@@ -236,7 +236,7 @@ def _most_dangerous(result, lang: str) -> Answer:
     own = [finding for finding in result.findings if finding.ip == top.ip]
     finding = sorted(own, key=lambda finding: -finding.points)[0]  # stable: equal points keep analyse_file's order
     explanation = explain(finding, top, lang)
-    headline = fill(phrases["most_dangerous"], {"device": device_label(top.device_type, lang), "ip": top.ip,
+    headline = fill(phrases["most_dangerous"], {"device": device_name(top, lang), "ip": top.ip,
                                                 "title": explanation.title})
     parts = [headline, explanation.text, fill(phrases["do_first"], {"step": explanation.steps[0]}), citation(finding)]
     return Answer(" ".join(parts), [citation(finding)], SOURCE_RETRIEVAL)

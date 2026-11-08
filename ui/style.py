@@ -22,6 +22,13 @@ tests read it without starting the app. It holds no scan text.
   headline sits in the guide's speech bubble, and while the guide reads it aloud the picture sways. With "reduce
   motion" turned on in the operating system, nothing moves."""
 
+# "🔍 Scris mare" (B's proposal, 2026-11-08): the whole page larger, for a grandparent or a jury reading from a distance.
+# Off by default (Cezar's call): at 1366×768 with it on, the headline ends at 894 px and the score at 1070 px, below the
+# first screen that live check 2 needs; with it off they end at 579 and 720 px. The presenter turns it on for the pitch.
+# Streamlit sizes its text and boxes in rem, so a larger root size scales them all; off, the 16 px rule holds (NFR-08).
+LARGE_TEXT_PERCENT = 125  # of the browser's root size: 16 px becomes 20 px
+LARGE_TEXT_CSS = f"<style>html {{ font-size: {LARGE_TEXT_PERCENT}% !important; }}</style>"
+
 FOCUS_COLOUR = "#2F7CF6"
 PICKER_KEY = "scan_picker"
 PICKER_TINT_ALPHA = 0.08  # how much FOCUS_COLOUR shows behind the picker: enough to set it apart, little enough for AA
