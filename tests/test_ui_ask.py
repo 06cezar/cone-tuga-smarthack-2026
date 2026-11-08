@@ -5,10 +5,13 @@ from pathlib import Path
 
 import pytest
 
+from ui.view import md
+
 AppTest = pytest.importorskip("streamlit.testing.v1").AppTest
 
 ROOT = Path(__file__).resolve().parents[1]
 SCANS = ROOT / "tests" / "fixtures" / "validation" / "scans"
+V2 = SCANS / "V2_smart_home.xml"
 V3 = SCANS / "V3_small_office.xml"
 V7 = SCANS / "V7_broken.xml"
 PRINTER = "[192.168.1.10:9100 PRINTER_RAW_EXPOSED]"
@@ -156,3 +159,40 @@ def test_showing_the_page_never_contacts_the_model(monkeypatch, language):
     monkeypatch.setattr(llm, "chat", no_network)
     app = show(V3, language)  # show() asserts the page raised nothing
     assert any(text.startswith("🤖") for text in page_text(app))
+
+
+# --- the overview on the page: one line per problem, each escaped --------------------------------------------------
+
+def answer_lines(app: AppTest) -> list[str]:
+    """The assistant's answer as shown: its lines, which the page joins with Markdown's "  \n" line break."""
+    return chat_text(app)[1].split("  \n")
+
+
+def test_the_overview_shows_one_line_per_problem():
+    lines = answer_lines(ask(show(V2), "ce probleme am?"))
+    assert len(lines) == 6
+    assert unescaped(lines[0]) == "Problemele găsite de scan, în ordinea în care le repari:"
+    assert [unescaped(line)[:3] for line in lines[1:]] == ["1. ", "2. ", "3. ", "4. ", "5. "]
+    assert unescaped(lines[1]).endswith("[192.168.1.40:554 CAMERA_STREAM_EXPOSED]")
+
+
+def test_a_hostile_hostname_stays_escaped_on_every_line(tmp_path):
+    from nmap_xml import host, port, write_scan
+
+    hostile = "evil\n2. [x](http://y.z) *fake* <b>"
+    path = write_scan(tmp_path, host("10.0.0.5", port(23, "telnet"), hostname=hostile),
+                      host("10.0.0.6", port(21, "ftp"), hostname="ok"))
+    lines = answer_lines(ask(show(path, "English"), "what problems do I have?"))
+    assert len(lines) == 3  # the first line and two problems: the hostname's line break adds none
+    for line in lines:
+        assert line == md(unescaped(line))  # every Markdown character on the line is escaped
+    assert "evil 2. [x](http://y.z) *fake* <b>" in unescaped(" ".join(lines))
+
+
+def test_a_one_paragraph_answer_shows_as_before():
+    from conetuga.analysis import analyse_file
+    from conetuga.explain import answer_question
+
+    app = ask(show(V3, "English"), QUESTION["English"])
+    expected = answer_question(QUESTION["English"], analyse_file(V3), "en").text
+    assert chat_text(app)[1] == md(expected)

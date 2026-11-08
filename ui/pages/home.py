@@ -2,6 +2,8 @@
 then shows every device (Dispozitive, FE-D3, adds filters and order), the Q&A box, the history and the report.
 Everything shown comes from analyse_file, narrate, answer_question and the history (specs/contracts.md); scan text is
 escaped with view.md before display. In Simple mode Tuga 🐢 speaks; in Advanced mode Cone 🐇 adds what nmap saw."""
+import html
+import itertools
 import sys
 import tempfile
 from datetime import date
@@ -20,13 +22,12 @@ from conetuga.insights import record  # noqa: E402
 from ui.cards import show_device  # noqa: E402
 from ui.checkup import show_checklist, show_home_map  # noqa: E402
 from ui.insights_panel import SEEN_KEY  # noqa: E402
-from ui.motion import HEIGHT_PX as MOTION_HEIGHT_PX, page_is_dark, score_motion_html  # noqa: E402
 from ui.report import html_report  # noqa: E402
-from ui.state import current, guide_of, remember_scan, show_guide  # noqa: E402
-from ui.style import HEADLINE_KEY, VERDICT_KEY, block_key  # noqa: E402
-from ui.talking import HEIGHT_PX as TALKING_HEIGHT_PX, TEXT as TALKING_TEXT, talking_html  # noqa: E402
+from ui.state import current, remember_scan  # noqa: E402
+from ui.dashboard import show_cone_dashboard, show_tuga_dashboard  # noqa: E402
 from ui.style import PICKER_KEY  # noqa: E402
-from ui.view import (device_name, devices_by_risk, headline, ip_md, light, md, same_network,  # noqa: E402
+from ui.theme import HISTORY_KEY, HOME_TITLE_KEY, TREND_LINE_KEY  # noqa: E402
+from ui.view import (device_name, devices_by_risk, ip_md, light, md, same_network,  # noqa: E402
                      score_line)
 
 # After "delete my history", the scan on screen is not saved again until the user picks another one.
@@ -39,7 +40,7 @@ EXAMPLE_FOLDERS = [REPO_ROOT / "tests" / "fixtures" / "validation" / "scans", RE
 
 TEXT = {
     "ro": {
-        "title": "ConeTuga: cât de sigură e rețeaua ta?",
+        "title": "ConeTuga: securitate pe înțelesul tău",
         "start": "📂 Începe aici: alege o scanare",
         "start_help": "Un exemplu din listă sau fișierul tău de la nmap (`nmap -oX`): rezultatul apare imediat "
                       "dedesubt.",
@@ -60,6 +61,18 @@ TEXT = {
         "pick_compare": "Alege o scanare",
         "compare_with": "Compară cu scanarea de la",
         "better": "mai bine",
+        "before_card": "Înainte de scanare",
+        "after_card": "După scanare",
+        "risk_green": "Securizat!",
+        "risk_yellow": "Risc mediu",
+        "risk_red": "Risc mare",
+        "active_threats": "{n} probleme active",
+        "resolved_tag": "Rezolvat",
+        "new_tag": "Nou",
+        "trend": "Tendința scorului",
+        "trend_up": "Scorul a crescut cu +{delta} puncte!",
+        "trend_down": "Scorul a scăzut cu {delta} puncte.",
+        "trend_same": "Scorul a rămas la fel.",
         "worse": "mai rău",
         "same": "la fel",
         "alert": "Atenție, ceva nou în rețea",
@@ -78,7 +91,7 @@ TEXT = {
         "ask_invalid": "Scrie o întrebare de cel mult {limit} de caractere.",
     },
     "en": {
-        "title": "ConeTuga: how safe is your network?",
+        "title": "ConeTuga: secure networks, simply explained",
         "start": "📂 Start here: pick a scan",
         "start_help": "An example from the list or your own nmap file (`nmap -oX`): the result appears right below.",
         "pick": "Pick an example scan",
@@ -98,6 +111,18 @@ TEXT = {
         "pick_compare": "Pick a scan",
         "compare_with": "Compare with the scan from",
         "better": "better",
+        "before_card": "Before scan",
+        "after_card": "After scan",
+        "risk_green": "Secure!",
+        "risk_yellow": "Medium risk",
+        "risk_red": "High risk",
+        "active_threats": "{n} active threats",
+        "resolved_tag": "Resolved",
+        "new_tag": "New",
+        "trend": "Score trend",
+        "trend_up": "Score improved +{delta} points!",
+        "trend_down": "Score dropped {delta} points.",
+        "trend_same": "The score stayed the same.",
         "worse": "worse",
         "same": "the same",
         "alert": "Watch out, something new on the network",
@@ -197,13 +222,74 @@ def show_history(result, content: bytes, lang: str):
     return compared
 
 
+BEFORE_AFTER_WIDTHS = (5, 4, 5)  # before : the trend : after, as in the mock-up
+
+
+def risk_words(score: int, lang: str) -> str:
+    """The words in a before/after card: "Securizat!", "Risc mediu", "Risc mare" (with the traffic light's icon)."""
+    icon = score_line(score, lang)[0]
+    return f"{icon} {TEXT[lang]['risk_' + light(score)]}"
+
+
+def threat_html(code: str, title: str, tag: str = "", resolved: bool = False) -> str:
+    """One finding in a before/after card: its code and title, and a tag ("Rezolvat", "Nou") when it has one."""
+    e = html.escape
+    tag_html = f'<span class="ct-tag">{e(tag)}</span>' if tag else ""
+    return (f'<div class="ct-threat{" ct-resolved" if resolved else ""}"><span>{"🛡️" if resolved else "❗"} '
+            f'<strong>{e(code)}</strong><br>{e(title)}</span>{tag_html}</div>')
+
+
+def show_before_after(before, after, change, lang: str, number: int) -> None:
+    """The mock-up's before and after: each score in its own card with its findings, the trend in the middle; the
+    findings fixed since are marked "Rezolvat", the new ones "Nou"."""
+    text = TEXT[lang]
+    hosts_before, hosts_after = {h.ip: h for h in before.hosts}, {h.ip: h for h in after.hosts}
+    resolved = set(change.resolved_findings)
+    seen_before = {(f.ip, f.port, f.proto, f.code) for f in before.findings}
+    new = [f for f in after.findings if (f.ip, f.port, f.proto, f.code) not in seen_before]
+    delta = change.score_after - change.score_before
+    left, middle, right = st.columns(BEFORE_AFTER_WIDTHS, gap="medium")
+    cards = ((left, "before", before, change.score_before), (right, "after", after, change.score_after))
+    for column, side, scan, score in cards:
+        with column, st.container(key=f"{HISTORY_KEY}-{light(score)}-{side}-{number}"):
+            st.markdown(f'<div class="ct-card-head"><span class="ct-card-title">{html.escape(text[side + "_card"])}'
+                        f'</span><span class="ct-tag">{html.escape(scan.file)}</span></div>'
+                        f'<div class="ct-big-score">{score}<small>/100</small></div>', unsafe_allow_html=True)
+            st.markdown(f"**{risk_words(score, lang)}**")
+            if side == "before":
+                items = [threat_html(f.code, explain(f, hosts_before[f.ip], lang).title) for f in before.findings]
+                count = len(before.findings)
+            else:
+                items = [threat_html(f.code, explain(f, hosts_before[f.ip], lang).title, text["resolved_tag"],
+                                     resolved=True) if f in resolved else
+                         threat_html(f.code, explain(f, hosts_before[f.ip], lang).title)
+                         for f in before.findings]
+                items += [threat_html(f.code, explain(f, hosts_after[f.ip], lang).title, text["new_tag"]) for f in new]
+                count = len(after.findings)
+            st.markdown(f"#### {text['active_threats'].format(n=count)}")
+            if items:
+                st.markdown("".join(items), unsafe_allow_html=True)
+    with middle:
+        st.markdown(f"#### {text['trend']}")
+        st.markdown(f"### 🎉 {text['trend_up' if delta > 0 else 'trend_down' if delta < 0 else 'trend_same'].format(delta=abs(delta))}")
+        st.line_chart({text["score"]: [change.score_before, change.score_after]}, height=TREND_CHART_PX)
+
+
+TREND_CHART_PX = 240
+# Each comparison drawn gets its own number, so its containers' keys stay unique when a page shows two of them.
+COMPARISON_NUMBERS = itertools.count()
+
+
 def show_diff(before, after, lang: str) -> None:
     text = TEXT[lang]
     change = diff(before, after)
     delta = change.score_after - change.score_before
     trend = text["better"] if delta > 0 else text["worse"] if delta < 0 else text["same"]
     arrow = "⬆️" if delta > 0 else "⬇️" if delta < 0 else "➡️"
-    st.markdown(f"### {arrow} {text['score']}: {change.score_before} → {change.score_after} ({delta:+d}, {trend})")
+    number = next(COMPARISON_NUMBERS)
+    show_before_after(before, after, change, lang, number)
+    with st.container(key=f"{TREND_LINE_KEY}-{number}"):
+        st.markdown(f"### {arrow} {text['score']}: {change.score_before} → {change.score_after} ({delta:+d}, {trend})")
 
     alerts = [f"{text['new_device']}: {md(device_name(h, lang))} ({ip_md(h.ip)})" for h in change.new_devices]
     alerts += [f"{text['opened_port']}: {p.port}/{md(p.proto)} · {md(device_name(h, lang))} ({ip_md(h.ip)})"
@@ -233,7 +319,8 @@ def render() -> None:
     settings = current()
     lang, advanced = settings.lang, settings.advanced
     text = TEXT[lang]
-    st.title(text["title"])
+    with st.container(key=HOME_TITLE_KEY):  # the logo shows the name; screen readers still read the title
+        st.title(text["title"])
 
     # The page's main feature (Mihnea, 2026-11-08): choosing the scan, in a large box right under the title, styled by
     # ui/style.py through its key. The widgets are the same as before; only their box and size changed.
@@ -266,21 +353,11 @@ def render() -> None:
     record(result, digest_of(content), st.session_state.setdefault(SEEN_KEY, set()))
 
     devices = devices_by_risk(result, lang)
-    # FE-D2: the current guide says the headline: its picture and name beside the sentence, which stays the same in
-    # both modes (ui/CLAUDE.md's "Cel mai periculos: ... Fă asta întâi: ...").
-    # Tap the guide and it reads the headline and the score aloud (ui/talking.py), swaying while it speaks.
-    speaker, said = guide_of(advanced), headline(devices, lang)
-    icon, colour, sentence = score_line(result.score, lang)
-    with st.container(key=block_key(HEADLINE_KEY, speaker)):
-        show_guide(speaker, lang, f"## {md(said)}\n\n*{TALKING_TEXT[lang]}*", HEADLINE_PICTURE_PX,
-                   name_below=True, widths=(1, 9))
-        spoken = f"{said} {text['score']}: {result.score} / 100, {colour}. {sentence}"
-        st.components.v1.html(talking_html(spoken, lang, speaker), height=TALKING_HEIGHT_PX)
-    with st.container(key=block_key(VERDICT_KEY, light(result.score))):  # a banner in the score's colour
-        st.markdown(f"### {icon} {text['score']}: {result.score}/100 · {colour}. {sentence}")
-    # The animated ring and severity bars (ui/motion.py) under the score line, which stays the readable text.
-    st.components.v1.html(score_motion_html(result, lang, dark=page_is_dark(settings)),
-                          height=MOTION_HEIGHT_PX)
+    # The dashboard (ui/dashboard.py): Tuga's or Cone's, with the headline, the score and the guide.
+    if advanced:
+        show_cone_dashboard(result, devices, lang)
+    else:
+        show_tuga_dashboard(result, devices, lang)
 
     # Simple mode is a checkup (ui/checkup.py): the list of things to fix, then the home as device tiles. Advanced mode
     # lists every device with Cone's details.

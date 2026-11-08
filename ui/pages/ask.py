@@ -19,6 +19,7 @@ from ui.view import md
 GUIDE_PICTURE_PX = 64  # the guide beside the page's one-line introduction, as on the Wiki page
 MESSAGES_KEY = "ask_messages"  # the conversation: [{"role", "text", "source"}], oldest first
 SCAN_KEY = "ask_scan"  # which scan the conversation is about: a new scan starts a new conversation
+MARKDOWN_LINE_BREAK = "  \n"  # two spaces before a newline: a line break inside one Markdown paragraph
 
 TEXT = {
     "ro": {
@@ -117,6 +118,13 @@ def conversation_about(result) -> list[dict]:
     return st.session_state[MESSAGES_KEY]
 
 
+def answer_markdown(text: str) -> str:
+    """An answer's lines, each escaped on its own, joined by Markdown's line break ("  \\n"). Only the overview
+    ("ce probleme am?") has several; answer_question keeps every line break of scan text out of the answer, so a
+    hostname can't add a line, and a one-paragraph answer shows exactly as md(text)."""
+    return MARKDOWN_LINE_BREAK.join(md(line) for line in text.split("\n"))
+
+
 def show_message(message: dict, lang: str, advanced: bool) -> None:
     """One chat bubble: the user's question or the guide's answer (with the guide's picture), always through md()."""
     if message["role"] == USER:
@@ -125,6 +133,6 @@ def show_message(message: dict, lang: str, advanced: bool) -> None:
         return
     path, _alt = guide_picture(guide_of(advanced), lang)
     with st.chat_message(ASSISTANT, avatar=str(path)):
-        st.markdown(md(message["text"]))
+        st.markdown(answer_markdown(message["text"]))
         source = "source_llm" if message.get("source") == SOURCE_LLM else "source_retrieval"
         st.markdown(f"*{TEXT[lang][source]}*")

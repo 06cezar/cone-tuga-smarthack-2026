@@ -41,9 +41,10 @@ def test_the_style_animates_the_guide_but_not_for_reduced_motion():
     assert "animation: none !important" in reduced
 
 
-def test_acasa_puts_the_headline_and_its_voice_in_one_block():
+def test_tugas_card_says_it_can_read_aloud_and_the_headline_stays_plain():
     app = AppTest.from_file(APP, default_timeout=TIMEOUT_SECONDS).run()
     app.selectbox[0].set_value("V2_smart_home.xml").run()
     assert not app.exception
     heading = next(m.value for m in app.markdown if m.value.startswith("## "))
-    assert "🔊 Apasă pe poză și îți citesc" in heading
+    assert "🔊 Apasă pe poză și îți citesc" not in heading  # the headline is the same in both modes
+    assert any("🔊 Apasă pe poză și îți citesc" in m.value and "Salutare!" in m.value for m in app.markdown)
