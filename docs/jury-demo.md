@@ -29,10 +29,12 @@ tag. Tag-ul `final` trebuie să marcheze exact codul care a produs rezultatele, 
    ```bash
    git switch main && git pull
    env | grep CONETUGA_CHAIN || echo "fara blockchain"   # trebuie să scrie: fara blockchain
+   grep -E '^ *(export )?CONETUGA_CHAIN_' .env           # nici în .env (citit de CLI): nu trebuie să scrie nimic
    .venv/bin/python -m conetuga analyse ~/TestSet --out submission/
    ```
    Dacă `env` arată vreo variabilă `CONETUGA_CHAIN_*`, rulează întâi
-   `unset CONETUGA_CHAIN_RPC_URL CONETUGA_CHAIN_CONTRACT CONETUGA_CHAIN_PRIVATE_KEY`: altfel `analyse` încearcă să
+   `unset CONETUGA_CHAIN_RPC_URL CONETUGA_CHAIN_CONTRACT CONETUGA_CHAIN_PRIVATE_KEY`, sau comentează-le în `.env`
+   (pune `#` în fața lor) dacă al doilea `grep` le arată acolo: altfel `analyse` încearcă să
    trimită amprentele jurnalului pe un blockchain (#62). CSV-urile nu se schimbă, dar Test Set-ul nu are nevoie de
    rețea. Rândul `Jurnal: N constatări salvate` de la final e normal: e jurnalul local din `.history/`.
 3. Verifică repede: `wc -l submission/findings.csv submission/scores.csv` (un rând de antet plus câte un rând pe
@@ -69,6 +71,7 @@ tag. Tag-ul `final` trebuie să marcheze exact codul care a produs rezultatele, 
    git switch main && git pull
    .venv/bin/python -m pytest -q
    env | grep CONETUGA_CHAIN || echo "fara blockchain"   # trebuie să scrie: fara blockchain
+   grep -E '^ *(export )?CONETUGA_CHAIN_' .env           # nici în .env (citit de CLI): nu trebuie să scrie nimic
    ```
 2. **E:** hotspot-ul `RSH-ConeTuga` pornit, cu ecranul Personal Hotspot deschis pe telefon (iPhone-ul nu se arată
    dispozitivelor noi altfel). **Mihnea:** conectează-te la `RSH-ConeTuga` (meniul Wi-Fi sau
