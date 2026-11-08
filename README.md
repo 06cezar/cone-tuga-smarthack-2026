@@ -45,10 +45,12 @@ Exit codes: 0 done, 2 couldn't run, 3 refused by the guardrail, 4 done but nmap 
 python -m streamlit run ui/app.py
 ```
 
-The first screen says which device is the most dangerous and what to do first, then shows the traffic-light score,
-every device with its findings, explanations and fix steps (RO/EN), the history with before/after and change alerts,
-"Șterge istoricul meu", and a one-page report to download. Pick an example (the Validation Set or our lab scans) or
-upload your own nmap XML.
+The first screen (Acasă) says which device is the most dangerous and what to do first, then shows the traffic-light
+score, every device with its findings, explanations and fix steps (RO/EN), and a one-page report to download. Pick an
+example (the Validation Set or our lab scans) or upload your own nmap XML. **Istoric** shows what changed since your
+last scan of the same network, the score over time, any two scans side by side and "Șterge istoricul meu"; **Despre &
+Wiki** shows the guardrail and all 15 problems ConeTuga can find. The switch in the top bar picks Tuga 🐢 (plain words)
+or Cone 🐇 (the technical details).
 
 ## Safety
 

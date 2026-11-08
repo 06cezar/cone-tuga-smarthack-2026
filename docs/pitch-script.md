@@ -59,12 +59,12 @@ voice instead of reading.
 > And here is your home: every device the scan found, what it is, whether it needs care, and how to recognise it, with
 > its MAC address masked. [Masked MACs]
 
-**[Turn on "Avansat (Cone 🐇)" in the sidebar.]**
+**[Turn on the "🐇 Cone (Avansat)" switch in the top bar.]**
 
 > For the person who wants the details, there is Cone, the hare. Same findings, same score, same first step; Cone adds
 > what nmap actually saw and the catalog rule behind it. [Two guides, one answer]
 
-**[Pick `scan_01.xml`, then `scan_03.xml`; show the history.]**
+**[On Acasă, pick `scan_01.xml`, then `scan_03.xml`; open the Istoric tab.]**
 
 > And this is our own lab, on our own hotspot. Our first scan scored 0. We turned telnet and FTP off: 50. We turned
 > Redis off: 70. The history shows each fix as resolved, and nothing new. [Lab 0 → 70]
