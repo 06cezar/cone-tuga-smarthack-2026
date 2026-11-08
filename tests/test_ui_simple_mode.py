@@ -1,6 +1,6 @@
-"""Simple mode (Tuga) for a 12-year-old or a grandparent (NFR-09): Acasă lists first the devices that need care and
-keeps the ones with no problem in one closed section; a card counts problems in words and gives at most SIMPLE_STEPS
-steps. Advanced mode (Cone) still lists every device with its points."""
+"""Simple mode (Tuga) for a 12-year-old or a grandparent (NFR-09): a card counts problems in words and gives at most
+SIMPLE_STEPS steps. Advanced mode (Cone) still lists every device with its points. Acasă's checkup is in
+tests/test_ui_checkup.py."""
 from pathlib import Path
 
 import pytest
@@ -32,18 +32,8 @@ def test_problems_are_counted_in_words():
     assert [problem_count(n, "en") for n in (0, 1, 3)] == ["no problems", "1 problem", "3 problems"]
 
 
-def test_simple_acasa_keeps_the_devices_with_no_problem_in_one_closed_section():
-    labels = [section.label for section in run().expander]
-    fine = [label for label in labels if label.startswith("✅ Aparatele fără nicio problemă")]
-    assert len(fine) == 1
-    first_fine = labels.index(fine[0])
-    assert all(not label.startswith("✅ Fără probleme") for label in labels[:first_fine])
-    assert "puncte" not in "\n".join(labels)
-
-
 def test_advanced_acasa_lists_every_device_with_its_points():
     labels = [section.label for section in run(advanced=True).expander]
-    assert not any("Aparatele fără nicio problemă" in label for label in labels)
     assert all("puncte" in label for label in labels)
 
 

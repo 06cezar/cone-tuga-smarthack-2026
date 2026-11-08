@@ -18,15 +18,16 @@ from conetuga.explain.qa import MAX_QUESTION_CHARS  # noqa: E402
 from conetuga.history import delete_history, diff, digest_of, load_history, save_scan  # noqa: E402
 from conetuga.insights import record  # noqa: E402
 from ui.cards import show_device  # noqa: E402
+from ui.checkup import show_checklist, show_home_map  # noqa: E402
 from ui.insights_panel import SEEN_KEY  # noqa: E402
 from ui.motion import HEIGHT_PX as MOTION_HEIGHT_PX, page_is_dark, score_motion_html  # noqa: E402
 from ui.report import html_report  # noqa: E402
 from ui.state import current, guide_of, remember_scan, show_guide  # noqa: E402
-from ui.style import HEADLINE_KEY, block_key  # noqa: E402
+from ui.style import HEADLINE_KEY, VERDICT_KEY, block_key  # noqa: E402
 from ui.talking import HEIGHT_PX as TALKING_HEIGHT_PX, TEXT as TALKING_TEXT, talking_html  # noqa: E402
 from ui.style import PICKER_KEY  # noqa: E402
-from ui.view import (STATUS_NONE, device_name, device_status, devices_by_risk, headline, md,  # noqa: E402
-                     same_network, score_line)
+from ui.view import (device_name, devices_by_risk, headline, light, md, same_network,  # noqa: E402
+                     score_line)
 
 # After "delete my history", the scan on screen is not saved again until the user picks another one.
 SKIP_SAVE_KEY = "history_skip_digest"
@@ -47,9 +48,6 @@ TEXT = {
         "unreadable": "Fișierul nu poate fi citit",
         "score": "Scor standard",
         "devices": "Dispozitivele, de la cel mai periculos",
-        "devices_simple": "Aparatele care au nevoie de grijă, de la cel mai periculos",
-        "all_fine": "✅ Aparatele fără nicio problemă ({n})",
-        "nothing_wrong": "✅ Nu am găsit nicio problemă. Bravo!",
         "filters_elsewhere": "Pentru filtre (după risc sau tip) și altă ordine: pagina **Dispozitive** din meniul din "
                              "stânga.",
         "no_scan": "Alege sau încarcă o scanare ca să începi.",
@@ -88,9 +86,6 @@ TEXT = {
         "unreadable": "The file can't be read",
         "score": "Standard score",
         "devices": "Your devices, most dangerous first",
-        "devices_simple": "The devices that need care, most dangerous first",
-        "all_fine": "✅ The devices with no problems ({n})",
-        "nothing_wrong": "✅ We found no problems. Well done!",
         "filters_elsewhere": "For filters (by risk or type) and another order: the **Devices** page in the menu on the "
                              "left.",
         "no_scan": "Pick or upload a scan to start.",
@@ -280,32 +275,32 @@ def render() -> None:
                    name_below=True, widths=(1, 9))
         spoken = f"{said} {text['score']}: {result.score} / 100, {colour}. {sentence}"
         st.components.v1.html(talking_html(spoken, lang, speaker), height=TALKING_HEIGHT_PX)
-    st.markdown(f"### {icon} {text['score']}: {result.score}/100 · {colour}. {sentence}")
+    with st.container(key=block_key(VERDICT_KEY, light(result.score))):  # a banner in the score's colour
+        st.markdown(f"### {icon} {text['score']}: {result.score}/100 · {colour}. {sentence}")
     # The animated ring and severity bars (ui/motion.py) under the score line, which stays the readable text.
     st.components.v1.html(score_motion_html(result, lang, dark=page_is_dark(settings)),
                           height=MOTION_HEIGHT_PX)
 
-    # Simple mode lists first only the devices that need care, so a child or a grandparent reads less; the devices with
-    # no problem wait in one closed section at the end, each still with its details (FR-03). Advanced mode lists every
-    # device in one list.
-    if advanced:
-        need_care, fine = devices, []
-    else:
-        need_care = [d for d in devices if device_status(d) != STATUS_NONE]
-        fine = [d for d in devices if device_status(d) == STATUS_NONE]
-    st.subheader(text["devices"] if advanced else text["devices_simple"])
-    if devices:
+    # Simple mode is a checkup (ui/checkup.py): the list of things to fix, then the home as device tiles. Advanced mode
+    # lists every device with Cone's details.
+    if not advanced:
+        show_checklist(result, devices, lang)
+        show_home_map(devices, lang)
         st.markdown(text["filters_elsewhere"])
-    if not advanced and devices and not need_care:
-        st.success(text["nothing_wrong"])
-    for i, device in enumerate(need_care):
-        show_device(device, lang, expanded=i == 0, advanced=advanced, result=result)
-    if fine:
-        with st.expander(text["all_fine"].format(n=len(fine))):
-            for device in fine:
-                show_device(device, lang, expanded=False, advanced=advanced, result=result)
+    else:
+        show_devices(result, devices, lang)
 
     show_questions(result, lang)
     compared = show_history(result, content, lang)
     st.download_button(text["report"], html_report(result, lang, before=compared, date=date.today().isoformat()),
                        file_name=f"conetuga-{Path(result.file).stem}.html", mime="text/html")
+
+
+def show_devices(result, devices, lang: str) -> None:
+    """Advanced mode: every device as a card with Cone's details, the most dangerous first."""
+    text = TEXT[lang]
+    st.subheader(text["devices"])
+    if devices:
+        st.markdown(text["filters_elsewhere"])
+    for i, device in enumerate(devices):
+        show_device(device, lang, expanded=i == 0, advanced=True, result=result)

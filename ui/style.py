@@ -47,6 +47,8 @@ TARGET_HEIGHT = "48px"  # buttons and card titles, above WCAG 2.5.5's 44 px
 LINE_HEIGHT = 1.6  # more room between lines for a slow reader (WCAG 1.4.12 tests with 1.5)
 STEP_GAP = "0.4rem"  # between a finding's numbered steps
 CARD_KEY, SAY_KEY, GAIN_KEY = "card", "say", "gain"
+VERDICT_KEY = "verdict"  # block_key(VERDICT_KEY, light): the score line as a large tinted banner (D-fe-checkup)
+LIGHT_COLOURS = {"green": "#1A7F37", "yellow": "#BF8700", "red": "#CF222E"}
 HEADLINE_KEY = "headline"  # block_key(HEADLINE_KEY, speaker): the guide's picture and the headline beside it
 TALKING_CLASS = "conetuga-talking"  # on the headline block while the guide speaks (ui/talking.py)
 NOTE_ATTRIBUTE = "data-conetuga-note"  # on the headline block: how to add a voice, when there is none
@@ -103,6 +105,10 @@ FRIENDLY_CSS = f"""{CARDS_CSS}
 @keyframes guide-hop-in {{ 0% {{ transform: translateY(-24px); opacity: 0; }} 60% {{ transform: translateY(4px);
   opacity: 1; }} 100% {{ transform: none; }} }}
 @keyframes guide-sway {{ from {{ transform: translateY(0) rotate(-4deg); }} to {{ transform: translateY(-4px) rotate(4deg); }} }}
+.stApp [class*="st-key-{VERDICT_KEY}-"] {{ border-radius: {ROUNDING}; padding: 0.25rem 1.25rem; }}
+{chr(10).join(f'.stApp .st-key-{VERDICT_KEY}-{light} {{{{ background: {tint(colour)}; border: 2px solid {colour}; }}}}'
+              for light, colour in LIGHT_COLOURS.items())}
+.stApp [data-testid="stCheckbox"] label {{ min-height: {TARGET_HEIGHT}; align-items: center; font-weight: 600; }}
 @media (prefers-reduced-motion: reduce) {{ .stApp [class*="st-key-{HEADLINE_KEY}-"] img {{ animation: none !important;
   transition: none; }} }}"""
 
