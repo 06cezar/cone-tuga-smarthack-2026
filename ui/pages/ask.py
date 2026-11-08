@@ -3,12 +3,13 @@ from that scan only, with the findings each answer relies on. The conversation s
 cleared when another scan is picked; nothing is written anywhere.
 
 Every text is shown through view.md: the answers carry scan text (hostnames, products), and the question is the
-user's own untrusted text (NFR-03). An answer rephrased by the optional local model (off by default) says so."""
+user's own untrusted text (NFR-03). An answer rephrased by the optional local model (off by default) says so, and a
+line under the guide says whether that model is on, so anyone watching knows where the answers come from."""
 import streamlit as st
 
 from conetuga.explain import reply
 from conetuga.explain.assistant import ASSISTANT, MAX_MESSAGES, USER
-from conetuga.explain.llm import SOURCE_LLM
+from conetuga.explain.llm import SOURCE_LLM, model_name
 from conetuga.explain.qa import MAX_QUESTION_CHARS
 from ui.assets import guide_picture
 from ui.cards import mode_of
@@ -34,6 +35,9 @@ TEXT = {
         "source_llm": "✍️ Reformulat de un model local (pe acest calculator), verificat cu scanul: fiecare adresă, "
                       "număr și problemă citată vine din scanare.",
         "clear": "Șterge conversația",
+        "model_off": "🤖 Model local: oprit. Răspunsurile vin doar din scanare și din textele noastre.",
+        "model_on": "🤖 Model local: activat ({model}). Reformulează unele răspunsuri; fiecare e verificat cu scanarea, "
+                    "iar la orice îndoială primești răspunsul din scanare.",
     },
     "en": {
         "title": "Ask",
@@ -48,6 +52,9 @@ TEXT = {
         "source_llm": "✍️ Rephrased by a local model (on this computer), checked against the scan: every address, "
                       "number and cited finding comes from the scan.",
         "clear": "Clear the conversation",
+        "model_off": "🤖 Local model: off. Answers come only from the scan and our own texts.",
+        "model_on": "🤖 Local model: on ({model}). It rephrases some answers; each one is checked against the scan, and "
+                    "on any doubt you get the scan's answer.",
     },
 }
 
@@ -59,6 +66,7 @@ def render() -> None:
     st.title(text["title"])
     show_guide(guide_of(advanced), lang, text["intro_cone" if advanced else "intro_tuga"], GUIDE_PICTURE_PX,
                widths=(1, 9))
+    st.markdown(model_status(lang))
 
     result = current_scan()
     if result is None:
@@ -89,6 +97,15 @@ def render() -> None:
     if messages and st.button(text["clear"]):
         messages.clear()
         st.rerun()
+
+
+def model_status(lang: str) -> str:
+    """Whether the optional local model is on, read from the setting only: showing the page never contacts the model
+    (no network on load). The model's name is outside text, so it goes through md() (NFR-03)."""
+    model = model_name()
+    if not model:
+        return TEXT[lang]["model_off"]
+    return TEXT[lang]["model_on"].format(model=md(model))
 
 
 def conversation_about(result) -> list[dict]:

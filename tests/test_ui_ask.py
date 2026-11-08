@@ -114,3 +114,45 @@ def test_an_answer_rephrased_by_the_local_model_says_so(monkeypatch):
 def test_without_the_model_the_answer_says_it_comes_from_the_scan():
     answer = chat_text(ask(show(V3, "English"), QUESTION["English"]))[1:]
     assert "comes only from this scan" in answer[1]
+
+
+def page_text(app: AppTest) -> list[str]:
+    return [element.value for element in app.markdown]
+
+
+@pytest.mark.parametrize("language, words", [("Română", "🤖 Model local: oprit."), ("English", "🤖 Local model: off.")])
+def test_without_the_model_the_page_says_it_is_off(language, words):
+    assert any(text.startswith(words) for text in page_text(show(V3, language)))
+
+
+@pytest.mark.parametrize("language, words", [("Română", "Model local: activat (qwen2.5:7b)"),
+                                             ("English", "Local model: on (qwen2.5:7b)")])
+def test_with_the_model_set_the_page_says_it_is_on_and_names_it(monkeypatch, language, words):
+    from conetuga.explain import llm
+
+    monkeypatch.setenv(llm.MODEL_VARIABLE, "qwen2.5:7b")
+    status = [text for text in page_text(show(V3, language)) if text.startswith("🤖")]
+    assert len(status) == 1 and words in unescaped(status[0])
+
+
+@pytest.mark.parametrize("language", ["Română", "English"])
+def test_a_hostile_model_name_is_shown_escaped(monkeypatch, language):
+    from conetuga.explain import llm
+
+    monkeypatch.setenv(llm.MODEL_VARIABLE, "<script>x</script>")
+    status = [text for text in page_text(show(V3, language)) if text.startswith("🤖")][0]
+    assert "<script>" not in status
+    assert "\\<script\\>x\\</script\\>" in status
+
+
+@pytest.mark.parametrize("language", ["Română", "English"])
+def test_showing_the_page_never_contacts_the_model(monkeypatch, language):
+    from conetuga.explain import llm
+
+    def no_network(*args, **kwargs):
+        raise AssertionError("the page contacted the local model on load")
+
+    monkeypatch.setenv(llm.MODEL_VARIABLE, "qwen2.5:7b")
+    monkeypatch.setattr(llm, "chat", no_network)
+    app = show(V3, language)  # show() asserts the page raised nothing
+    assert any(text.startswith("🤖") for text in page_text(app))
