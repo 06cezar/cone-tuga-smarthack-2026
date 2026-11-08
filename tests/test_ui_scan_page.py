@@ -1,5 +1,7 @@
-"""The Scanare page (FE-C1): the network (FR-01), the guardrail's verdict (FR-02) and the command to run, and nothing
-run from the browser (NFR-04). The network is a fake: no test reads this computer's network or runs nmap."""
+"""The Scanare page (FE-C1): the network (FR-01), the guardrail's verdict (FR-02), the "Scanează acum" button and the
+command to run. The button scans only through scan_from_app, behind the guardrail and the tick (NFR-04). The network
+and the scan are fakes: no test reads this computer's network or runs nmap."""
+import shutil
 from pathlib import Path
 
 import pytest
@@ -8,21 +10,27 @@ from streamlit.testing.v1 import AppTest
 import conetuga.guard.scan as live
 import ui.pages.scan as page
 from conetuga.guard import Network, NetworkNotFound
+from conetuga.guard.scan import LiveScan, PasswordWindowRefused, ScanRefused
+from conetuga.history import load_history
 
 TIMEOUT_SECONDS = 30  # as in tests/test_ui_app.py: a cold Streamlit import on a CI runner takes seconds
 HOTSPOT = Network("wlp0s20f3", "172.20.10.13", "172.20.10.0/28", "172.20.10.1")
 VENUE = Network("wlp0s20f3", "10.240.7.21", "10.240.0.0/16", "10.240.0.1")
 PAGE_FILE = Path(__file__).resolve().parents[1] / "ui" / "pages" / "scan.py"
+V1 = Path(__file__).resolve().parent / "fixtures" / "validation" / "scans" / "V1_home_basic.xml"
 
 
 @pytest.fixture(autouse=True)
 def nothing_runs(monkeypatch):
-    """The page must never start a scan: if it reached nmap or live_scan, the test fails."""
+    """No test starts a scan: every way to nmap fails the test, unless a test replaces scan_from_app with a fake."""
     def forbidden(*args, **kwargs):
         raise AssertionError("the Scanare page tried to scan")
 
     monkeypatch.setattr(live, "live_scan", forbidden)
     monkeypatch.setattr(live, "_run_nmap", forbidden)
+    monkeypatch.setattr(live, "_run_nmap_for_xml", forbidden)
+    monkeypatch.setattr(live, "_run_as_admin", forbidden)
+    monkeypatch.setattr(page, "scan_from_app", forbidden)
     monkeypatch.setattr(page, "_on_windows", lambda: False)
 
 
@@ -101,11 +109,14 @@ def test_a_hostile_wifi_name_is_escaped(monkeypatch):
     assert "[click](http://x.y)" not in shown and "<b>" not in shown and "**WiFi**" not in shown
 
 
-def test_the_page_never_imports_a_way_to_run_a_scan():
-    """NFR-04: the UI stays unprivileged; a live scan only runs from the terminal."""
+def test_the_page_scans_only_through_scan_from_app():
+    """NFR-04: the UI stays unprivileged. Its one way to a scan is scan_from_app, which asks the guardrail first and
+    gives the rights to nmap alone; the page never starts a program or asks for rights itself."""
     source = PAGE_FILE.read_text(encoding="utf-8")
-    for forbidden in ("live_scan", "subprocess", "_run_nmap", "os.system", "Popen"):
+    for forbidden in ("live_scan", "subprocess", "_run_nmap", "_run_as_admin", "os.system", "Popen", "pkexec",
+                      "ShellExecute", "sudo", "password_input", 'type="password"'):
         assert forbidden not in source, forbidden
+    assert source.count("scan_from_app(") == 1
 
 
 def test_the_command_is_plain_text_so_its_contrast_passes_wcag_aa(monkeypatch):
@@ -120,3 +131,113 @@ def test_romanian_puts_de_after_numbers_of_twenty_or_more(monkeypatch):
     text = text_of(show(advanced=True))
     assert "cele mai folosite 1.000 de porturi TCP" in text and "cel mult 100 de pachete pe secundă" in text
     assert [page._de(count) for count in (5, 19, 20, 100, 101, 1000)] == ["", "", "de ", "de ", "", "de "]
+
+
+# --- the "Scanează acum" button (scan_from_app) ------------------------------------------------------------------
+
+def as_read(value: str) -> str:
+    """The text as a person reads it: md() escapes punctuation with backslashes the screen doesn't show."""
+    return value.replace("\\", "")
+
+
+def button(app: AppTest):
+    return next(b for b in app.button if "Scan" in b.label)
+
+
+def fake_scan(monkeypatch, tmp_path, timed_out=()) -> list[bool]:
+    """scan_from_app as it answers after a good scan: a copy of V1 where nmap's XML would land."""
+    calls = []
+
+    def scan_from_app(confirmed):
+        calls.append(confirmed)
+        xml = tmp_path / "scan_20261108-091500.xml"
+        shutil.copyfile(V1, xml)
+        return LiveScan(network=HOTSPOT, ssid="RSH-ConeTuga", scanned="172.20.10.0/28", xml=xml, minutes=5,
+                        timed_out=tuple(timed_out))
+
+    monkeypatch.setattr(page, "scan_from_app", scan_from_app)
+    return calls
+
+
+def test_on_our_hotspot_the_button_waits_for_the_tick(monkeypatch):
+    on(monkeypatch, HOTSPOT, "RSH-ConeTuga")
+    app = show()
+    assert button(app).disabled and not app.checkbox[0].disabled
+    assert "Confirm că vreau să scanez rețeaua asta" == app.checkbox[0].label
+    app.checkbox[0].check().run()
+    assert not button(app).disabled
+
+
+def test_on_the_venue_wifi_the_tick_and_the_button_stay_off(monkeypatch):
+    on(monkeypatch, VENUE, "UnivBuc Free")
+    app = show(language="English")
+    assert app.checkbox[0].disabled and button(app).disabled
+
+
+def test_with_no_network_there_is_no_button(monkeypatch):
+    def no_network():
+        raise NetworkNotFound("Laptopul nu este conectat la nicio rețea.\nThe laptop is not connected to any network.")
+
+    monkeypatch.setattr(page, "detect_network", no_network)
+    app = show()
+    assert not [b for b in app.button if "Scan" in b.label]
+
+
+def test_a_scan_from_the_button_lands_in_the_history_and_points_to_home(monkeypatch, tmp_path):
+    on(monkeypatch, HOTSPOT, "RSH-ConeTuga")
+    calls = fake_scan(monkeypatch, tmp_path)
+    app = show()
+    app.checkbox[0].check().run()
+    button(app).click().run()
+    assert not app.exception and calls == [True]
+    assert any("scor 90, 3 dispozitive, 1 problemă" in s.value for s in app.success), [s.value for s in app.success]
+    assert "Acasă" in text_of(app)
+    assert [record.result.score for record in load_history()] == [90]
+
+
+def test_a_device_nmap_gave_up_on_is_named(monkeypatch, tmp_path):
+    on(monkeypatch, HOTSPOT, "RSH-ConeTuga")
+    fake_scan(monkeypatch, tmp_path, timed_out=["172.20.10.2"])
+    app = show(language="English")
+    app.checkbox[0].check().run()
+    button(app).click().run()
+    warnings = [as_read(w.value) for w in app.warning]
+    assert any("172.20.10.2 didn't finish within 5 minutes" in w and "--minutes 10" in w for w in warnings), warnings
+
+
+def test_a_refused_password_window_says_so_shows_the_command_and_saves_nothing(monkeypatch):
+    on(monkeypatch, HOTSPOT, "RSH-ConeTuga")
+
+    def refused(confirmed):
+        raise PasswordWindowRefused("Fereastra de parolă a fost închisă.\nThe password window was closed.")
+
+    monkeypatch.setattr(page, "scan_from_app", refused)
+    app = show(language="English")
+    app.checkbox[0].check().run()
+    button(app).click().run()
+    warnings = [as_read(w.value) for w in app.warning]
+    assert any("The password window was closed." in w and "terminal" in w for w in warnings), warnings
+    assert app.code[0].value.endswith("scan --confirm") and not app.success[1:]
+    assert load_history() == []
+
+
+def test_a_guardrail_refusal_from_the_button_is_shown_escaped(monkeypatch):
+    """The laptop left the hotspot after the page loaded: scan_from_app asks the guardrail again and says no."""
+    on(monkeypatch, HOTSPOT, "RSH-ConeTuga")
+
+    def refused(confirmed):
+        raise ScanRefused("Nu ești pe hotspot.\nNot on our hotspot: [Free](http://x.y)")
+
+    monkeypatch.setattr(page, "scan_from_app", refused)
+    app = show(language="English")
+    app.checkbox[0].check().run()
+    button(app).click().run()
+    shown = "\n".join(e.value for e in app.error)
+    assert "Not on our hotspot" in shown and "[Free](http://x.y)" not in shown and "Free" in as_read(shown)
+    assert load_history() == []
+
+
+def test_on_windows_the_page_names_the_uac_window(monkeypatch):
+    on(monkeypatch, HOTSPOT, "RSH-ConeTuga")
+    monkeypatch.setattr(page, "_on_windows", lambda: True)
+    assert "UAC" in text_of(show(language="English"))
