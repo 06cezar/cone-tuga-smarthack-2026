@@ -34,6 +34,16 @@
 - Calls between streams are fixed in `specs/contracts.md`, each with an example and a test. CI runs every test on Linux
   and Windows plus `gitleaks`; the Validation Set gives 24 of 24 rows, no extra rows, 8 of 8 scores.
 
+## Security (each line has a test; the full list is in `PITCH.md`, "Security")
+- **Scope:** `check_scope` before nmap starts (public, carrier, mapped, multicast, other Wi-Fi, outside the subnet,
+  no `--confirm` or tick: refused); a fixed nmap argument list, no shell; only nmap gets administrator rights.
+- **Hostile input:** `defusedxml` with a 20 MB limit; values nmap never writes (a protocol, an IPv6 zone) make the
+  file an error; scan text is escaped on the page (`md()`), in the report (`escape()`) and in the voice (JSON).
+- **Privacy and secrets:** the UI listens only on 127.0.0.1 and sends no usage statistics; MACs masked; history local,
+  deleted with one click; keys only in `.env`, `gitleaks` on every commit in CI.
+- **AI:** nothing decides a finding; the optional local model (off by default, 127.0.0.1 only) gets only the cited
+  findings, and every answer is checked against them.
+
 ## Assumptions (one named constant or function each; the mentors have the list)
 Outdated products match by name inside nmap's product, versions by leading numbers ("7.2p2" is 7.2), uncertain ones
 ("3.X - 4.X") only if every reading is outdated; OUTDATED_SERVICE goes on the port of the service's own finding (old
