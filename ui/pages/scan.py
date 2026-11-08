@@ -16,6 +16,7 @@ import streamlit as st
 from conetuga import ledger
 from conetuga.analysis import analyse_file
 from conetuga.guard import HOTSPOT_SSID, NetworkNotFound, check_scope, detect_network, wifi_ssid
+from conetuga.guard.env_file import settings_with_env_file
 from conetuga.guard.scan import (DEFAULT_MINUTES, EXTRA_TCP_PORTS, MAX_PACKETS_PER_SECOND, MIN_MINUTES, SAFE_SCRIPT,
                                  TOP_TCP_PORTS, UDP_PORTS, PasswordWindowRefused, ScanError, ScanRefused,
                                  scan_from_app)
@@ -54,6 +55,12 @@ TEXT = {
         "go_home": "Deschide **Acasă** din meniu: noua scanare apare acolo, comparată cu cea de dinainte.",
         "not_saved": "Scanarea nu a putut fi salvată în istoric ({reason}); rezultatul de mai sus rămâne valabil.",
         "not_logged": "Jurnalul de constatări nu a putut fi scris ({reason}).",
+        "anchoring": "Trimit amprentele jurnalului pe blockchain...",
+        "anchored": "🔗 Blockchain: am trimis amprentele lotului/loturilor {batches} (câte 10 constatări); ultima "
+                    "tranzacție: {transaction}. Le verifici cu `ledger verify`.",
+        "nothing_to_anchor": "🔗 Blockchain: niciun lot nou de 10 constatări de trimis acum; constatările noi așteaptă "
+                             "în jurnal până se strâng 10.",
+        "not_anchored": "Amprentele nu au ajuns pe blockchain; constatările rămân în jurnalul de pe acest calculator.",
         "timed_out": "⚠️ {device} nu a terminat în {minutes} minute, deci rezultatele lui lipsesc: „nicio problemă” "
                      "nu e adevărat pentru el. Rulează din terminal cu --minutes {retry}.",
         "command": "Comanda de rulat",
@@ -101,6 +108,12 @@ TEXT = {
         "go_home": "Open **Home** from the menu: the new scan shows there, compared with the one before.",
         "not_saved": "The scan couldn't be saved to the history ({reason}); the result above still stands.",
         "not_logged": "The findings log couldn't be written ({reason}).",
+        "anchoring": "Sending the findings log's fingerprints to the blockchain...",
+        "anchored": "🔗 Blockchain: sent the fingerprints of batch(es) {batches} (10 findings each); last transaction: "
+                    "{transaction}. Check them with `ledger verify`.",
+        "nothing_to_anchor": "🔗 Blockchain: no new batch of 10 findings to send yet; new findings wait in the log "
+                             "until there are 10.",
+        "not_anchored": "The fingerprints didn't reach the blockchain; the findings stay in this computer's log.",
         "timed_out": "⚠️ {device} didn't finish within {minutes} minutes, so its results are missing: \"no findings\" "
                      "isn't true for it. Run it from a terminal with --minutes {retry}.",
         "command": "The command to run",
@@ -212,10 +225,33 @@ def _scan_now(text: dict, confirmed: bool, lang: str) -> None:
         ledger.record_findings([result], LEDGER_COMMAND)
     except (OSError, sqlite3.Error) as exc:
         st.warning(text["not_logged"].format(reason=md(str(exc))))
+    else:
+        _anchor(text, lang)
     for device in scan.timed_out:
         st.warning(text["timed_out"].format(device=md(device), minutes=scan.minutes,
                                             retry=scan.minutes * RETRY_FACTOR))
     st.markdown(text["go_home"])
+
+
+def _anchor(text: dict, lang: str) -> None:
+    """When the chain is set up (exported, or in .env like the CLI reads it), sends the findings log's full batches
+    the chain doesn't hold yet, as the CLI's `scan` does. With no chain set up the log stays on this computer and the
+    page says nothing; a chain that refuses or can't be reached is only a warning: the scan above still stands."""
+    settings = ledger.settings_from_env(settings_with_env_file())
+    if settings is None:
+        return
+    with st.spinner(text["anchoring"]):
+        try:
+            sent = ledger.anchor_pending(settings)
+        except ledger.LedgerError as exc:  # its message never holds the key or the RPC URL (chain.py redacts them)
+            st.warning(f"{text['not_anchored']} {md(_in_language(str(exc), lang))}")
+            return
+    if not sent:
+        st.markdown(text["nothing_to_anchor"])
+        return
+    first, last = sent[0][0], sent[-1][0]
+    st.markdown(text["anchored"].format(batches=first if first == last else f"{first}–{last}",
+                                        transaction=md(sent[-1][1])))
 
 
 def _count(count: int, forms: tuple[str, str], lang: str) -> str:

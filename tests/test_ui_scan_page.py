@@ -1,6 +1,7 @@
 """The Scanare page (FE-C1): the network (FR-01), the guardrail's verdict (FR-02), the "Scanează acum" button and the
 command to run. The button scans only through scan_from_app, behind the guardrail and the tick (NFR-04). The network
 and the scan are fakes: no test reads this computer's network or runs nmap."""
+import os
 import shutil
 from pathlib import Path
 
@@ -9,6 +10,7 @@ from streamlit.testing.v1 import AppTest
 
 import conetuga.guard.scan as live
 import ui.pages.scan as page
+from conetuga import ledger
 from conetuga.guard import Network, NetworkNotFound
 from conetuga.guard.scan import LiveScan, PasswordWindowRefused, ScanRefused
 from conetuga.history import load_history
@@ -241,3 +243,65 @@ def test_on_windows_the_page_names_the_uac_window(monkeypatch):
     on(monkeypatch, HOTSPOT, "RSH-ConeTuga")
     monkeypatch.setattr(page, "_on_windows", lambda: True)
     assert "UAC" in text_of(show(language="English"))
+
+
+# --- after a scan from the button: the findings log's batches go on the chain, as with the CLI -------------------
+
+CHAIN_ENV_FILE = ("CONETUGA_CHAIN_RPC_URL=http://127.0.0.1:8545\n"
+                  "CONETUGA_CHAIN_CONTRACT=0x5FbDB2315678afecb367f032d93F642f64180aa3\n"
+                  "CONETUGA_CHAIN_PRIVATE_KEY=0xtest-key-of-this-test\n")
+
+
+def scan_from_the_button(monkeypatch, tmp_path, language: str = "English") -> AppTest:
+    on(monkeypatch, HOTSPOT, "RSH-ConeTuga")
+    fake_scan(monkeypatch, tmp_path)
+    app = show(language=language)
+    app.checkbox[0].check().run()
+    button(app).click().run()
+    assert not app.exception
+    return app
+
+
+def chain_in_env_file(monkeypatch, tmp_path) -> None:
+    path = tmp_path / "test.env"
+    path.write_text(CHAIN_ENV_FILE, encoding="utf-8")
+    monkeypatch.setenv("CONETUGA_ENV_FILE", str(path))
+
+
+def test_with_the_chain_in_env_the_button_anchors_the_full_batches(monkeypatch, tmp_path):
+    chain_in_env_file(monkeypatch, tmp_path)
+    sent_with = []
+    monkeypatch.setattr(ledger, "anchor_pending", lambda settings: sent_with.append(settings) or [(0, "0xabc123")])
+    app = scan_from_the_button(monkeypatch, tmp_path)
+    assert [s.rpc_url for s in sent_with] == ["http://127.0.0.1:8545"]
+    assert "batch(es) 0" in as_read(text_of(app)) and "0xabc123" in text_of(app)
+    assert "CONETUGA_CHAIN_RPC_URL" not in os.environ  # .env read, the app's environment unchanged
+
+
+def test_without_a_chain_the_button_never_reaches_one(monkeypatch, tmp_path):
+    def forbidden(settings):
+        raise AssertionError("the page tried to reach a chain with none set up")
+
+    monkeypatch.setattr(ledger, "anchor_pending", forbidden)
+    app = scan_from_the_button(monkeypatch, tmp_path)
+    assert "Blockchain" not in text_of(app)
+
+
+def test_a_chain_that_refuses_is_a_warning_and_the_scan_still_stands(monkeypatch, tmp_path):
+    chain_in_env_file(monkeypatch, tmp_path)
+
+    def unreachable(settings):
+        raise ledger.LedgerError("Blockchain-ul nu răspunde.\nThe chain doesn't answer.")
+
+    monkeypatch.setattr(ledger, "anchor_pending", unreachable)
+    app = scan_from_the_button(monkeypatch, tmp_path)
+    warnings = [as_read(w.value) for w in app.warning]
+    assert any("didn't reach the blockchain" in w and "The chain doesn't answer." in w for w in warnings), warnings
+    assert any("score 90" in s.value for s in app.success) and load_history()
+
+
+def test_no_new_full_batch_is_said_plainly(monkeypatch, tmp_path):
+    chain_in_env_file(monkeypatch, tmp_path)
+    monkeypatch.setattr(ledger, "anchor_pending", lambda settings: [])
+    app = scan_from_the_button(monkeypatch, tmp_path, language="Română")
+    assert "niciun lot nou de 10 constatări" in as_read(text_of(app))

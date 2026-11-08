@@ -225,6 +225,13 @@ def test_without_an_rpc_url_the_log_stays_local(monkeypatch):
     assert ledger.settings_from_env() == ChainSettings("http://127.0.0.1:8545", CONTRACT, "")
 
 
+def test_settings_can_come_from_given_values_instead_of_the_environment():
+    """The app reads .env without changing its own environment (conetuga/guard/env_file.py)."""
+    values = {chain.ENV_RPC_URL: " http://127.0.0.1:8545 ", chain.ENV_CONTRACT: CONTRACT, chain.ENV_PRIVATE_KEY: KEY}
+    assert ledger.settings_from_env(values) == ChainSettings("http://127.0.0.1:8545", CONTRACT, KEY)
+    assert ledger.settings_from_env({}) is None
+
+
 @pytest.mark.parametrize("settings, message", [
     (ChainSettings("file:///etc/passwd", CONTRACT, KEY), "http:// or https://"),
     (ChainSettings("http://127.0.0.1:8545", "--help", KEY), "contract's address"),
