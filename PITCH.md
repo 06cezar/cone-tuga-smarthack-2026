@@ -23,6 +23,10 @@ minutes, in English, with at least two speakers (juniors and seniors both speak)
 | "Hostile text inside a scan stays plain text: a MAC hidden in a banner is masked, and a hostname or a port protocol can't become a link on the page." | `conetuga/analysis/parser.py`, `ui/view.py` | `tests/test_mac_in_text.py::test_a_mac_in_any_other_scan_text_is_masked`, `::test_findings_are_the_same_with_or_without_a_mac_in_the_banner`, `tests/test_traps.py::test_a_protocol_nmap_never_writes_makes_the_file_unreadable`, `tests/test_ui_devices_page.py::test_a_hostile_hostname_is_shown_as_plain_text`, `tests/test_ui_protocol_escaped.py::test_a_hostile_protocol_is_plain_text_in_a_finding_card` |
 | "Accessible on both themes: text of at least 16 px, a keyboard focus you can see, colour never alone, and the guides' pictures readable on light and dark." | `ui/style.py`, `ui/view.py`, `ui/assets/` | `tests/test_ui_focus.py`, `tests/test_ui_assets.py::test_a_picture_reads_on_both_themes`, `tests/test_ui_devices_page.py::test_every_device_is_listed_riskiest_first` |
 | "Statistics are opt-in, count only kinds of problems (no IP, MAC or name), and 'Delete my history' deletes them." | `conetuga/insights/` | `tests/test_insights.py::test_statistics_are_off_until_the_person_turns_them_on`, `::test_the_store_holds_only_code_counts_and_the_opt_in`, `::test_deleting_the_history_deletes_the_statistics` |
+| "A checkup a grandparent can follow: one task at a time, the biggest gain first, at most 3 steps in plain words; tick it and see the estimated score." | `ui/checkup.py`, `ui/cards.py` | `tests/test_ui_checkup.py::test_the_biggest_gain_comes_first`, `::test_only_the_next_task_is_open`, `::test_a_tick_raises_the_estimated_score_and_opens_the_next_task`, `tests/test_ui_simple_mode.py::test_simple_cards_give_at_most_a_few_steps` |
+| "Every fix says what it is worth: fixing the camera stream takes our smart-home example from 40 to 60." | `ui/view.py`, `ui/cards.py` | `tests/test_ui_whatif_voice.py::test_fixing_the_camera_stream_raises_v2_from_40_to_60`, `::test_acasa_says_how_much_each_fix_gives`, `::test_the_score_after_a_fix_never_passes_100` |
+| "Tap Tuga and he reads the result aloud, with a voice already on your computer: nothing is sent online and nothing is downloaded." | `ui/voice.py`, `ui/talking.py` | `tests/test_ui_whatif_voice.py::test_only_voices_on_this_computer_are_used`, `::test_the_voice_page_loads_nothing_from_outside`, `tests/test_ui_talking.py::test_the_guide_speaks_at_its_own_pace_with_local_voices_only`, `::test_scan_text_never_becomes_html_and_nothing_is_loaded` |
+| "Big targets and calm motion: buttons at least 48 px, every colour tint keeps AA contrast on both themes, and with 'reduce motion' nothing moves." | `ui/style.py`, `ui/motion.py` | `tests/test_ui_friendly_style.py::test_buttons_and_card_titles_are_easy_to_hit`, `::test_the_text_keeps_aa_contrast_on_every_tint`, `tests/test_ui_motion.py::test_reduce_motion_draws_the_final_state`, `tests/test_ui_talking.py::test_the_style_animates_the_guide_but_not_for_reduced_motion` |
 
 Planned claims, to move into the table once their test passes: none for now. (The old "the AI can't invent a port:
 code checks every sentence" is gone: we use no LLM, so there is nothing to check; say "retrieval-based", not "AI".)
@@ -33,7 +37,8 @@ code checks every sentence" is gone: we use no LLM, so there is nothing to check
   off) resolved 4 findings and added none. In the UI: pick `scan_01.xml`, then `scan_03.xml`.
 - Accessibility (FE-E2, run by hand, not in CI): axe-core 4.10 with the WCAG 2.1 A/AA rules, on Acasă, Dispozitive,
   Scanare and Despre, in Streamlit's light and dark themes: 0 violations, no text under 16 px. It found two things we
-  then fixed: a focused menu link you couldn't see (#61) and a 2.69:1 colour in the Scanare command (#64).
+  then fixed: a focused menu link you couldn't see (#61) and a 2.69:1 colour in the Scanare command (#64). That run
+  was before the new Acasă (#78–#81: checkup, talking Tuga, coloured cards): run it again before quoting it on stage.
 
 ## Trade-offs (what we chose, and what we gave up for it)
 - **Exact catalog over clever guesses:** findings come only from nmap's service name and the official rules, so the
@@ -53,6 +58,9 @@ code checks every sentence" is gone: we use no LLM, so there is nothing to check
 - The device type is a label guessed from services, vendor and hostname, never a finding.
 - History matches devices by IP + hostname: a device that gets a new address from DHCP shows as removed and new.
 - The Q&A answers only what the scan shows; anything else gets "Scanul nu arată asta."
+- Tuga reads aloud only with a voice installed on the computer (Windows: Andrei for Romanian); without one, he says
+  how to add it. We never fall back to an online voice, because the text names the person's devices.
+- The checkup's estimated score trusts the person's tick: only a new scan proves a fix, and the page says so.
 
 ## Next steps
 - An optional LLM layer that only rephrases the built-in text, with every sentence checked against the scan.
@@ -68,5 +76,5 @@ code checks every sentence" is gone: we use no LLM, so there is nothing to check
 - **To build it:** every team member worked with a Claude Code session under the same `CLAUDE.md` rules (contract
   first, tests before "done", no commit on `main`). The sessions talked through one `COMMS.md` inbox per member, and
   every change after hour 1 reached `main` through a reviewed Pull Request with green tests on Linux and Windows.
-- **What we can show:** the "who waits for whom" graph with its history of the day, rebuilt from the inboxes and PRs
-  every 15 minutes; the PR list; the test count.
+- **What we can show:** the "who waits for whom" graph with its history of the day, built from the inboxes and PRs;
+  the PR list; the test count.
