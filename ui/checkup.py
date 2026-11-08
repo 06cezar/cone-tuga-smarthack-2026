@@ -13,7 +13,7 @@ import streamlit as st
 from conetuga.explain import narrate
 from ui.cards import TEXT as CARD_TEXT, show_finding
 from ui.style import CARD_KEY, CHECKUP_ANCHOR, block_key
-from ui.view import DeviceView, device_status, md, score_without, status_options
+from ui.view import DeviceView, device_status, ip_md, md, score_without, status_options
 
 TILE_COLUMNS = 3  # device tiles per row on a laptop; Streamlit stacks them on a phone
 CELEBRATED_KEY = "checkup_celebrated"  # the scans whose list was finished: balloons once per scan, not on every rerun
@@ -103,5 +103,5 @@ def show_home_map(devices: list[DeviceView], lang: str) -> None:
         icon = DEVICE_ICON.get(host.device_type, DEVICE_ICON["unknown"])
         with columns[i % TILE_COLUMNS], st.container(key=block_key(CARD_KEY, status, host.ip)):
             st.markdown(f"### {icon}\n**{md(device.name)}**\n\n{statuses[status]}")
-            st.markdown(f"IP {host.ip} · {card['vendor']}: {md(host.vendor) or card['unknown']} · "
+            st.markdown(f"IP {ip_md(host.ip)} · {card['vendor']}: {md(host.vendor) or card['unknown']} · "
                         f"{card['mac']}: {md(host.mac_masked) or card['unknown']}")

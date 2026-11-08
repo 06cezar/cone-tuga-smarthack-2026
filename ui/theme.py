@@ -184,7 +184,7 @@ def theme_css(dark: bool) -> str:
 .stApp .st-key-{CONE_BUBBLE_KEY} {{ background: var(--ct-bubble); border: 2px solid var(--ct-bubble-line);
   border-radius: 22px; padding: 0.75rem 1rem; box-shadow: 0 0 18px -6px var(--ct-bubble-line); }}
 .stApp .st-key-{CONE_BUBBLE_KEY} p {{ font-size: 1.15rem !important; line-height: 1.5; }}
-.stApp .st-key-{TREND_LINE_KEY} h3 {{ font-size: 1.05rem !important; font-weight: 700; color: var(--ct-muted); }}
+.stApp [class*="st-key-{TREND_LINE_KEY}-"] h3 {{ font-size: 1.05rem !important; font-weight: 700; color: var(--ct-muted); }}
 .stApp [class*="st-key-{DANGER_KEY}-"] p {{ font-size: 1.25rem !important; }}
 .stApp [class*="st-key-{SAY_KEY}-tuga-"] {{ background: var(--ct-say-tuga); border: 1px solid var(--ct-say-tuga-line);
   border-radius: 18px; padding: 0.5rem 1rem; }}

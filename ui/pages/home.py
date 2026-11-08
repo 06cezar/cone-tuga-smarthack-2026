@@ -3,6 +3,7 @@ then shows every device (Dispozitive, FE-D3, adds filters and order), the Q&A bo
 Everything shown comes from analyse_file, narrate, answer_question and the history (specs/contracts.md); scan text is
 escaped with view.md before display. In Simple mode Tuga 🐢 speaks; in Advanced mode Cone 🐇 adds what nmap saw."""
 import html
+import itertools
 import sys
 import tempfile
 from datetime import date
@@ -26,7 +27,7 @@ from ui.state import current, remember_scan  # noqa: E402
 from ui.dashboard import show_cone_dashboard, show_tuga_dashboard  # noqa: E402
 from ui.style import PICKER_KEY  # noqa: E402
 from ui.theme import HISTORY_KEY, HOME_TITLE_KEY, TREND_LINE_KEY  # noqa: E402
-from ui.view import (device_name, devices_by_risk, light, md, same_network,  # noqa: E402
+from ui.view import (device_name, devices_by_risk, ip_md, light, md, same_network,  # noqa: E402
                      score_line)
 
 # After "delete my history", the scan on screen is not saved again until the user picks another one.
@@ -238,7 +239,7 @@ def threat_html(code: str, title: str, tag: str = "", resolved: bool = False) ->
             f'<strong>{e(code)}</strong><br>{e(title)}</span>{tag_html}</div>')
 
 
-def show_before_after(before, after, change, lang: str) -> None:
+def show_before_after(before, after, change, lang: str, number: int) -> None:
     """The mock-up's before and after: each score in its own card with its findings, the trend in the middle; the
     findings fixed since are marked "Rezolvat", the new ones "Nou"."""
     text = TEXT[lang]
@@ -250,7 +251,7 @@ def show_before_after(before, after, change, lang: str) -> None:
     left, middle, right = st.columns(BEFORE_AFTER_WIDTHS, gap="medium")
     cards = ((left, "before", before, change.score_before), (right, "after", after, change.score_after))
     for column, side, scan, score in cards:
-        with column, st.container(key=f"{HISTORY_KEY}-{light(score)}-{side}"):
+        with column, st.container(key=f"{HISTORY_KEY}-{light(score)}-{side}-{number}"):
             st.markdown(f'<div class="ct-card-head"><span class="ct-card-title">{html.escape(text[side + "_card"])}'
                         f'</span><span class="ct-tag">{html.escape(scan.file)}</span></div>'
                         f'<div class="ct-big-score">{score}<small>/100</small></div>', unsafe_allow_html=True)
@@ -275,6 +276,8 @@ def show_before_after(before, after, change, lang: str) -> None:
 
 
 TREND_CHART_PX = 240
+# Each comparison drawn gets its own number, so its containers' keys stay unique when a page shows two of them.
+COMPARISON_NUMBERS = itertools.count()
 
 
 def show_diff(before, after, lang: str) -> None:
@@ -283,12 +286,13 @@ def show_diff(before, after, lang: str) -> None:
     delta = change.score_after - change.score_before
     trend = text["better"] if delta > 0 else text["worse"] if delta < 0 else text["same"]
     arrow = "⬆️" if delta > 0 else "⬇️" if delta < 0 else "➡️"
-    show_before_after(before, after, change, lang)
-    with st.container(key=TREND_LINE_KEY):
+    number = next(COMPARISON_NUMBERS)
+    show_before_after(before, after, change, lang, number)
+    with st.container(key=f"{TREND_LINE_KEY}-{number}"):
         st.markdown(f"### {arrow} {text['score']}: {change.score_before} → {change.score_after} ({delta:+d}, {trend})")
 
-    alerts = [f"{text['new_device']}: {md(device_name(h, lang))} ({h.ip})" for h in change.new_devices]
-    alerts += [f"{text['opened_port']}: {p.port}/{md(p.proto)} · {md(device_name(h, lang))} ({h.ip})"
+    alerts = [f"{text['new_device']}: {md(device_name(h, lang))} ({ip_md(h.ip)})" for h in change.new_devices]
+    alerts += [f"{text['opened_port']}: {p.port}/{md(p.proto)} · {md(device_name(h, lang))} ({ip_md(h.ip)})"
                for h, p in change.opened_ports]
     if alerts:
         st.warning(f"🚨 **{text['alert']}**\n\n" + "\n".join(f"- {a}" for a in alerts))
@@ -296,10 +300,11 @@ def show_diff(before, after, lang: str) -> None:
     hosts_before = {h.ip: h for h in before.hosts}
     sections = [
         (f"✅ {text['resolved']}", [f"{md(explain(f, hosts_before[f.ip], lang).title)} · "
-                                    f"{md(device_name(hosts_before[f.ip], lang))} ({f.ip})"
+                                    f"{md(device_name(hosts_before[f.ip], lang))} ({ip_md(f.ip)})"
                                     for f in change.resolved_findings]),
-        (f"➖ {text['removed_device']}", [f"{md(device_name(h, lang))} ({h.ip})" for h in change.removed_devices]),
-        (f"🔒 {text['closed_port']}", [f"{p.port}/{md(p.proto)} · {md(device_name(h, lang))} ({h.ip})"
+        (f"➖ {text['removed_device']}", [f"{md(device_name(h, lang))} ({ip_md(h.ip)})"
+                                         for h in change.removed_devices]),
+        (f"🔒 {text['closed_port']}", [f"{p.port}/{md(p.proto)} · {md(device_name(h, lang))} ({ip_md(h.ip)})"
                                       for h, p in change.closed_ports]),
     ]
     shown = [(title, items) for title, items in sections if items]

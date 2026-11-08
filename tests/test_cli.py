@@ -100,3 +100,75 @@ def test_hostile_file_name_is_printed_escaped(tmp_path, capsys, monkeypatch):
     output = capsys.readouterr().out
     assert "\x1b" not in output and "\\x1b" in output
     assert len(output.strip().split("\n")) == 2  # one line for the file, one for the summary
+
+
+# --- settings from .env (gitignored): CONETUGA_* names only, a variable already set wins ---------------------------
+
+ENV_NAMES = ("CONETUGA_CHAIN_RPC_URL", "CONETUGA_CHAIN_CONTRACT", "CONETUGA_CHAIN_PRIVATE_KEY", "CONETUGA_HISTORY_DIR",
+             "CONETUGA_EMPTY", "NOT_OURS")
+
+
+def env_file(tmp_path, monkeypatch, text: str, encoding: str = "utf-8"):
+    """Writes `text` as the .env the CLI reads; every name a test may load is restored afterwards."""
+    for name in ENV_NAMES:
+        monkeypatch.delenv(name, raising=False)
+    path = tmp_path / "test.env"
+    path.write_text(text, encoding=encoding)
+    monkeypatch.setenv("CONETUGA_ENV_FILE", str(path))
+
+
+def test_the_env_file_sets_our_settings(tmp_path, monkeypatch):
+    env_file(tmp_path, monkeypatch, "# a comment\n\nexport CONETUGA_CHAIN_RPC_URL=http://127.0.0.1:8545  # Anvil\n"
+                                    "CONETUGA_CHAIN_CONTRACT = \"0xabc\"\nCONETUGA_CHAIN_PRIVATE_KEY='0x12 34'\n"
+                                    "CONETUGA_EMPTY=\n")
+    cli._load_env_file()
+    assert cli.os.environ["CONETUGA_CHAIN_RPC_URL"] == "http://127.0.0.1:8545"
+    assert cli.os.environ["CONETUGA_CHAIN_CONTRACT"] == "0xabc"
+    assert cli.os.environ["CONETUGA_CHAIN_PRIVATE_KEY"] == "0x12 34"
+    assert cli.os.environ["CONETUGA_EMPTY"] == ""
+
+
+def test_a_variable_already_set_wins_over_the_env_file(tmp_path, monkeypatch):
+    env_file(tmp_path, monkeypatch, "CONETUGA_CHAIN_RPC_URL=http://from-the-file:8545\n")
+    monkeypatch.setenv("CONETUGA_CHAIN_RPC_URL", "http://exported:8545")
+    cli._load_env_file()
+    assert cli.os.environ["CONETUGA_CHAIN_RPC_URL"] == "http://exported:8545"
+
+
+def test_only_our_names_are_read_from_the_env_file(tmp_path, monkeypatch):
+    """A .env can't change PATH or anything else the tools rely on."""
+    path_before = cli.os.environ.get("PATH")
+    env_file(tmp_path, monkeypatch, "PATH=/tmp/evil\nNOT_OURS=1\n# CONETUGA_CHAIN_CONTRACT=0xcommented\n")
+    cli._load_env_file()
+    assert cli.os.environ.get("PATH") == path_before and "NOT_OURS" not in cli.os.environ
+    assert "CONETUGA_CHAIN_CONTRACT" not in cli.os.environ
+
+
+def test_an_env_file_saved_by_windows_notepad_is_read(tmp_path, monkeypatch):
+    """Notepad starts a UTF-8 file with a byte order mark, glued to the first name."""
+    env_file(tmp_path, monkeypatch, "CONETUGA_CHAIN_RPC_URL=http://127.0.0.1:8545\r\n", encoding="utf-8-sig")
+    cli._load_env_file()
+    assert cli.os.environ["CONETUGA_CHAIN_RPC_URL"] == "http://127.0.0.1:8545"
+
+
+def test_no_env_file_changes_nothing(tmp_path, monkeypatch):
+    for name in ENV_NAMES:
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("CONETUGA_ENV_FILE", str(tmp_path / "missing.env"))
+    cli._load_env_file()
+    assert not any(name in cli.os.environ for name in ENV_NAMES)
+
+
+def test_a_command_uses_the_settings_from_the_env_file(tmp_path, monkeypatch, capsys):
+    """ledger verify, with the chain settings only in .env, gets past "set CONETUGA_CHAIN_RPC_URL" to the chain."""
+    env_file(tmp_path, monkeypatch, "CONETUGA_CHAIN_RPC_URL=http://127.0.0.1:8545\nCONETUGA_CHAIN_CONTRACT=0xshort\n")
+    assert cli.main(["ledger", "verify"]) == cli.EXIT_ERROR
+    err = capsys.readouterr().err
+    assert "Set CONETUGA_CHAIN_CONTRACT to the contract's address" in err  # it read both, and checked the address
+
+
+def test_the_env_example_lists_every_setting_commented_out():
+    text = (ROOT / ".env.example").read_text(encoding="utf-8")
+    for name in ("CONETUGA_HISTORY_DIR", "CONETUGA_CHAIN_RPC_URL", "CONETUGA_CHAIN_PRIVATE_KEY",
+                 "CONETUGA_CHAIN_CONTRACT"):
+        assert f"# {name}=" in text, name

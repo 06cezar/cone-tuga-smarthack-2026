@@ -4,6 +4,7 @@ Pure functions with no Streamlit, so tests/test_ui_view.py checks them on the Va
 finding or a score of its own: it orders what analyse_file returned, so a person sees the riskiest device first, and
 asks A's standard_score what the score would be without one finding ("Ce-ar fi dacă repar?")."""
 import ipaddress
+import re
 from dataclasses import dataclass
 
 from conetuga.analysis import FileResult, Finding, Host, standard_score
@@ -150,6 +151,17 @@ def same_network(earlier: FileResult, current: FileResult) -> bool:
     change = diff(earlier, current)
     shared = len(current.hosts) - len(change.new_devices)
     return shared > 0 and (not change.new_devices or not change.removed_devices)
+
+
+# An IP address as nmap writes it: hex digits, dots and colons only. None of them can start a link, a tag or emphasis
+# in Markdown, so such an address is shown as written (tests compare the page's text with it).
+PLAIN_IP = re.compile(r"[0-9A-Fa-f.:]+")
+
+
+def ip_md(ip: str) -> str:
+    """A host's IP for st.markdown: as written when it holds only an address's characters, else escaped by md(). The
+    parser already refuses anything else (an IPv6 zone, "fe80::1%..."); this is the page's own second layer (NFR-03)."""
+    return ip if PLAIN_IP.fullmatch(ip) else md(ip)
 
 
 def md(text: str) -> str:
